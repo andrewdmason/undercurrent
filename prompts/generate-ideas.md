@@ -22,6 +22,9 @@ Generate exactly 5 unique video ideas. Each idea should be distinct in angle, fo
 **On-Screen Talent:**
 {{talent}}
 
+**Distribution Channels:**
+{{distributionChannels}}
+
 ## Past Ideas (Avoid Similar Concepts)
 
 {{pastIdeas}}
@@ -38,6 +41,7 @@ Respond with a JSON array containing exactly 5 idea objects. Each object must ha
   - Main content with clear talking points
   - Call-to-action at the end
   - Approximate timing markers (e.g., [0:00-0:03], [0:03-0:15], etc.)
+- `channels`: An array of channel platform identifiers this idea is intended for. Use the exact platform values from the distribution channels provided (e.g., "tiktok", "youtube_shorts", "linkedin"). If an idea works well across multiple platforms, include all applicable channels. If the idea is platform-specific, include only that platform.
 
 ```json
 [
@@ -45,7 +49,8 @@ Respond with a JSON array containing exactly 5 idea objects. Each object must ha
     "title": "...",
     "description": "...",
     "underlordPrompt": "...",
-    "script": "..."
+    "script": "...",
+    "channels": ["tiktok", "instagram_reels"]
   }
 ]
 ```
@@ -70,7 +75,16 @@ Respond with a JSON array containing exactly 5 idea objects. Each object must ha
    - Customer-focused stories
    - Quick tips or listicles
 
-6. **Optimize for Short-Form**: These are for platforms like TikTok, Instagram Reels, and YouTube Shorts. Keep scripts punchy and front-load the value.
+6. **Optimize for Each Platform**: Tailor ideas to the specific distribution channels provided. Consider:
+   - TikTok/Reels/Shorts: Fast-paced, trend-aware, hook-heavy
+   - YouTube (long-form): More depth, storytelling, can be educational
+   - LinkedIn: Professional tone, industry insights, thought leadership
+   - Each platform has different audience expectations and optimal lengths
 
-7. **Scripts Should Be Ready to Shoot**: The script output should be detailed enough that someone could immediately start filming without additional planning.
+7. **Assign Channels Thoughtfully**: 
+   - Some ideas work across multiple platforms (crosspost-friendly) - assign all applicable channels
+   - Some ideas are platform-specific (e.g., duets on TikTok, professional insights for LinkedIn) - assign only that channel
+   - Consider the channel notes/strategy when provided
+
+8. **Scripts Should Be Ready to Shoot**: The script output should be detailed enough that someone could immediately start filming without additional planning.
 

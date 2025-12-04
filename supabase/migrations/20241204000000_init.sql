@@ -110,6 +110,43 @@ create table public.business_talent (
 alter table public.business_talent enable row level security;
 
 -- ============================================
+-- BUSINESS_DISTRIBUTION_CHANNELS TABLE
+-- ============================================
+-- Stores distribution channels for video content
+
+create table public.business_distribution_channels (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  platform text not null,
+  custom_label text,
+  goal_count integer,
+  goal_cadence text check (goal_cadence in ('weekly', 'monthly')),
+  notes text,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null,
+  unique(business_id, platform, custom_label)
+);
+
+-- Enable RLS
+alter table public.business_distribution_channels enable row level security;
+
+-- ============================================
+-- IDEA_CHANNELS TABLE (Junction Table)
+-- ============================================
+-- Links ideas to their target distribution channels
+
+create table public.idea_channels (
+  id uuid primary key default uuid_generate_v4(),
+  idea_id uuid not null references public.ideas(id) on delete cascade,
+  channel_id uuid not null references public.business_distribution_channels(id) on delete cascade,
+  created_at timestamptz default now() not null,
+  unique(idea_id, channel_id)
+);
+
+-- Enable RLS
+alter table public.idea_channels enable row level security;
+
+-- ============================================
 -- GENERATION_LOGS TABLE
 -- ============================================
 -- Stores AI generation requests and responses for auditing
@@ -235,6 +272,62 @@ create policy "Users can delete talent for their businesses"
   using (public.is_member_of_business(business_id));
 
 -- ============================================
+-- RLS POLICIES FOR BUSINESS_DISTRIBUTION_CHANNELS
+-- ============================================
+-- Users can only access distribution channels for businesses they belong to
+
+create policy "Users can view distribution channels for their businesses"
+  on public.business_distribution_channels for select
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can create distribution channels for their businesses"
+  on public.business_distribution_channels for insert
+  with check (public.is_member_of_business(business_id));
+
+create policy "Users can update distribution channels for their businesses"
+  on public.business_distribution_channels for update
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can delete distribution channels for their businesses"
+  on public.business_distribution_channels for delete
+  using (public.is_member_of_business(business_id));
+
+-- ============================================
+-- RLS POLICIES FOR IDEA_CHANNELS
+-- ============================================
+-- Users can only access idea channels for ideas they have access to
+
+create policy "Users can view idea channels for their businesses"
+  on public.idea_channels for select
+  using (
+    exists (
+      select 1 from public.ideas i
+      where i.id = idea_id
+      and public.is_member_of_business(i.business_id)
+    )
+  );
+
+create policy "Users can create idea channels for their businesses"
+  on public.idea_channels for insert
+  with check (
+    exists (
+      select 1 from public.ideas i
+      where i.id = idea_id
+      and public.is_member_of_business(i.business_id)
+    )
+  );
+
+create policy "Users can delete idea channels for their businesses"
+  on public.idea_channels for delete
+  using (
+    exists (
+      select 1 from public.ideas i
+      where i.id = idea_id
+      and public.is_member_of_business(i.business_id)
+    )
+  );
+
+-- ============================================
 -- RLS POLICIES FOR GENERATION_LOGS
 -- ============================================
 -- Users can only access generation logs for businesses they belong to
@@ -295,6 +388,10 @@ create trigger business_talent_updated_at
   before update on public.business_talent
   for each row execute function public.handle_updated_at();
 
+create trigger business_distribution_channels_updated_at
+  before update on public.business_distribution_channels
+  for each row execute function public.handle_updated_at();
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -306,6 +403,9 @@ create index businesses_slug_idx on public.businesses(slug);
 create index ideas_business_id_idx on public.ideas(business_id);
 create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
 create index business_talent_business_id_idx on public.business_talent(business_id);
+create index business_distribution_channels_business_id_idx on public.business_distribution_channels(business_id);
+create index idea_channels_idea_id_idx on public.idea_channels(idea_id);
+create index idea_channels_channel_id_idx on public.idea_channels(channel_id);
 create index generation_logs_business_id_idx on public.generation_logs(business_id);
 create index generation_logs_created_at_idx on public.generation_logs(created_at desc);
 

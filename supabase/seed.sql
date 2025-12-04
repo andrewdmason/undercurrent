@@ -146,104 +146,263 @@ insert into public.business_talent (
   );
 
 -- ============================================
--- SAMPLE IDEAS FOR TESTING
+-- SAMPLE DISTRIBUTION CHANNELS FOR TESTING
 -- ============================================
 
--- First batch of ideas (5 ideas from one generation)
+insert into public.business_distribution_channels (
+  id,
+  business_id,
+  platform,
+  custom_label,
+  goal_count,
+  goal_cadence,
+  notes,
+  created_at,
+  updated_at
+) values
+  (
+    'dc1a2b3c-d4e5-6789-abcd-ef1234567890',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'tiktok',
+    null,
+    4,
+    'weekly',
+    'Primary discovery channel. Quick hooks, trending sounds, "games you need to try" series, POV content, unboxings. Board game cafes perform well here.',
+    now(),
+    now()
+  ),
+  (
+    'dc2b3c4d-e5f6-7890-bcde-f12345678901',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'instagram_reels',
+    null,
+    5,
+    'weekly',
+    'Local discovery and atmosphere showcase. Behind-the-scenes, event teasers, staff picks. Anchor channel for Tabletop Library.',
+    now(),
+    now()
+  ),
+  (
+    'dc3c4d5e-f6a7-8901-cdef-123456789012',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'youtube_shorts',
+    null,
+    3,
+    'weekly',
+    'Cross-post best performing TikToks/Reels. Builds YouTube presence for discoverability.',
+    now(),
+    now()
+  ),
+  (
+    'dc4d5e6f-a7b8-9012-def1-234567890123',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'youtube',
+    null,
+    1,
+    'monthly',
+    'Monthly deep-dive: full game tutorials, event recaps, or game reviews. Vera as primary teaching host.',
+    now(),
+    now()
+  );
+
+-- ============================================
+-- SAMPLE IDEAS FOR TESTING
+-- Ideas utilize on-screen talent and target specific distribution channels
+-- ============================================
+
 insert into public.ideas (
   id,
   business_id,
   title,
   description,
   prompt,
+  script,
   rating,
   bookmarked,
   generation_batch_id,
   created_at,
   updated_at
 ) values
+  -- ===========================================
+  -- LONG-FORM YOUTUBE CONTENT
+  -- ===========================================
   (
     'd1e2f3a4-b5c6-7890-def1-234567890abc',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Board Game Unboxing: Wingspan',
-    'A cozy unboxing video showcasing the beautiful components of Wingspan, perfect for attracting bird-lovers and engine-building fans.',
-    E'Create a 60-second unboxing video for Wingspan board game.\n\n## Tone\nWarm, inviting, ASMR-inspired\n\n## Key Moments\n1. Open with the box art reveal (5 sec)\n2. Lift the lid slowly, showing the bird tray (10 sec)\n3. Fan out the bird cards, highlighting the artwork (15 sec)\n4. Display the dice tower and custom dice (10 sec)\n5. Show the egg tokens with satisfying clinking sounds (10 sec)\n6. End with a complete table spread (10 sec)\n\n## Call to Action\n"Reserve your copy at Tabletop Library today"',
+    'How to Play Wingspan: Complete Tutorial',
+    'Vera walks through the complete rules of Wingspan in her signature welcoming teaching style. Perfect for members who want to learn before visiting.',
+    E'Create an 8-minute complete tutorial for Wingspan.\n\n## On-Screen Talent\nVera Devera - she''s our expert game teacher and GM\n\n## Tone\nWarm, patient, encouraging - like learning from a friend\n\n## Structure\n1. Intro: Vera at a table with Wingspan set up (30 sec)\n2. Goal of the game explanation (1 min)\n3. Turn structure walkthrough (2 min)\n4. Bird powers and habitats (2 min)\n5. End-of-round scoring (1 min)\n6. Pro tips for first-time players (1 min)\n7. Outro: "Come play with us!" (30 sec)\n\n## Production Notes\n- Shoot at our best table with good lighting\n- Use top-down camera for board shots\n- Vera should have game pieces to demonstrate',
+    E'[INTRO - Vera at table with Wingspan]\n\nVera: Hey everyone, I''m Vera, and today I''m going to teach you one of my absolute favorite games - Wingspan. By the end of this video, you''ll know everything you need to play your first game.\n\n[GOAL]\n\nSo in Wingspan, you''re bird enthusiasts trying to attract the best birds to your wildlife preserves. You''ll score points by collecting birds, laying eggs, caching food, and completing bonus objectives.\n\n[TURN STRUCTURE]\n\nOn your turn, you''ll do one of four actions...\n\n[Continue with full tutorial...]',
     'up',
     true,
     'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
-    now() - interval '2 days',
-    now() - interval '2 days'
+    now() - interval '5 days',
+    now() - interval '5 days'
   ),
   (
     'd2e3f4a5-b6c7-8901-ef12-345678901bcd',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Game Night Tips: How to Teach Rules',
-    'Quick tips video on how to explain board game rules without putting people to sleep. Relatable content for your community.',
-    E'Create a 45-second tips video on teaching board game rules.\n\n## Tone\nFunny, self-aware, helpful\n\n## Structure\n1. Hook: "Stop! Don''t read the rulebook out loud" (3 sec)\n2. Tip 1: Start with the goal, not the setup (10 sec)\n3. Tip 2: Learn by doing - start playing after basics (10 sec)\n4. Tip 3: The "first round doesn''t count" trick (10 sec)\n5. Tip 4: Have a rules summary ready (7 sec)\n6. CTA: "Join our next learn-to-play night" (5 sec)\n\n## Visual Style\nQuick cuts, on-screen text for each tip',
-    null,
-    false,
-    'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
-    now() - interval '2 days',
-    now() - interval '2 days'
-  ),
-  (
-    'd3e4f5a6-b7c8-9012-f123-456789012cde',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Staff Pick: Why We Love Ticket to Ride',
-    'A genuine staff recommendation video that builds trust and showcases your team''s personality.',
-    E'Create a 40-second staff pick video for Ticket to Ride.\n\n## Tone\nAuthentic, enthusiastic, personal\n\n## Script Outline\n1. Intro: Staff member introduces themselves (5 sec)\n2. "This is my go-to recommendation for new gamers" (5 sec)\n3. Why it works: Easy to learn, satisfying to play (10 sec)\n4. Personal story: A memorable game moment (10 sec)\n5. Who it''s perfect for (5 sec)\n6. CTA: "Come ask me about it!" (5 sec)\n\n## Production Notes\n- Film in the store with games visible in background\n- Natural lighting preferred\n- Staff member should hold the game box',
+    'The Board Game Cafe Revolution: Industry Deep Dive',
+    'Andrew and Nabeel discuss the rise of board game cafes, what makes them work, and their vision for Tabletop Library. Great for building authority and SEO.',
+    E'Create a 12-minute talking head video on the board game cafe industry.\n\n## On-Screen Talent\nAndrew Mason & Nabeel Hyatt - co-founders with deep industry knowledge\n\n## Tone\nThoughtful, insider perspective, passionate but not salesy\n\n## Structure\n1. Hook: "Board game cafes are having a moment" (30 sec)\n2. The history - from niche to mainstream (2 min)\n3. What makes a great board game cafe (3 min)\n4. Common mistakes cafe owners make (2 min)\n5. Why membership models work (2 min)\n6. Our vision for Tabletop Library (2 min)\n7. CTA: Subscribe + visit us (30 sec)\n\n## Production Notes\n- Two-shot conversation format\n- Film in the club with games visible behind\n- Can cut to B-roll of the space',
+    E'[INTRO - Andrew and Nabeel sitting together]\n\nAndrew: So Nabeel, we''ve been getting a lot of questions about board game cafes lately...\n\nNabeel: Yeah, it feels like everywhere you look, a new one is opening up. There''s definitely something happening here.\n\nAndrew: Let''s talk about it. Why now? What''s driving this?\n\n[THE HISTORY]\n\nNabeel: Well, if you look at the data, board game sales have been growing double digits for years now...\n\n[Continue with full conversation...]',
     'up',
     false,
     'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
-    now() - interval '2 days',
-    now() - interval '2 days'
+    now() - interval '5 days',
+    now() - interval '5 days'
+  ),
+  
+  -- ===========================================
+  -- SHORT-FORM SOCIAL CONTENT (TikTok/Reels/Shorts)
+  -- ===========================================
+  (
+    'd3e4f5a6-b7c8-9012-f123-456789012cde',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'POV: You Ask Me for a Game Recommendation',
+    'Vera does a trending POV format video where someone asks for a game rec and she rapid-fires questions back. Relatable and funny.',
+    E'Create a 30-second POV video for TikTok/Reels.\n\n## On-Screen Talent\nVera Devera - natural on camera, great with customers\n\n## Tone\nFunny, relatable, slightly chaotic energy\n\n## Script Concept\nPOV: You ask me for a game recommendation\n"How many players?"\n"Do they like strategy or luck?"\n"How much time do you have?"\n"Are they competitive or chill?"\n"Have they played Catan?"\n*hands them perfect game*\n"Trust me."\n\n## Production Notes\n- Film from customer POV (camera is the customer)\n- Quick cuts between questions\n- End with satisfied smile and game box reveal\n- Use trending audio if applicable',
+    E'[Camera is the customer''s POV - Vera faces camera directly]\n\n[Customer approaches]\n\nVera: [friendly] Hey! Looking for a game?\n\n[Quick cut]\n\nVera: Okay, how many players?\n\n[Quick cut]\n\nVera: Do they like strategy... or more luck-based?\n\n[Quick cut]\n\nVera: How much time do you have?\n\n[Quick cut]\n\nVera: Are they competitive or chill?\n\n[Quick cut]\n\nVera: [squinting slightly] Have they played Catan?\n\n[Quick cut - Vera grabs a game box confidently]\n\nVera: [handing over box with a knowing smile] Trust me.\n\n[End card: @tabletoplibrary]',
+    'up',
+    true,
+    'f2a3b4c5-d6e7-8901-d567-890123456012',
+    now() - interval '3 days',
+    now() - interval '3 days'
   ),
   (
     'd4e5f6a7-b8c9-0123-a234-567890123def',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Event Highlight: Saturday Tournament Recap',
-    'Capture the energy of your weekly events to show potential customers what they''re missing.',
-    E'Create a 30-second event recap video.\n\n## Tone\nEnergetic, community-focused, FOMO-inducing\n\n## Shot List\n1. Wide shot of busy game room (3 sec)\n2. Close-up of intense gameplay moment (4 sec)\n3. Reaction shots - someone winning/celebrating (5 sec)\n4. Group laughing together (4 sec)\n5. Quick montage of different tables (6 sec)\n6. Winner holding prize/trophy (4 sec)\n7. End card with next event date (4 sec)\n\n## Music\nUpbeat, community vibe - think indie/folk energy\n\n## Text Overlays\n- "Every Saturday @ 2pm"\n- "All skill levels welcome"',
-    'down',
+    'Unboxing: The New Hotness from BGG',
+    'Andrew does a quick unboxing of whatever is #1 on BoardGameGeek''s hotness list. Timely content that rides existing search interest.',
+    E'Create a 45-second unboxing video.\n\n## On-Screen Talent\nAndrew Mason - brings entrepreneurial energy to unboxings\n\n## Tone\nExcited, ASMR-adjacent, builds anticipation\n\n## Structure\n1. Hook: "This is the #1 game on BoardGameGeek right now" (3 sec)\n2. Show the box, read the name (5 sec)\n3. Open the box, react to components (15 sec)\n4. Highlight 2-3 coolest pieces (15 sec)\n5. "Come play it at Tabletop Library" (7 sec)\n\n## Production Notes\n- Clean table, good lighting\n- ASMR-style audio (component sounds)\n- Andrew''s hands + voiceover, face optional',
+    E'[Close-up of game box on clean table]\n\nAndrew (VO): This is the number one game on BoardGameGeek right now.\n\n[Box rotates to show title]\n\nAndrew (VO): It''s called [GAME NAME] and I just got my hands on it.\n\n[Hands lift lid slowly - satisfying sound]\n\nAndrew (VO): Oh wow. Okay.\n\n[Reveals components - punchboards, minis, cards]\n\nAndrew (VO): Look at these components. This is... this is really nice.\n\n[Pulls out standout piece]\n\nAndrew (VO): And check this out - [describes cool component]\n\n[Shows spread of components]\n\nAndrew (VO): We''ve got this on the shelf at Tabletop Library if you want to try before you buy.\n\n[End card: @tabletoplibrary]',
+    null,
     false,
-    'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
-    now() - interval '2 days',
-    now() - interval '2 days'
+    'f2a3b4c5-d6e7-8901-d567-890123456012',
+    now() - interval '3 days',
+    now() - interval '3 days'
   ),
   (
     'd5e6f7a8-b9c0-1234-b345-678901234ef0',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Quick Review: Azul in 60 Seconds',
-    'Bite-sized review format perfect for social media, highlighting what makes Azul special.',
-    E'Create a 60-second review of Azul.\n\n## Tone\nPunchy, informative, visually-driven\n\n## Structure\n1. Hook: Show the gorgeous tiles (5 sec)\n2. "Azul in 60 seconds - here''s what you need to know" (5 sec)\n3. The goal: Complete your mosaic (10 sec)\n4. The twist: Draft tiles, but don''t get greedy (15 sec)\n5. Why it''s great: Beautiful + strategic + quick (15 sec)\n6. Rating: 9/10 for gateway games (5 sec)\n7. CTA: "Link in bio to reserve" (5 sec)\n\n## Visual Focus\n- Lots of close-ups on the colorful tiles\n- Show a satisfying tile placement moment\n- Display completed vs incomplete boards',
-    null,
-    true,
-    'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
-    now() - interval '2 days',
-    now() - interval '2 days'
+    'Games That Will End Friendships (Affectionately)',
+    'Nabeel counts down the most friendship-testing games in our collection. Funny, relatable content with high share potential.',
+    E'Create a 60-second countdown video.\n\n## On-Screen Talent\nNabeel Hyatt - dry humor, knows competitive gaming\n\n## Tone\nFunny, knowing, "we''ve all been there"\n\n## Structure\n1. Hook: "These games WILL cause arguments" (3 sec)\n2. #5: Monopoly (duh) (8 sec)\n3. #4: Risk (those alliances) (10 sec)\n4. #3: Diplomacy (literal backstabbing) (10 sec)\n5. #2: Cosmic Encounter (negotiation chaos) (10 sec)\n6. #1: The Resistance/Secret Hitler (trust no one) (12 sec)\n7. CTA: "Come test your friendships" (7 sec)\n\n## Production Notes\n- Quick cuts, show each game box\n- Nabeel deadpan delivery\n- Maybe dramatic music stings',
+    E'[Nabeel standing with arms crossed, deadpan]\n\nNabeel: These games WILL cause arguments. I''m not sorry.\n\n[Dramatic sting - holds up Monopoly]\n\nNabeel: Number 5: Monopoly. Obviously. Next.\n\n[Holds up Risk]\n\nNabeel: Number 4: Risk. "I thought we had an alliance." You thought wrong.\n\n[Holds up Diplomacy]\n\nNabeel: Number 3: Diplomacy. This game has literally ended real friendships. I''ve seen it.\n\n[Holds up Cosmic Encounter]\n\nNabeel: Number 2: Cosmic Encounter. The negotiation phase alone...\n\n[Holds up Secret Hitler]\n\nNabeel: And number 1: Secret Hitler. Or The Resistance. Either way, trust no one.\n\n[Nabeel shrugs]\n\nNabeel: Come test your friendships at Tabletop Library. We have tissues.\n\n[End card]',
+    'up',
+    false,
+    'f2a3b4c5-d6e7-8901-d567-890123456012',
+    now() - interval '3 days',
+    now() - interval '3 days'
   ),
-  -- Second batch (more recent, different generation)
   (
     'd6e7f8a9-b0c1-2345-c456-789012345f01',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Behind the Scenes: New Arrivals Shelf',
-    'Show off your curation process and build anticipation for new games hitting your shelves.',
-    E'Create a 45-second behind-the-scenes video.\n\n## Tone\nExcited, insider-access feel\n\n## Script\n1. "New games just dropped - let me show you what''s coming to the shelf" (5 sec)\n2. Unpack shipping box, show 3-4 new titles (15 sec)\n3. Quick 5-second pitch for each game (20 sec)\n4. "These hit the shelf tomorrow at 10am" (5 sec)\n\n## Tips\n- Film in back room or receiving area for authenticity\n- Show genuine excitement\n- Create urgency without being pushy',
+    'A Day in the Life: Opening Tabletop Library',
+    'Behind-the-scenes morning routine video showing Vera opening the club. Builds connection and shows the care that goes into the space.',
+    E'Create a 45-second day-in-the-life video.\n\n## On-Screen Talent\nVera Devera - as GM, she opens the club\n\n## Tone\nCozy, authentic, satisfying routine content\n\n## Shot List\n1. Vera arriving, keys in hand (3 sec)\n2. Lights coming on, revealing game shelves (5 sec)\n3. Starting the coffee machine (5 sec)\n4. Straightening games on shelves (8 sec)\n5. Setting up the "new arrivals" display (8 sec)\n6. Flipping the sign to "Open" (5 sec)\n7. First members walking in (8 sec)\n8. Vera wave: "Come hang out" (3 sec)\n\n## Production Notes\n- Natural morning light\n- Cozy background music\n- Show the care and intention',
+    E'[Early morning - Vera walks up to Tabletop Library entrance, keys in hand]\n\n[Cozy lo-fi music plays throughout]\n\n[Keys turning in lock - satisfying click]\n\n[Lights flick on section by section, revealing rows of colorful game boxes]\n\n[Vera at coffee machine, pressing buttons]\n\n[Hands straightening games on shelf - satisfying organization]\n\n[Setting up "New This Week" display with fresh games]\n\n[Flipping door sign from CLOSED to OPEN]\n\n[First members walking in, Vera greeting them warmly]\n\n[Vera turns to camera, waves]\n\nVera: Come hang out.\n\n[Text overlay: "Open 7 days a week"]\n\n[End card: @tabletoplibrary]',
     null,
-    false,
-    'f2a3b4c5-d6e7-8901-d567-890123456012',
-    now() - interval '6 hours',
-    now() - interval '6 hours'
+    true,
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '1 day',
+    now() - interval '1 day'
   ),
   (
     'd7e8f9a0-b1c2-3456-d567-890123456102',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Customer Spotlight: Regular''s Favorite Game',
-    'Feature a loyal customer talking about their favorite game - authentic social proof.',
-    E'Create a 40-second customer spotlight video.\n\n## Tone\nWarm, authentic, community-centered\n\n## Interview Questions (pick 2-3)\n- What''s your all-time favorite game?\n- What keeps you coming back to Tabletop Library?\n- What would you tell someone who''s never been here?\n\n## Production\n- Film in-store with customer permission\n- Keep it casual and conversational\n- B-roll of them browsing or playing\n\n## CTA\n"Join our community - new members always welcome"',
+    'Rating Games by How Hard They Are to Teach',
+    'Andrew rates popular games on a "teaching difficulty" scale. Useful content that helps people choose games for their groups.',
+    E'Create a 50-second rating video.\n\n## On-Screen Talent\nAndrew Mason - experienced at teaching games to new players\n\n## Tone\nHelpful, honest, slightly self-deprecating\n\n## Structure\n1. Hook: "How hard is this game to teach?" (3 sec)\n2. Tier 1 - "Anyone can learn in 2 minutes": Azul, Codenames (10 sec)\n3. Tier 2 - "One practice round": Ticket to Ride, Carcassonne (10 sec)\n4. Tier 3 - "Watch a video first": Wingspan, Everdell (10 sec)\n5. Tier 4 - "Clear your afternoon": Terraforming Mars (10 sec)\n6. Tier 5 - "Just... good luck": Twilight Imperium (7 sec)\n\n## Production Notes\n- Show game boxes as rating\n- On-screen tier labels\n- Andrew can hold/gesture at games',
+    E'[Andrew standing behind table with game boxes]\n\nAndrew: How hard is this game to teach? Let''s find out.\n\n[Text: TIER 1 - "2 Minutes"]\n\n[Holds up Azul]\n\nAndrew: Azul. Codenames. Anyone can learn these in two minutes flat.\n\n[Text: TIER 2 - "One Practice Round"]\n\n[Holds up Ticket to Ride]\n\nAndrew: Ticket to Ride. Carcassonne. One practice round and you''re good.\n\n[Text: TIER 3 - "Watch a Video First"]\n\n[Holds up Wingspan]\n\nAndrew: Wingspan. Everdell. Maybe watch a video first. It helps.\n\n[Text: TIER 4 - "Clear Your Afternoon"]\n\n[Holds up Terraforming Mars]\n\nAndrew: Terraforming Mars. Clear your afternoon. Bring snacks.\n\n[Text: TIER 5 - "Good Luck"]\n\n[Holds up Twilight Imperium - struggles with the weight]\n\nAndrew: And Twilight Imperium... just... good luck.\n\n[End card]',
     null,
     false,
-    'f2a3b4c5-d6e7-8901-d567-890123456012',
-    now() - interval '6 hours',
-    now() - interval '6 hours'
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '1 day',
+    now() - interval '1 day'
+  ),
+  (
+    'd8f9a0b1-c2d3-4567-e678-901234567213',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Saturday Night Game Night Recap',
+    'Quick montage of last Saturday''s game night energy. Shows the community vibe and FOMO-inducing moments.',
+    E'Create a 30-second event montage.\n\n## On-Screen Talent\nNo specific host - community is the star\n\n## Tone\nEnergetic, joyful, FOMO-inducing\n\n## Shot List\n1. Wide shot of packed room (2 sec)\n2. Close-up: dice rolling (2 sec)\n3. Reaction: someone winning (3 sec)\n4. Group laughing at a table (3 sec)\n5. Close-up: game pieces/cards (2 sec)\n6. Two people high-fiving (2 sec)\n7. Vera explaining rules to a table (3 sec)\n8. Snacks and drinks (2 sec)\n9. End: "Every Saturday @ 7pm" text (5 sec)\n10. Logo + "Tabletop Library" (3 sec)\n\n## Production Notes\n- Upbeat music throughout\n- Quick cuts, high energy\n- Capture genuine moments',
+    E'[MONTAGE - Upbeat indie music throughout]\n\n[Wide shot: Packed game room, warm lighting]\n\n[Close-up: Dice tumbling across board]\n\n[Reaction shot: Someone throwing hands up in victory]\n\n[Group at table erupting in laughter]\n\n[Close-up: Colorful game pieces being placed]\n\n[Two players high-fiving across table]\n\n[Vera at a table, animatedly explaining rules, players nodding]\n\n[Snacks and craft sodas on side table]\n\n[Text overlay: "Every Saturday @ 7pm"]\n\n[Logo: Tabletop Library]\n\n[Text: "All skill levels welcome"]\n\n[End card: @tabletoplibrary]',
+    'down',
+    false,
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '1 day',
+    now() - interval '1 day'
+  ),
+  (
+    'd9a0b1c2-d3e4-5678-f789-012345678324',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'The AI Concierge Demo: Finding Your Perfect Game',
+    'Andrew demos our AI concierge feature that helps members find games. Shows off a unique differentiator.',
+    E'Create a 40-second product demo video.\n\n## On-Screen Talent\nAndrew Mason - can speak to the tech/product side\n\n## Tone\nExcited about tech, but accessible and not too salesy\n\n## Structure\n1. Hook: "We built an AI to help you find games" (5 sec)\n2. Show the interface on phone/tablet (5 sec)\n3. Demo: "I want a 2-player game under an hour" (10 sec)\n4. AI gives recommendations with reasons (10 sec)\n5. "It knows our entire 800+ game collection" (5 sec)\n6. CTA: "Come try it yourself" (5 sec)\n\n## Production Notes\n- Screen recording + Andrew talking\n- Show real recommendations\n- Keep it snappy',
+    E'[Andrew holding phone/tablet, standing in club]\n\nAndrew: We built an AI to help you find your next favorite game.\n\n[Shows screen to camera]\n\nAndrew: Watch this. "I want a 2-player game, under an hour, that''s not too competitive."\n\n[Types/speaks into interface]\n\n[AI response appears on screen]\n\nAndrew: And it says... Patchwork, 7 Wonders Duel, and Jaipur. All great picks.\n\n[Turns phone back]\n\nAndrew: It knows our entire 800-game collection. Player count, complexity, themes, everything.\n\n[Gestures around club]\n\nAndrew: Come try it yourself. It''s like having a game expert in your pocket.\n\n[End card: @tabletoplibrary]',
+    'up',
+    true,
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '12 hours',
+    now() - interval '12 hours'
+  ),
+  (
+    'dab1c2d3-e4f5-6789-a890-123456789435',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Rare Game Spotlight: Out-of-Print Gems We Have',
+    'Nabeel shows off some rare/out-of-print games in our collection. Appeals to collectors and serious hobbyists.',
+    E'Create a 60-second rare games showcase.\n\n## On-Screen Talent\nNabeel Hyatt - deep knowledge of game industry/history\n\n## Tone\nExcited collector energy, "you can''t get this anywhere else"\n\n## Structure\n1. Hook: "Games you literally can''t buy anymore" (5 sec)\n2. Game 1: Show box, why it''s special, current value (15 sec)\n3. Game 2: Show box, why it''s rare (15 sec)\n4. Game 3: The crown jewel (15 sec)\n5. "And you can just... play them here" (5 sec)\n6. CTA: "800+ games, including the ones money can''t buy" (5 sec)\n\n## Production Notes\n- Dramatic reveals\n- Show eBay prices if applicable\n- Nabeel should hold games reverently',
+    E'[Nabeel in front of game shelves, holding covered game]\n\nNabeel: These are games you literally cannot buy anymore.\n\n[Dramatic reveal - first game]\n\nNabeel: Fireball Island. Original 1986 edition. This goes for $300 on eBay. If you can find it.\n\n[Sets down, picks up another]\n\nNabeel: HeroQuest. The original. Not the remake. This is the one people are nostalgic for.\n\n[Sets down, picks up final game reverently]\n\nNabeel: And this... Glory to Rome black box edition. The publisher went under. These are essentially impossible to find now.\n\n[Gestures to shelf behind him]\n\nNabeel: We have over 800 games here. Including the ones money can''t buy.\n\n[Half smile]\n\nNabeel: And you can just... play them. Whenever you want.\n\n[End card: @tabletoplibrary]',
+    null,
+    false,
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '12 hours',
+    now() - interval '12 hours'
   );
+
+-- ============================================
+-- IDEA CHANNEL ASSOCIATIONS
+-- Link ideas to their intended distribution channels
+-- ============================================
+
+insert into public.idea_channels (idea_id, channel_id) values
+  -- How to Play Wingspan (Vera tutorial): YouTube only (long-form)
+  ('d1e2f3a4-b5c6-7890-def1-234567890abc', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  
+  -- Board Game Cafe Revolution (Andrew + Nabeel): YouTube only (long-form)
+  ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  
+  -- POV Game Recommendation (Vera): TikTok + Instagram Reels (trending format)
+  ('d3e4f5a6-b7c8-9012-f123-456789012cde', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('d3e4f5a6-b7c8-9012-f123-456789012cde', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  
+  -- Unboxing BGG Hotness (Andrew): TikTok + Instagram + YouTube Shorts (cross-post)
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  
+  -- Friendship-Ending Games (Nabeel): TikTok + Instagram Reels (shareable)
+  ('d5e6f7a8-b9c0-1234-b345-678901234ef0', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('d5e6f7a8-b9c0-1234-b345-678901234ef0', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  
+  -- Day in the Life (Vera): Instagram Reels + TikTok (cozy content)
+  ('d6e7f8a9-b0c1-2345-c456-789012345f01', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('d6e7f8a9-b0c1-2345-c456-789012345f01', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  
+  -- Teaching Difficulty Rating (Andrew): TikTok + YouTube Shorts (useful content)
+  ('d7e8f9a0-b1c2-3456-d567-890123456102', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('d7e8f9a0-b1c2-3456-d567-890123456102', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  
+  -- Saturday Game Night Recap: Instagram Reels + TikTok (event content)
+  ('d8f9a0b1-c2d3-4567-e678-901234567213', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('d8f9a0b1-c2d3-4567-e678-901234567213', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  
+  -- AI Concierge Demo (Andrew): TikTok + Instagram + YouTube Shorts (differentiator)
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  
+  -- Rare Games Spotlight (Nabeel): Instagram Reels + YouTube Shorts (collector content)
+  ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc3c4d5e-f6a7-8901-cdef-123456789012');

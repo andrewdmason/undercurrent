@@ -137,3 +137,112 @@ export async function checkSlugAvailability(
 
   return { available: !data };
 }
+
+// ============================================
+// DISTRIBUTION CHANNELS
+// ============================================
+
+export async function addDistributionChannel(
+  businessId: string,
+  data: {
+    platform: string;
+    custom_label?: string | null;
+    goal_count?: number | null;
+    goal_cadence?: "weekly" | "monthly" | null;
+    notes?: string | null;
+  }
+) {
+  const supabase = await createClient();
+
+  // Get the business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
+  const { data: channel, error } = await supabase
+    .from("business_distribution_channels")
+    .insert({
+      business_id: businessId,
+      platform: data.platform,
+      custom_label: data.custom_label || null,
+      goal_count: data.goal_count || null,
+      goal_cadence: data.goal_cadence || null,
+      notes: data.notes || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding distribution channel:", error);
+    return { error: error.message };
+  }
+
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
+  return { success: true, channel };
+}
+
+export async function updateDistributionChannel(
+  channelId: string,
+  data: {
+    custom_label?: string | null;
+    goal_count?: number | null;
+    goal_cadence?: "weekly" | "monthly" | null;
+    notes?: string | null;
+  }
+) {
+  const supabase = await createClient();
+
+  // Get the channel with business slug for revalidation
+  const { data: channel } = await supabase
+    .from("business_distribution_channels")
+    .select("business_id, businesses(slug)")
+    .eq("id", channelId)
+    .single();
+
+  const { error } = await supabase
+    .from("business_distribution_channels")
+    .update(data)
+    .eq("id", channelId);
+
+  if (error) {
+    console.error("Error updating distribution channel:", error);
+    return { error: error.message };
+  }
+
+  const businesses = channel?.businesses as unknown as { slug: string } | null;
+  if (businesses?.slug) {
+    revalidatePath(`/${businesses.slug}/strategy`);
+  }
+  return { success: true };
+}
+
+export async function deleteDistributionChannel(channelId: string) {
+  const supabase = await createClient();
+
+  // Get the channel with business slug for revalidation
+  const { data: channel } = await supabase
+    .from("business_distribution_channels")
+    .select("business_id, businesses(slug)")
+    .eq("id", channelId)
+    .single();
+
+  const { error } = await supabase
+    .from("business_distribution_channels")
+    .delete()
+    .eq("id", channelId);
+
+  if (error) {
+    console.error("Error deleting distribution channel:", error);
+    return { error: error.message };
+  }
+
+  const businesses = channel?.businesses as unknown as { slug: string } | null;
+  if (businesses?.slug) {
+    revalidatePath(`/${businesses.slug}/strategy`);
+  }
+  return { success: true };
+}

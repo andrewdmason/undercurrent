@@ -11,6 +11,7 @@ interface GeneratedIdea {
   description: string;
   underlordPrompt: string;
   script: string;
+  channels?: string[];
 }
 
 export async function updateIdeaRating(
@@ -96,6 +97,13 @@ export async function generateIdeas(businessId: string) {
     .select("name, description")
     .eq("business_id", businessId);
 
+  // Fetch distribution channels
+  const { data: channels } = await supabase
+    .from("business_distribution_channels")
+    .select("id, platform, custom_label, goal_count, goal_cadence, notes")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: true });
+
   // Fetch last 20 ideas for context
   const { data: pastIdeas } = await supabase
     .from("ideas")
@@ -124,6 +132,26 @@ export async function generateIdeas(businessId: string) {
     contentSources && Array.isArray(contentSources) && contentSources.length > 0
       ? contentSources.map((s: string) => `- ${s}`).join("\n")
       : "No content sources configured.";
+
+  // Format distribution channels section
+  const channelsSection =
+    channels && channels.length > 0
+      ? channels
+          .map((c) => {
+            const name = c.platform === "custom" && c.custom_label 
+              ? c.custom_label 
+              : c.platform;
+            let line = `- **${name}** (platform: "${c.platform}")`;
+            if (c.goal_count && c.goal_cadence) {
+              line += ` - Goal: ${c.goal_count}/${c.goal_cadence === "weekly" ? "week" : "month"}`;
+            }
+            if (c.notes) {
+              line += `\n  Strategy: ${c.notes}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No distribution channels configured.";
 
   // Format past ideas section
   const pastIdeasSection =
@@ -156,7 +184,16 @@ export async function generateIdeas(businessId: string) {
     )
     .replace("{{contentSources}}", sourcesSection)
     .replace("{{talent}}", talentSection)
+    .replace("{{distributionChannels}}", channelsSection)
     .replace("{{pastIdeas}}", pastIdeasSection);
+
+  // Build a map of platform values to channel IDs for linking
+  const channelIdMap = new Map<string, string>();
+  if (channels) {
+    for (const c of channels) {
+      channelIdMap.set(c.platform, c.id);
+    }
+  }
 
   // Generate a batch ID for this generation
   const batchId = crypto.randomUUID();
@@ -218,6 +255,36 @@ export async function generateIdeas(businessId: string) {
 
     if (insertError) {
       throw new Error(`Failed to save ideas: ${insertError.message}`);
+    }
+
+    // Insert idea-channel relationships
+    const ideaChannelLinks: Array<{ idea_id: string; channel_id: string }> = [];
+    if (insertedIdeas && channels && channels.length > 0) {
+      insertedIdeas.forEach((insertedIdea, index) => {
+        const generatedIdea = generatedIdeas[index];
+        if (generatedIdea.channels && Array.isArray(generatedIdea.channels)) {
+          for (const platformValue of generatedIdea.channels) {
+            const channelId = channelIdMap.get(platformValue);
+            if (channelId) {
+              ideaChannelLinks.push({
+                idea_id: insertedIdea.id,
+                channel_id: channelId,
+              });
+            }
+          }
+        }
+      });
+
+      if (ideaChannelLinks.length > 0) {
+        const { error: channelLinkError } = await supabase
+          .from("idea_channels")
+          .insert(ideaChannelLinks);
+
+        if (channelLinkError) {
+          console.error("Error linking ideas to channels:", channelLinkError);
+          // Don't fail the whole operation, just log it
+        }
+      }
     }
 
     // Log the generation
