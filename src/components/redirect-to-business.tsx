@@ -4,26 +4,26 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface RedirectToBusinessProps {
-  businessIds: string[];
+  businessSlugs: string[];
 }
 
-export function RedirectToBusiness({ businessIds }: RedirectToBusinessProps) {
+export function RedirectToBusiness({ businessSlugs }: RedirectToBusinessProps) {
   const router = useRouter();
 
   useEffect(() => {
     // Check localStorage for last selected business
-    const lastBusinessId = localStorage.getItem("undercurrent:lastBusinessId");
+    const lastBusinessSlug = localStorage.getItem("undercurrent:lastBusinessSlug");
     
     // If last business is in the list of user's businesses, go there
-    if (lastBusinessId && businessIds.includes(lastBusinessId)) {
-      router.replace(`/${lastBusinessId}`);
+    if (lastBusinessSlug && businessSlugs.includes(lastBusinessSlug)) {
+      router.replace(`/${lastBusinessSlug}`);
     } else {
       // Otherwise, go to the first business and save it
-      const firstBusinessId = businessIds[0];
-      localStorage.setItem("undercurrent:lastBusinessId", firstBusinessId);
-      router.replace(`/${firstBusinessId}`);
+      const firstBusinessSlug = businessSlugs[0];
+      localStorage.setItem("undercurrent:lastBusinessSlug", firstBusinessSlug);
+      router.replace(`/${firstBusinessSlug}`);
     }
-  }, [businessIds, router]);
+  }, [businessSlugs, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -31,5 +31,3 @@ export function RedirectToBusiness({ businessIds }: RedirectToBusinessProps) {
     </div>
   );
 }
-
-

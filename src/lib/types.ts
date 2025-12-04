@@ -19,6 +19,7 @@ export interface Idea {
 export interface Business {
   id: string;
   name: string;
+  slug: string;
   url: string | null;
   description: string | null;
   strategy_prompt: string | null;

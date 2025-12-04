@@ -40,6 +40,7 @@ create policy "Users can insert their own profile"
 create table public.businesses (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
+  slug text unique not null,
   url text,
   description text,
   strategy_prompt text,
@@ -301,6 +302,7 @@ create trigger business_talent_updated_at
 create index business_users_business_id_idx on public.business_users(business_id);
 create index business_users_user_id_idx on public.business_users(user_id);
 create index businesses_created_by_idx on public.businesses(created_by);
+create index businesses_slug_idx on public.businesses(slug);
 create index ideas_business_id_idx on public.ideas(business_id);
 create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
 create index business_talent_business_id_idx on public.business_talent(business_id);
