@@ -68,6 +68,27 @@ create table public.business_users (
 alter table public.business_users enable row level security;
 
 -- ============================================
+-- IDEAS TABLE
+-- ============================================
+
+create table public.ideas (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  title text not null,
+  description text,
+  image_url text,
+  prompt text,
+  rating text check (rating in ('up', 'down')),
+  bookmarked boolean default false not null,
+  generation_batch_id uuid,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- Enable RLS
+alter table public.ideas enable row level security;
+
+-- ============================================
 -- HELPER FUNCTION FOR RLS (avoids recursion)
 -- ============================================
 
@@ -132,6 +153,27 @@ create policy "Users can remove themselves from businesses"
   using (user_id = auth.uid());
 
 -- ============================================
+-- RLS POLICIES FOR IDEAS
+-- ============================================
+-- Users can only access ideas for businesses they belong to
+
+create policy "Users can view ideas for their businesses"
+  on public.ideas for select
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can create ideas for their businesses"
+  on public.ideas for insert
+  with check (public.is_member_of_business(business_id));
+
+create policy "Users can update ideas for their businesses"
+  on public.ideas for update
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can delete ideas for their businesses"
+  on public.ideas for delete
+  using (public.is_member_of_business(business_id));
+
+-- ============================================
 -- TRIGGER: Auto-create profile on signup
 -- ============================================
 
@@ -171,6 +213,10 @@ create trigger businesses_updated_at
   before update on public.businesses
   for each row execute function public.handle_updated_at();
 
+create trigger ideas_updated_at
+  before update on public.ideas
+  for each row execute function public.handle_updated_at();
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -178,4 +224,43 @@ create trigger businesses_updated_at
 create index business_users_business_id_idx on public.business_users(business_id);
 create index business_users_user_id_idx on public.business_users(user_id);
 create index businesses_created_by_idx on public.businesses(created_by);
+create index ideas_business_id_idx on public.ideas(business_id);
+create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
+
+-- ============================================
+-- STORAGE BUCKET FOR IDEA IMAGES
+-- ============================================
+
+insert into storage.buckets (id, name, public)
+values ('idea-images', 'idea-images', true);
+
+-- Storage policies for idea-images bucket
+-- Allow authenticated users to upload images
+create policy "Authenticated users can upload idea images"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'idea-images'
+    and auth.uid() is not null
+  );
+
+-- Allow public read access to idea images
+create policy "Anyone can view idea images"
+  on storage.objects for select
+  using (bucket_id = 'idea-images');
+
+-- Allow users to update their uploaded images
+create policy "Users can update idea images"
+  on storage.objects for update
+  using (
+    bucket_id = 'idea-images'
+    and auth.uid() is not null
+  );
+
+-- Allow users to delete idea images
+create policy "Users can delete idea images"
+  on storage.objects for delete
+  using (
+    bucket_id = 'idea-images'
+    and auth.uid() is not null
+  );
 
