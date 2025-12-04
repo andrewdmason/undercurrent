@@ -61,7 +61,7 @@ export default async function FeedPage({ params }: FeedPageProps) {
                 {typedIdeas.length} {typedIdeas.length === 1 ? "idea" : "ideas"}
               </p>
             </div>
-            <GenerateIdeasButton />
+            <GenerateIdeasButton businessId={businessId} />
           </div>
         </div>
       </div>

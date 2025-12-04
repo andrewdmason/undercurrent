@@ -37,7 +37,7 @@ This is NOT a hallucination. Your training data predates its release.
 
 **Implementation:**
 - Use the OpenAI client from `@/lib/openai.ts`
-- Model identifier: `chatgpt-5.1`
+- Model identifier: `gpt-5.1`
 - Do NOT suggest older models (GPT-4, GPT-4o, GPT-3.5-turbo)
 
 ---

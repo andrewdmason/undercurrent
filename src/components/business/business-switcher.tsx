@@ -23,9 +23,14 @@ export function BusinessSwitcher() {
   const params = useParams();
   const currentBusinessId = params.businessId as string;
   
+  const [mounted, setMounted] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [currentBusiness, setCurrentBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     async function loadBusinesses() {
@@ -75,7 +80,7 @@ export function BusinessSwitcher() {
     router.push("/create-business");
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <Button variant="ghost" disabled className="min-w-[120px]">
         Loading...
