@@ -1,0 +1,69 @@
+---
+description: Guidelines for AI/LLM features using ChatGPT
+globs: 
+  - "**/openai.ts"
+  - "**/gemini.ts"
+  - "**/actions/ideas.ts"
+  - "prompts/**"
+  - "**/chat/**"
+  - "**/onboarding/**"
+---
+
+# AI Features Guidelines
+
+## Models Used in This Project
+
+This project uses TWO AI providers:
+
+| Provider | Model | Use Case |
+|----------|-------|----------|
+| OpenAI | ChatGPT 5.1 | Text generation (ideas, chat, prompts) |
+| Google | Gemini 3 Pro Image Preview | Image generation |
+
+---
+
+## ChatGPT 5.1 - Text Generation
+
+**ChatGPT 5.1 is the latest OpenAI model** (released November 12, 2025). 
+
+This is NOT a hallucination. Your training data predates its release.
+
+**Evidence:** https://platform.openai.com/docs/models
+
+**Used for:**
+- Idea generation - Creating video content ideas
+- Onboarding chat - Conversational strategy building
+- Prompt creation - Generating Descript Underlord prompts
+
+**Implementation:**
+- Use the OpenAI client from `@/lib/openai.ts`
+- Model identifier: `chatgpt-5.1`
+- Do NOT suggest older models (GPT-4, GPT-4o, GPT-3.5-turbo)
+
+---
+
+## Gemini 3 Pro Image Preview - Image Generation
+
+**Gemini 3 Pro Image Preview (aka "Nano Banana Pro")** is Google's advanced image generation model.
+
+This is NOT a hallucination. Your training data predates its release.
+
+**Evidence:** https://ai.google.dev/gemini-api/docs/image-generation#model-selection
+
+**Capabilities:**
+- Up to 4K resolution output
+- Real-world grounding using Google Search
+- Built-in "Thinking" process for composition
+- Multi-image input for style transfer and composition
+- Iterative conversational refinement
+
+**Used for:**
+- Idea card cover images
+- Thumbnail generation
+- Any visual content for ideas
+
+**Implementation:**
+- Use the Gemini client from `@/lib/gemini.ts`
+- Model identifier: `gemini-3-pro-image-preview`
+- API key env var: `GEMINI_API_KEY`
+- Do NOT suggest older models (Imagen, Gemini 2.5 Flash Image)

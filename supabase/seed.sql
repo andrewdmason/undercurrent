@@ -71,6 +71,9 @@ insert into public.businesses (
   id,
   name,
   url,
+  description,
+  strategy_prompt,
+  content_inspiration_sources,
   created_by,
   created_at,
   updated_at
@@ -78,6 +81,9 @@ insert into public.businesses (
   'b1c2d3e4-f5a6-7890-bcde-f12345678901',
   'Tabletop Library',
   'https://www.tabletoplibrary.com',
+  'Tabletop Library is a 24-table board game club in Berkeley, California opening in early 2026. We''re membership-based with over 800 games in our collection, including rare and out-of-print titles. We host events most days, have an AI concierge to help organize pickup games, and feature a small retail section, coffee, pastries, and a back room with 500 vinyl records.',
+  E'# Video Marketing Strategy for Tabletop Library\n\n## Distribution Channels\n- **Instagram Reels** (3x/week): Quick tips, unboxings, event highlights\n- **TikTok** (5x/week): Trending sounds, quick reviews, behind-the-scenes\n- **YouTube Shorts** (2x/week): Longer reviews, staff picks, tutorials\n\n## Content Themes\n1. **Product Highlights**: Unboxings, new arrivals, staff picks, rare game spotlights\n2. **Educational**: How to play, game comparisons, buying guides\n3. **Community**: Event recaps, member spotlights, game night vibes\n4. **Behind the Scenes**: Club life, collection curation, staff banter\n5. **Berkeley/Local**: Local community tie-ins, neighborhood features\n\n## Style & Tone\n- Warm, welcoming, and inclusive - like a living room\n- Knowledgeable but not gatekeep-y\n- "Board games are having a moment" energy\n- Genuine enthusiasm, not corporate\n- Slight humor, board game puns welcome\n\n## Production Values\n- Natural lighting when possible\n- iPhone 15 Pro for most content\n- Lapel mics for talking-head videos\n- Clean backgrounds showing game shelves and cozy club atmosphere\n- Consistent thumbnail style with brand colors\n\n## Brand Elements\n- Logo watermark in corner\n- Cozy, living room aesthetic\n- End cards with membership info and location\n\n## Key Messages\n- Membership-based model (not pay-per-hour)\n- 800+ game collection including rare titles\n- AI concierge for organizing pickup games\n- Events most days\n- "Your mythical third place"',
+  '["tabletoplibrary.com/events", "boardgamegeek.com/hotness", "new board game releases 2025", "board game cafe marketing", "Berkeley local events"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now(),
   now()
@@ -95,6 +101,47 @@ insert into public.business_users (
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now()
 );
+
+-- ============================================
+-- SAMPLE TALENT FOR TESTING
+-- ============================================
+
+insert into public.business_talent (
+  id,
+  business_id,
+  name,
+  description,
+  image_url,
+  created_at,
+  updated_at
+) values
+  (
+    'e1a2b3c4-d5e6-7890-abcd-ef1234567890',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Andrew Mason',
+    'Partner and co-founder. Brings entrepreneurial energy and a passion for making board games accessible to everyone. Primary on-camera host for longer-form content.',
+    '/seed/talent/andrew.png',
+    now(),
+    now()
+  ),
+  (
+    'e2b3c4d5-e6f7-8901-bcde-f12345678901',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Nabeel Hyatt',
+    'Partner and co-founder. Deep gaming industry experience and expertise in community building. Great for strategic content and industry commentary.',
+    '/seed/talent/nabeel.png',
+    now(),
+    now()
+  ),
+  (
+    'e3c4d5e6-f7a8-9012-cdef-123456789012',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Vera Devera',
+    'General Manager. The face of day-to-day operations at Tabletop Library. Expert at teaching games and creating welcoming experiences for members.',
+    '/seed/talent/vera.png',
+    now(),
+    now()
+  );
 
 -- ============================================
 -- SAMPLE IDEAS FOR TESTING

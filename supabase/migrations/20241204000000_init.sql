@@ -89,6 +89,24 @@ create table public.ideas (
 alter table public.ideas enable row level security;
 
 -- ============================================
+-- BUSINESS_TALENT TABLE
+-- ============================================
+-- Stores on-screen talent for video content
+
+create table public.business_talent (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  name text not null,
+  description text,
+  image_url text,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+-- Enable RLS
+alter table public.business_talent enable row level security;
+
+-- ============================================
 -- HELPER FUNCTION FOR RLS (avoids recursion)
 -- ============================================
 
@@ -174,6 +192,27 @@ create policy "Users can delete ideas for their businesses"
   using (public.is_member_of_business(business_id));
 
 -- ============================================
+-- RLS POLICIES FOR BUSINESS_TALENT
+-- ============================================
+-- Users can only access talent for businesses they belong to
+
+create policy "Users can view talent for their businesses"
+  on public.business_talent for select
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can create talent for their businesses"
+  on public.business_talent for insert
+  with check (public.is_member_of_business(business_id));
+
+create policy "Users can update talent for their businesses"
+  on public.business_talent for update
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can delete talent for their businesses"
+  on public.business_talent for delete
+  using (public.is_member_of_business(business_id));
+
+-- ============================================
 -- TRIGGER: Auto-create profile on signup
 -- ============================================
 
@@ -217,6 +256,10 @@ create trigger ideas_updated_at
   before update on public.ideas
   for each row execute function public.handle_updated_at();
 
+create trigger business_talent_updated_at
+  before update on public.business_talent
+  for each row execute function public.handle_updated_at();
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -226,6 +269,7 @@ create index business_users_user_id_idx on public.business_users(user_id);
 create index businesses_created_by_idx on public.businesses(created_by);
 create index ideas_business_id_idx on public.ideas(business_id);
 create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
+create index business_talent_business_id_idx on public.business_talent(business_id);
 
 -- ============================================
 -- STORAGE BUCKET FOR IDEA IMAGES
@@ -261,6 +305,43 @@ create policy "Users can delete idea images"
   on storage.objects for delete
   using (
     bucket_id = 'idea-images'
+    and auth.uid() is not null
+  );
+
+-- ============================================
+-- STORAGE BUCKET FOR TALENT IMAGES
+-- ============================================
+
+insert into storage.buckets (id, name, public)
+values ('talent-images', 'talent-images', true);
+
+-- Storage policies for talent-images bucket
+-- Allow authenticated users to upload images
+create policy "Authenticated users can upload talent images"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'talent-images'
+    and auth.uid() is not null
+  );
+
+-- Allow public read access to talent images
+create policy "Anyone can view talent images"
+  on storage.objects for select
+  using (bucket_id = 'talent-images');
+
+-- Allow users to update their uploaded talent images
+create policy "Users can update talent images"
+  on storage.objects for update
+  using (
+    bucket_id = 'talent-images'
+    and auth.uid() is not null
+  );
+
+-- Allow users to delete talent images
+create policy "Users can delete talent images"
+  on storage.objects for delete
+  using (
+    bucket_id = 'talent-images'
     and auth.uid() is not null
   );
 

@@ -1,0 +1,37 @@
+---
+description: Core agent instructions for Undercurrent
+globs: "*"
+alwaysApply: true
+---
+
+# Undercurrent
+
+A video marketing idea generator for small businesses, powered by AI.
+
+## Tech Stack
+
+- **Framework:** Next.js (App Router)
+- **Styling:** Tailwind CSS 4.1
+- **Components:** shadcn/ui
+- **Database & Auth:** Supabase with email auth
+- **Hosting:** Vercel
+- **AI:** ChatGPT 5.1 (text), Gemini 3 Pro Image Preview (images)
+
+## Code Conventions
+
+- TypeScript for all code
+- Follow design system in `docs/design-system.md`
+- Store AI prompts as markdown in `/prompts`
+- Supabase client for all database operations
+
+## Git Workflow
+
+- Feature branches prefixed with `andrew/`
+- One migration file per branch
+- Don't commit to main directly
+
+## Specialized Instructions
+
+When working on specific areas, reference these additional rule files:
+
+- **AI/LLM features** → See `.cursor/rules/ai-features.mdc` for ChatGPT integration guidelines

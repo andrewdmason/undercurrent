@@ -2,7 +2,7 @@
 
 import { useRouter, useParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { BusinessSwitcher } from "@/components/business/business-switcher";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function AppHeader() {
   const pathname = usePathname();
   const businessId = params?.businessId as string | undefined;
   const isOnSavedPage = pathname?.includes("/saved");
+  const isOnStrategyPage = pathname?.includes("/strategy");
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -53,6 +54,23 @@ export function AppHeader() {
               title="Saved ideas"
             >
               <Bookmark size={18} className={cn(isOnSavedPage && "fill-current")} />
+            </Link>
+          )}
+
+          {/* Strategy Settings Link */}
+          {businessId && (
+            <Link
+              href={`/${businessId}/strategy`}
+              className={cn(
+                "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
+                "hover:bg-[var(--grey-50-a)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
+                isOnStrategyPage ? "text-[#1a5eff]" : "text-[var(--grey-400)]"
+              )}
+              aria-label="Strategy settings"
+              title="Strategy settings"
+            >
+              <Settings size={18} />
             </Link>
           )}
 

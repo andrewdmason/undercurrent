@@ -7,3 +7,4 @@ export const openai = new OpenAI({
 // Default model for ChatGPT 5.1
 export const DEFAULT_MODEL = "gpt-5.1";
 
+
