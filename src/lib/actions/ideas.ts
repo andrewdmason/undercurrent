@@ -5,6 +5,7 @@ import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
+import { generateThumbnail } from "./thumbnail";
 
 interface GeneratedIdea {
   title: string;
@@ -228,6 +229,8 @@ export async function generateIdeas(businessId: string) {
       generatedIdeas = parsed.video_ideas;
     } else if (Array.isArray(parsed.videoIdeas)) {
       generatedIdeas = parsed.videoIdeas;
+    } else if (Array.isArray(parsed.videos)) {
+      generatedIdeas = parsed.videos;
     } else {
       // Log what we actually got for debugging
       console.error("Unexpected response structure:", JSON.stringify(parsed, null, 2).slice(0, 500));
@@ -297,12 +300,19 @@ export async function generateIdeas(businessId: string) {
       model: DEFAULT_MODEL,
     });
 
+    // Fire-and-forget: trigger thumbnail generation for each new idea
+    for (const insertedIdea of insertedIdeas || []) {
+      generateThumbnail(insertedIdea.id, businessId).catch((err) => {
+        console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
+      });
+    }
+
     if (business.slug) {
       revalidatePath(`/${business.slug}`);
       revalidatePath(`/${business.slug}/saved`);
     }
 
-    return { success: true, count: generatedIdeas.length };
+    return { success: true, count: generatedIdeas.length, ideaIds };
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";

@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { IdeaActions } from "./idea-actions";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
+import { ImageShimmer } from "@/components/ui/shimmer";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
   businessId: string;
   onClick: () => void;
+  isLoadingImage?: boolean;
 }
 
 // Platform icons
@@ -72,16 +74,10 @@ function getChannelLabel(platform: string, customLabel?: string | null): string 
   return DISTRIBUTION_PLATFORMS.find((p) => p.value === platform)?.label || platform;
 }
 
-function getPlaceholderImage(ideaId: string): string {
-  // Use picsum.photos with a consistent seed based on idea ID hash
-  // This ensures the same idea always gets the same image
-  const hash = ideaId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return `https://picsum.photos/seed/${hash}/400/300`;
-}
-
-export function IdeaCard({ idea, businessId, onClick }: IdeaCardProps) {
+export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: IdeaCardProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const imageUrl = idea.image_url || getPlaceholderImage(idea.id);
+  const hasImage = !!idea.image_url;
+  const showShimmer = isLoadingImage || isGenerating || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
 
   const handleGenerateThumbnail = async (e: React.MouseEvent) => {
@@ -125,28 +121,24 @@ export function IdeaCard({ idea, businessId, onClick }: IdeaCardProps) {
     >
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--grey-100)]">
-        <Image
-          src={imageUrl}
-          alt=""
-          fill
-          className={cn(
-            "object-contain transition-transform duration-300 group-hover:scale-105",
-            isGenerating && "opacity-50"
-          )}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        />
-        
-        {/* Loading shimmer overlay */}
-        {isGenerating && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="animate-spin">
-              <RefreshCw className="h-6 w-6 text-white drop-shadow-md" />
-            </div>
-          </div>
+        {hasImage && (
+          <Image
+            src={idea.image_url!}
+            alt=""
+            fill
+            className={cn(
+              "object-contain transition-transform duration-300 group-hover:scale-105",
+              showShimmer && "opacity-0"
+            )}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
         )}
+        
+        {/* Shimmer loading state */}
+        {showShimmer && <ImageShimmer />}
 
-        {/* Regenerate button on hover */}
-        {!isGenerating && (
+        {/* Regenerate button on hover (only show when not loading) */}
+        {!showShimmer && (
           <button
             onClick={handleGenerateThumbnail}
             className={cn(

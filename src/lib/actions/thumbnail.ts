@@ -128,13 +128,18 @@ export async function generateThumbnail(ideaId: string, businessId: string) {
   // Determine aspect ratio from first channel, default to portrait
   let aspectRatio = "9:16";
   if (ideaChannels && ideaChannels.length > 0) {
-    const channel = ideaChannels[0] as {
+    // Supabase returns nested relations as arrays
+    const channel = ideaChannels[0] as unknown as {
       channel_id: string;
-      business_distribution_channels: { platform: string };
+      business_distribution_channels: { platform: string } | { platform: string }[] | null;
     };
-    aspectRatio = getAspectRatioForPlatform(
-      channel.business_distribution_channels.platform
-    );
+    const channelData = channel.business_distribution_channels;
+    const platform = Array.isArray(channelData) 
+      ? channelData[0]?.platform 
+      : channelData?.platform;
+    if (platform) {
+      aspectRatio = getAspectRatioForPlatform(platform);
+    }
   }
 
   // Detect talent mentioned in the idea
