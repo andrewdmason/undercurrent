@@ -7,14 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -55,77 +47,74 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
-        <CardDescription>
-          Enter your email and password to sign in
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="rounded-xl bg-[#f72736]/10 px-3 py-2.5 text-xs text-[#f72736]">
+          {error}
+        </div>
+      )}
+      
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+      </div>
+      
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <Link
+            href="/forgot-password"
+            className="text-xs text-[var(--grey-400)] hover:text-[var(--grey-800)] transition-colors duration-150"
+          >
+            Forgot password?
+          </Link>
+        </div>
+        <Input
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+      </div>
+      
+      <div className="space-y-3 pt-2">
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Signing in..." : "Sign in"}
+        </Button>
+        
+        {isDev && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-dashed"
+            onClick={handleDevLogin}
+            disabled={loading}
+          >
+            Dev: Sign in as Andrew
           </Button>
-          {isDev && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-dashed"
-              onClick={handleDevLogin}
-              disabled={loading}
-            >
-              Dev: Sign in as Andrew
-            </Button>
-          )}
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
-              Sign up
-            </Link>
-          </p>
-        </CardFooter>
-      </form>
-    </Card>
+        )}
+      </div>
+      
+      <p className="text-center text-xs text-[var(--grey-400)] pt-2">
+        Don&apos;t have an account?{" "}
+        <Link 
+          href="/signup" 
+          className="text-[#1a5eff] hover:underline underline-offset-2"
+        >
+          Sign up
+        </Link>
+      </p>
+    </form>
   );
 }
-
