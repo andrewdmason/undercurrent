@@ -7,24 +7,36 @@ import { Idea } from "@/lib/types";
 
 interface SavedPageProps {
   params: Promise<{
-    businessId: string;
+    slug: string;
   }>;
 }
 
 export default async function SavedPage({ params }: SavedPageProps) {
-  const { businessId } = await params;
+  const { slug } = await params;
   const supabase = await createClient();
 
-  // Verify user has access to this business
+  // Verify user is authenticated
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     notFound();
   }
 
+  // Get business by slug
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("id, slug")
+    .eq("slug", slug)
+    .single();
+
+  if (!business) {
+    notFound();
+  }
+
+  // Verify user has access to this business
   const { data: membership } = await supabase
     .from("business_users")
     .select("id")
-    .eq("business_id", businessId)
+    .eq("business_id", business.id)
     .eq("user_id", user.id)
     .single();
 
@@ -36,7 +48,7 @@ export default async function SavedPage({ params }: SavedPageProps) {
   const { data: ideas } = await supabase
     .from("ideas")
     .select("*")
-    .eq("business_id", businessId)
+    .eq("business_id", business.id)
     .eq("bookmarked", true)
     .order("created_at", { ascending: false });
 
@@ -49,7 +61,7 @@ export default async function SavedPage({ params }: SavedPageProps) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <Link
-              href={`/${businessId}`}
+              href={`/${business.slug}`}
               className="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--grey-50-a)] transition-colors"
               aria-label="Back to feed"
             >
@@ -71,9 +83,9 @@ export default async function SavedPage({ params }: SavedPageProps) {
       <div className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} businessId={businessId} />
+            <IdeasFeed ideas={typedIdeas} businessId={business.id} />
           ) : (
-            <SavedEmptyState businessId={businessId} />
+            <SavedEmptyState slug={business.slug} />
           )}
         </div>
       </div>
@@ -81,7 +93,7 @@ export default async function SavedPage({ params }: SavedPageProps) {
   );
 }
 
-function SavedEmptyState({ businessId }: { businessId: string }) {
+function SavedEmptyState({ slug }: { slug: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--grey-50)] mb-6">
@@ -107,7 +119,7 @@ function SavedEmptyState({ businessId }: { businessId: string }) {
         Bookmark ideas you want to come back to later.
       </p>
       <Link
-        href={`/${businessId}`}
+        href={`/${slug}`}
         className="text-sm text-[#1a5eff] hover:underline"
       >
         Browse all ideas
@@ -115,5 +127,3 @@ function SavedEmptyState({ businessId }: { businessId: string }) {
     </div>
   );
 }
-
-

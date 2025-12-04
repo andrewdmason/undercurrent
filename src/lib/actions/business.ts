@@ -7,11 +7,34 @@ export async function updateBusinessInfo(
   businessId: string,
   data: {
     name?: string;
+    slug?: string;
     url?: string | null;
     description?: string | null;
   }
 ) {
   const supabase = await createClient();
+
+  // Get the current business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
+  const oldSlug = business?.slug;
+
+  // If slug is being changed, validate it's unique
+  if (data.slug && data.slug !== oldSlug) {
+    const { data: existingBusiness } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("slug", data.slug)
+      .single();
+
+    if (existingBusiness) {
+      return { error: "This permalink is already taken" };
+    }
+  }
 
   const { error } = await supabase
     .from("businesses")
@@ -23,9 +46,18 @@ export async function updateBusinessInfo(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}`);
-  revalidatePath(`/${businessId}/strategy`);
-  return { success: true };
+  // Revalidate both old and new slug paths if slug changed
+  const newSlug = data.slug || oldSlug;
+  if (oldSlug) {
+    revalidatePath(`/${oldSlug}`);
+    revalidatePath(`/${oldSlug}/strategy`);
+  }
+  if (newSlug && newSlug !== oldSlug) {
+    revalidatePath(`/${newSlug}`);
+    revalidatePath(`/${newSlug}/strategy`);
+  }
+
+  return { success: true, newSlug: data.slug };
 }
 
 export async function updateStrategyPrompt(
@@ -33,6 +65,13 @@ export async function updateStrategyPrompt(
   strategyPrompt: string | null
 ) {
   const supabase = await createClient();
+
+  // Get the business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
 
   const { error } = await supabase
     .from("businesses")
@@ -44,7 +83,9 @@ export async function updateStrategyPrompt(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true };
 }
 
@@ -53,6 +94,13 @@ export async function updateContentSources(
   sources: string[]
 ) {
   const supabase = await createClient();
+
+  // Get the business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
 
   const { error } = await supabase
     .from("businesses")
@@ -64,8 +112,28 @@ export async function updateContentSources(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true };
 }
 
+/**
+ * Check if a slug is available (for client-side validation)
+ */
+export async function checkSlugAvailability(
+  slug: string,
+  excludeBusinessId?: string
+): Promise<{ available: boolean }> {
+  const supabase = await createClient();
 
+  let query = supabase.from("businesses").select("id").eq("slug", slug);
+
+  if (excludeBusinessId) {
+    query = query.neq("id", excludeBusinessId);
+  }
+
+  const { data } = await query.single();
+
+  return { available: !data };
+}

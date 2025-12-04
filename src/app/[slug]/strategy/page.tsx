@@ -8,24 +8,36 @@ import { StrategyPromptSection } from "@/components/strategy/strategy-prompt-sec
 
 interface StrategyPageProps {
   params: Promise<{
-    businessId: string;
+    slug: string;
   }>;
 }
 
 export default async function StrategyPage({ params }: StrategyPageProps) {
-  const { businessId } = await params;
+  const { slug } = await params;
   const supabase = await createClient();
 
-  // Verify user has access to this business
+  // Verify user is authenticated
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     notFound();
   }
 
+  // Get business by slug
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (!business) {
+    notFound();
+  }
+
+  // Verify user has access to this business
   const { data: membership } = await supabase
     .from("business_users")
     .select("id")
-    .eq("business_id", businessId)
+    .eq("business_id", business.id)
     .eq("user_id", user.id)
     .single();
 
@@ -33,22 +45,11 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     notFound();
   }
 
-  // Get business details
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("*")
-    .eq("id", businessId)
-    .single();
-
-  if (!business) {
-    notFound();
-  }
-
   // Get talent for this business
   const { data: talent } = await supabase
     .from("business_talent")
     .select("*")
-    .eq("business_id", businessId)
+    .eq("business_id", business.id)
     .order("created_at", { ascending: true });
 
   const typedBusiness = business as Business;
@@ -75,17 +76,17 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
           <BusinessInfoForm business={typedBusiness} />
 
           {/* Talent Section */}
-          <TalentSection businessId={businessId} talent={typedTalent} />
+          <TalentSection businessId={business.id} talent={typedTalent} />
 
           {/* Content Sources Section */}
           <ContentSourcesSection
-            businessId={businessId}
+            businessId={business.id}
             sources={typedBusiness.content_inspiration_sources || []}
           />
 
           {/* Strategy Prompt Section */}
           <StrategyPromptSection
-            businessId={businessId}
+            businessId={business.id}
             strategyPrompt={typedBusiness.strategy_prompt || ""}
           />
         </div>
@@ -93,4 +94,3 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     </div>
   );
 }
-

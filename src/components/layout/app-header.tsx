@@ -25,7 +25,7 @@ export function AppHeader() {
   useEffect(() => {
     setMounted(true);
   }, []);
-  const businessId = params?.businessId as string | undefined;
+  const slug = params?.slug as string | undefined;
   const isOnSavedPage = pathname?.includes("/saved");
   const isOnStrategyPage = pathname?.includes("/strategy");
   const isOnLogsPage = pathname?.includes("/logs");
@@ -41,16 +41,16 @@ export function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center px-4">
         <div className="flex items-center gap-4">
-          <Link href={businessId ? `/${businessId}` : "/"} className="font-semibold text-lg hover:opacity-80 transition-opacity">
+          <Link href={slug ? `/${slug}` : "/"} className="font-semibold text-lg hover:opacity-80 transition-opacity">
             Undercurrent
           </Link>
           <BusinessSwitcher />
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* Saved Ideas Link */}
-          {businessId && (
+          {slug && (
             <Link
-              href={`/${businessId}/saved`}
+              href={`/${slug}/saved`}
               className={cn(
                 "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
                 "hover:bg-[var(--grey-50-a)]",
@@ -65,9 +65,9 @@ export function AppHeader() {
           )}
 
           {/* Strategy Settings Link */}
-          {businessId && (
+          {slug && (
             <Link
-              href={`/${businessId}/strategy`}
+              href={`/${slug}/strategy`}
               className={cn(
                 "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
                 "hover:bg-[var(--grey-50-a)]",
@@ -153,4 +153,3 @@ export function AppHeader() {
     </header>
   );
 }
-

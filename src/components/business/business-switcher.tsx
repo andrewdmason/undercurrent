@@ -16,12 +16,13 @@ import {
 interface Business {
   id: string;
   name: string;
+  slug: string;
 }
 
 export function BusinessSwitcher() {
   const router = useRouter();
   const params = useParams();
-  const currentBusinessId = params.businessId as string;
+  const currentSlug = params.slug as string;
   
   const [mounted, setMounted] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -54,13 +55,13 @@ export function BusinessSwitcher() {
       
       const { data: businessesData } = await supabase
         .from("businesses")
-        .select("id, name")
+        .select("id, name, slug")
         .in("id", businessIds)
         .order("name");
 
       if (businessesData) {
         setBusinesses(businessesData);
-        const current = businessesData.find((b) => b.id === currentBusinessId);
+        const current = businessesData.find((b) => b.slug === currentSlug);
         setCurrentBusiness(current || null);
       }
       
@@ -68,12 +69,12 @@ export function BusinessSwitcher() {
     }
 
     loadBusinesses();
-  }, [currentBusinessId]);
+  }, [currentSlug]);
 
   const handleSelectBusiness = (business: Business) => {
-    // Store as last selected
-    localStorage.setItem("undercurrent:lastBusinessId", business.id);
-    router.push(`/${business.id}`);
+    // Store as last selected (use slug)
+    localStorage.setItem("undercurrent:lastBusinessSlug", business.slug);
+    router.push(`/${business.slug}`);
   };
 
   const handleCreateNew = () => {
@@ -121,7 +122,7 @@ export function BusinessSwitcher() {
             className="cursor-pointer"
           >
             <span className="truncate">{business.name}</span>
-            {business.id === currentBusinessId && (
+            {business.slug === currentSlug && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -162,5 +163,3 @@ export function BusinessSwitcher() {
     </DropdownMenu>
   );
 }
-
-

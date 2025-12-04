@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { generateUniqueSlug } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,11 +38,20 @@ export function CreateBusinessForm() {
       return;
     }
 
-    // Create the business
+    // Get existing slugs to ensure uniqueness
+    const { data: existingBusinesses } = await supabase
+      .from("businesses")
+      .select("slug");
+    
+    const existingSlugs = (existingBusinesses || []).map((b) => b.slug);
+    const slug = generateUniqueSlug(name, existingSlugs);
+
+    // Create the business with generated slug
     const { data: business, error: businessError } = await supabase
       .from("businesses")
       .insert({
         name,
+        slug,
         url: url || null,
         created_by: user.id,
       })
@@ -68,13 +78,13 @@ export function CreateBusinessForm() {
       return;
     }
 
-    // Store as last selected business
+    // Store as last selected business (use slug for URL-based storage)
     if (typeof window !== "undefined") {
-      localStorage.setItem("undercurrent:lastBusinessId", business.id);
+      localStorage.setItem("undercurrent:lastBusinessSlug", business.slug);
     }
 
-    // Redirect to the business feed
-    router.push(`/${business.id}`);
+    // Redirect to the business feed using slug
+    router.push(`/${business.slug}`);
     router.refresh();
   };
 

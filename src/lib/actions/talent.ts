@@ -13,6 +13,13 @@ export async function createTalent(
 ) {
   const supabase = await createClient();
 
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
   const { data: talent, error } = await supabase
     .from("business_talent")
     .insert({
@@ -29,7 +36,9 @@ export async function createTalent(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true, talent };
 }
 
@@ -44,6 +53,13 @@ export async function updateTalent(
 ) {
   const supabase = await createClient();
 
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
   const { error } = await supabase
     .from("business_talent")
     .update(data)
@@ -54,12 +70,21 @@ export async function updateTalent(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true };
 }
 
 export async function deleteTalent(talentId: string, businessId: string) {
   const supabase = await createClient();
+
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
 
   // First get the talent to check if there's an image to delete
   const { data: talent } = await supabase
@@ -86,7 +111,9 @@ export async function deleteTalent(talentId: string, businessId: string) {
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true };
 }
 
@@ -96,6 +123,13 @@ export async function uploadTalentImage(
   formData: FormData
 ) {
   const supabase = await createClient();
+
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
 
   const file = formData.get("file") as File;
   if (!file) {
@@ -135,8 +169,8 @@ export async function uploadTalentImage(
     return { error: updateError.message };
   }
 
-  revalidatePath(`/${businessId}/strategy`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/strategy`);
+  }
   return { success: true, imageUrl: publicUrl };
 }
-
-

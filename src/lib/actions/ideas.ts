@@ -20,6 +20,13 @@ export async function updateIdeaRating(
 ) {
   const supabase = await createClient();
 
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
   const { error } = await supabase
     .from("ideas")
     .update({ rating })
@@ -30,8 +37,10 @@ export async function updateIdeaRating(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}`);
-  revalidatePath(`/${businessId}/saved`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}`);
+    revalidatePath(`/${business.slug}/saved`);
+  }
   return { success: true };
 }
 
@@ -41,6 +50,13 @@ export async function updateIdeaBookmark(
   businessId: string
 ) {
   const supabase = await createClient();
+
+  // Get business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
 
   const { error } = await supabase
     .from("ideas")
@@ -52,8 +68,10 @@ export async function updateIdeaBookmark(
     return { error: error.message };
   }
 
-  revalidatePath(`/${businessId}`);
-  revalidatePath(`/${businessId}/saved`);
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}`);
+    revalidatePath(`/${business.slug}/saved`);
+  }
   return { success: true };
 }
 
@@ -212,8 +230,10 @@ export async function generateIdeas(businessId: string) {
       model: DEFAULT_MODEL,
     });
 
-    revalidatePath(`/${businessId}`);
-    revalidatePath(`/${businessId}/saved`);
+    if (business.slug) {
+      revalidatePath(`/${business.slug}`);
+      revalidatePath(`/${business.slug}/saved`);
+    }
 
     return { success: true, count: generatedIdeas.length };
   } catch (error) {
