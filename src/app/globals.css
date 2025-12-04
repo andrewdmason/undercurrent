@@ -200,3 +200,17 @@
     transition: all 150ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
+
+/* Shimmer animation for loading states */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}

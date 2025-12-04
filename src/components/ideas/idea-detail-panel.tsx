@@ -16,6 +16,7 @@ import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { IdeaActions } from "./idea-actions";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cn } from "@/lib/utils";
+import { ImageShimmer } from "@/components/ui/shimmer";
 
 interface IdeaDetailPanelProps {
   idea: IdeaWithChannels | null;
@@ -80,11 +81,6 @@ function getChannelLabel(platform: string, customLabel?: string | null): string 
   return DISTRIBUTION_PLATFORMS.find((p) => p.value === platform)?.label || platform;
 }
 
-function getPlaceholderImage(ideaId: string): string {
-  const hash = ideaId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return `https://picsum.photos/seed/${hash}/800/600`;
-}
-
 export function IdeaDetailPanel({
   idea,
   businessId,
@@ -97,7 +93,8 @@ export function IdeaDetailPanel({
 
   if (!idea) return null;
 
-  const imageUrl = idea.image_url || getPlaceholderImage(idea.id);
+  const hasImage = !!idea.image_url;
+  const showShimmer = isGeneratingThumbnail || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
 
   const handleGenerateThumbnail = async () => {
@@ -176,30 +173,26 @@ export function IdeaDetailPanel({
           {/* Left column - Image & Description */}
           <div className="w-1/2 border-r border-[var(--border)] p-6 flex flex-col">
             {/* Image */}
-            <div className="group/image relative w-full overflow-hidden rounded-lg bg-[var(--grey-50)] flex-shrink-0">
-              <Image
-                src={imageUrl}
-                alt=""
-                width={800}
-                height={600}
-                className={cn(
-                  "w-full h-auto",
-                  isGeneratingThumbnail && "opacity-50"
-                )}
-                sizes="(max-width: 768px) 100vw, 480px"
-              />
-              
-              {/* Loading shimmer overlay */}
-              {isGeneratingThumbnail && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                  <div className="animate-spin">
-                    <RefreshCw className="h-8 w-8 text-white drop-shadow-md" />
-                  </div>
-                </div>
+            <div className="group/image relative w-full overflow-hidden rounded-lg bg-[var(--grey-100)] flex-shrink-0 aspect-[4/3]">
+              {hasImage && (
+                <Image
+                  src={idea.image_url!}
+                  alt=""
+                  width={800}
+                  height={600}
+                  className={cn(
+                    "w-full h-auto",
+                    showShimmer && "opacity-0"
+                  )}
+                  sizes="(max-width: 768px) 100vw, 480px"
+                />
               )}
+              
+              {/* Shimmer loading state */}
+              {showShimmer && <ImageShimmer />}
 
-              {/* Regenerate button on hover */}
-              {!isGeneratingThumbnail && (
+              {/* Regenerate button on hover (only show when not loading) */}
+              {!showShimmer && (
                 <button
                   onClick={handleGenerateThumbnail}
                   className={cn(

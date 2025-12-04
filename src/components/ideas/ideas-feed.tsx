@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { IdeaWithChannels } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
 import { IdeaDetailPanel } from "./idea-detail-panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 
 interface IdeasFeedProps {
   ideas: IdeaWithChannels[];
@@ -12,8 +14,26 @@ interface IdeasFeedProps {
 }
 
 export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
+  const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // Find ideas that are missing thumbnails
+  const pendingIdeaIds = useMemo(
+    () => ideas.filter((idea) => !idea.image_url).map((idea) => idea.id),
+    [ideas]
+  );
+
+  // Poll for thumbnail updates and refresh when new ones are detected
+  const handleThumbnailUpdate = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  usePollThumbnails({
+    pendingIdeaIds,
+    onUpdate: handleThumbnailUpdate,
+    enabled: pendingIdeaIds.length > 0,
+  });
 
   const handleCardClick = (idea: IdeaWithChannels) => {
     setSelectedIdea(idea);
@@ -36,6 +56,7 @@ export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
             idea={idea}
             businessId={businessId}
             onClick={() => handleCardClick(idea)}
+            isLoadingImage={!idea.image_url}
           />
         ))}
       </div>
