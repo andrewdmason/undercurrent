@@ -76,9 +76,11 @@ create table public.ideas (
   business_id uuid not null references public.businesses(id) on delete cascade,
   title text not null,
   description text,
+  script text,
   image_url text,
   prompt text,
   rating text check (rating in ('up', 'down')),
+  rating_reason text,
   bookmarked boolean default false not null,
   generation_batch_id uuid,
   created_at timestamptz default now() not null,
@@ -105,6 +107,25 @@ create table public.business_talent (
 
 -- Enable RLS
 alter table public.business_talent enable row level security;
+
+-- ============================================
+-- GENERATION_LOGS TABLE
+-- ============================================
+-- Stores AI generation requests and responses for auditing
+
+create table public.generation_logs (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  prompt_sent text not null,
+  response_raw text,
+  ideas_created uuid[],
+  model text not null,
+  error text,
+  created_at timestamptz default now() not null
+);
+
+-- Enable RLS
+alter table public.generation_logs enable row level security;
 
 -- ============================================
 -- HELPER FUNCTION FOR RLS (avoids recursion)
@@ -213,6 +234,19 @@ create policy "Users can delete talent for their businesses"
   using (public.is_member_of_business(business_id));
 
 -- ============================================
+-- RLS POLICIES FOR GENERATION_LOGS
+-- ============================================
+-- Users can only access generation logs for businesses they belong to
+
+create policy "Users can view generation logs for their businesses"
+  on public.generation_logs for select
+  using (public.is_member_of_business(business_id));
+
+create policy "Users can create generation logs for their businesses"
+  on public.generation_logs for insert
+  with check (public.is_member_of_business(business_id));
+
+-- ============================================
 -- TRIGGER: Auto-create profile on signup
 -- ============================================
 
@@ -270,6 +304,8 @@ create index businesses_created_by_idx on public.businesses(created_by);
 create index ideas_business_id_idx on public.ideas(business_id);
 create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
 create index business_talent_business_id_idx on public.business_talent(business_id);
+create index generation_logs_business_id_idx on public.generation_logs(business_id);
+create index generation_logs_created_at_idx on public.generation_logs(created_at desc);
 
 -- ============================================
 -- STORAGE BUCKET FOR IDEA IMAGES
