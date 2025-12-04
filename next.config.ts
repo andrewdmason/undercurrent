@@ -11,7 +11,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        // Production Supabase storage
+        protocol: "https",
+        hostname: "**.supabase.co",
+      },
     ],
+    // Skip optimization for local Supabase images in development
+    unoptimized: process.env.NODE_ENV === "development",
   },
 };
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Copy, Check, Instagram, Youtube, Linkedin, Facebook, Globe } from "lucide-react";
+import { Copy, Check, Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { IdeaActions } from "./idea-actions";
+import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cn } from "@/lib/utils";
 
 interface IdeaDetailPanelProps {
@@ -92,11 +93,31 @@ export function IdeaDetailPanel({
 }: IdeaDetailPanelProps) {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
 
   if (!idea) return null;
 
   const imageUrl = idea.image_url || getPlaceholderImage(idea.id);
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
+
+  const handleGenerateThumbnail = async () => {
+    if (isGeneratingThumbnail) return;
+
+    setIsGeneratingThumbnail(true);
+    try {
+      const result = await generateThumbnail(idea.id, businessId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Thumbnail generated successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to generate thumbnail");
+      console.error(error);
+    } finally {
+      setIsGeneratingThumbnail(false);
+    }
+  };
 
   const handleCopyPrompt = async () => {
     if (!idea.prompt) return;
@@ -155,14 +176,44 @@ export function IdeaDetailPanel({
           {/* Left column - Image & Description */}
           <div className="w-1/2 border-r border-[var(--border)] p-6 flex flex-col">
             {/* Image */}
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-[var(--grey-50)] flex-shrink-0">
+            <div className="group/image relative w-full overflow-hidden rounded-lg bg-[var(--grey-50)] flex-shrink-0">
               <Image
                 src={imageUrl}
                 alt=""
-                fill
-                className="object-cover"
+                width={800}
+                height={600}
+                className={cn(
+                  "w-full h-auto",
+                  isGeneratingThumbnail && "opacity-50"
+                )}
                 sizes="(max-width: 768px) 100vw, 480px"
               />
+              
+              {/* Loading shimmer overlay */}
+              {isGeneratingThumbnail && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <div className="animate-spin">
+                    <RefreshCw className="h-8 w-8 text-white drop-shadow-md" />
+                  </div>
+                </div>
+              )}
+
+              {/* Regenerate button on hover */}
+              {!isGeneratingThumbnail && (
+                <button
+                  onClick={handleGenerateThumbnail}
+                  className={cn(
+                    "absolute bottom-3 right-3 p-2 rounded-md",
+                    "bg-black/60 text-white opacity-0 group-hover/image:opacity-100",
+                    "transition-opacity duration-200",
+                    "hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  )}
+                  title="Generate AI thumbnail"
+                  aria-label="Generate AI thumbnail"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* Meta info */}

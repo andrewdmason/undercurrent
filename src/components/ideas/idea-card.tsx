@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Instagram, Youtube, Linkedin, Facebook, Globe } from "lucide-react";
+import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { IdeaActions } from "./idea-actions";
+import { generateThumbnail } from "@/lib/actions/thumbnail";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
@@ -77,8 +80,29 @@ function getPlaceholderImage(ideaId: string): string {
 }
 
 export function IdeaCard({ idea, businessId, onClick }: IdeaCardProps) {
+  const [isGenerating, setIsGenerating] = useState(false);
   const imageUrl = idea.image_url || getPlaceholderImage(idea.id);
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
+
+  const handleGenerateThumbnail = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isGenerating) return;
+
+    setIsGenerating(true);
+    try {
+      const result = await generateThumbnail(idea.id, businessId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Thumbnail generated successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to generate thumbnail");
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <article
@@ -100,14 +124,43 @@ export function IdeaCard({ idea, businessId, onClick }: IdeaCardProps) {
       aria-label={`View details for ${idea.title}`}
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--grey-50)]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--grey-100)]">
         <Image
           src={imageUrl}
           alt=""
           fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          className={cn(
+            "object-contain transition-transform duration-300 group-hover:scale-105",
+            isGenerating && "opacity-50"
+          )}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
+        
+        {/* Loading shimmer overlay */}
+        {isGenerating && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+            <div className="animate-spin">
+              <RefreshCw className="h-6 w-6 text-white drop-shadow-md" />
+            </div>
+          </div>
+        )}
+
+        {/* Regenerate button on hover */}
+        {!isGenerating && (
+          <button
+            onClick={handleGenerateThumbnail}
+            className={cn(
+              "absolute bottom-2 right-2 p-1.5 rounded-md",
+              "bg-black/60 text-white opacity-0 group-hover:opacity-100",
+              "transition-opacity duration-200",
+              "hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
+            )}
+            title="Generate AI thumbnail"
+            aria-label="Generate AI thumbnail"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Content */}
