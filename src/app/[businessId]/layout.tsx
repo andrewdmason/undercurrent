@@ -6,9 +6,9 @@ export default function BusinessLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <AppHeader />
-      <main>{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

@@ -10,3 +10,4 @@ This folder contains markdown files for AI prompts used throughout the app.
 
 These files make it easy to iterate on prompts without changing code.
 
+

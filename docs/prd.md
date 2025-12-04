@@ -85,7 +85,6 @@ Here’s the initial set of PRs:
 5. Implement feed / business / ideas data model. I have ideas here but want your suggestion before I share them
 6. Create the feed with some seed data
 7. Create the strategy config section with some seed data
-8. Then we create the onboarding flow that generates the strategy config for a new business
 
 ## Other implementation notes
 
