@@ -16,6 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+const isDev = process.env.NODE_ENV === "development";
+
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -25,13 +27,17 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await signIn(email, password);
+  };
+
+  const signIn = async (emailToUse: string, passwordToUse: string) => {
     setError(null);
     setLoading(true);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: emailToUse,
+      password: passwordToUse,
     });
 
     if (error) {
@@ -42,6 +48,10 @@ export function LoginForm() {
 
     router.push("/");
     router.refresh();
+  };
+
+  const handleDevLogin = () => {
+    signIn("andrew@test.com", "password123");
   };
 
   return (
@@ -96,6 +106,17 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>
+          {isDev && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-dashed"
+              onClick={handleDevLogin}
+              disabled={loading}
+            >
+              Dev: Sign in as Andrew
+            </Button>
+          )}
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-primary hover:underline">
