@@ -1,146 +1,213 @@
-# Undercurrent Design System
+# Descript Design System Reference
 
-A Descript-inspired design system for Tailwind CSS 4.1 and shadcn/ui components.
+> A comprehensive guide to recreating Descript's visual design language for SaaS applications using Tailwind CSS and shadcn/ui.
 
----
+## Design Philosophy
 
-## Philosophy
-
-Descript's design language is **clean, minimal, and professional** with a focus on clarity and ease of use. The aesthetic feels modern but not trendy—functional but not cold. Key principles:
-
-- **Generous whitespace** - Let content breathe
-- **Clear hierarchy** - Typography and color guide the eye
-- **Subtle depth** - Soft shadows and borders, not heavy effects
-- **Consistent patterns** - Predictable interactions across the app
+Descript uses a **clean, professional aesthetic** with subtle depth. The design emphasizes:
+- High contrast text for readability
+- Subtle, semi-transparent hover/interaction states
+- Consistent 8px grid system
+- Rounded corners with `8px` as the primary radius
+- Keyboard-first accessibility with visible focus rings
 
 ---
 
 ## Colors
 
-### Primary Palette
+### Grey Scale (Primary Palette)
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| **Blurple** | `#6366F1` | Primary actions, links, accent highlights |
-| **Blurple Hover** | `#4F46E5` | Hover state for primary elements |
-| **Black** | `#1A1A1A` | Primary text, headings |
-| **White** | `#FFFFFF` | Backgrounds, cards |
-| **Off-white** | `#FAFAFA` | Page backgrounds, subtle contrast |
+The grey scale is the foundation of the design system. Note the semantic naming: lower numbers are lighter in light mode.
 
-### Neutral Palette (Grays)
+```css
+/* Light Mode */
+--grey-0: #ffffff;        /* Background */
+--grey-5: #ffffff;        /* Popover/elevated background */
+--grey-50: #f2f2f2;       /* Surface/card background */
+--grey-200: #cccccc;      /* Borders, dividers */
+--grey-400: #818183;      /* Secondary text, placeholders, icons */
+--grey-600: #656567;      /* Secondary text (darker) */
+--grey-800: #343434;      /* Primary text */
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| **Gray 50** | `#F9FAFB` | Subtle backgrounds |
-| **Gray 100** | `#F3F4F6` | Sidebar backgrounds, hover states |
-| **Gray 200** | `#E5E7EB` | Borders, dividers |
-| **Gray 300** | `#D1D5DB` | Disabled states, placeholder text |
-| **Gray 400** | `#9CA3AF` | Secondary text, icons |
-| **Gray 500** | `#6B7280` | Muted text |
-| **Gray 600** | `#4B5563` | Body text |
-| **Gray 700** | `#374151` | Strong secondary text |
-| **Gray 800** | `#1F2937` | Near-black text |
-| **Gray 900** | `#111827` | Darkest text |
+/* Semi-transparent overlays */
+--grey-30-a: rgba(0, 0, 0, 0.03);   /* Input backgrounds */
+--grey-50-a: rgba(0, 0, 0, 0.05);   /* Hover states */
+--grey-100-a: rgba(0, 0, 0, 0.10);  /* Borders */
+--grey-400-a: rgba(0, 0, 0, 0.45);  /* Scrims/overlays */
+```
+
+**Tailwind 4.1 mapping suggestion:**
+```css
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #343434;
+  --color-muted: #f2f2f2;
+  --color-muted-foreground: #818183;
+  --color-border: rgba(0, 0, 0, 0.10);
+  --color-input: rgba(0, 0, 0, 0.03);
+}
+```
 
 ### Accent Colors
 
-| Name | Hex | Usage |
-|------|-----|-------|
-| **Coral** | `#F472B6` | Speaker names, highlights, special UI |
-| **Green** | `#10B981` | Success states, positive actions |
-| **Red** | `#EF4444` | Error states, destructive actions |
-| **Amber** | `#F59E0B` | Warning states |
+| Color   | 200 (Light)  | 500 (Primary) | 800 (Dark/Text) | Use Case |
+|---------|--------------|---------------|-----------------|----------|
+| Blue    | `#5fa7ff`    | `#1a5eff`     | `#0043e0`       | Primary actions, links |
+| Cyan    | `#3cbeff`    | `#008bcc`     | `#0065b3`       | Selection, focus rings |
+| Purple  | `#cc99ff`    | `#7b24ff`     | `#6600cc`       | Premium/upgrade, accents |
+| Red     | `#ff7077`    | `#f72736`     | `#a80000`       | Destructive, errors, recording |
+| Green   | `#80c595`    | `#00975a`     | `#00663a`       | Success, confirmation |
+| Amber   | `#ffbd61`    | `#cc7300`     | `#984f06`       | Warnings, caution |
+| Orange  | `#ff9673`    | `#e54e00`     | `#b83700`       | Attention |
 
-### Dark Theme Considerations
+**Key brand color:**
+```css
+--blue-500: #1a5eff;  /* Primary action blue */
+--cyan-600: #007bc2;  /* Focus ring color */
+```
 
-For timeline/editing contexts, Descript uses darker surfaces:
-- **Surface Dark** | `#2D2D2D` | Dark panels, timeline background
-- **Surface Darker** | `#1E1E1E` | Deeper dark surfaces
+### Semantic Colors
+
+```css
+/* Borders */
+--border-color: var(--grey-100-a);  /* rgba(0,0,0,0.10) */
+
+/* Focus */
+--focus-ring-color: var(--cyan-600);  /* #007bc2 */
+
+/* Destructive */
+--destructive: var(--red-500);  /* #f72736 */
+
+/* Upgrade/Premium */
+--upgrade-primary: var(--purple-800);  /* #6600cc */
+--upgrade-background: #f7f2fc;
+```
 
 ---
 
 ## Typography
 
 ### Font Family
-
-**Primary:** Inter (Variable)
-- Available via Google Fonts or self-hosted
-- Use variable font for performance: `Inter var`
-
 ```css
---font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+--font-family: 'Inter', system-ui, sans-serif;
+--font-family-mono: 'Noto Sans Mono', system-ui, monospace;
 ```
 
 ### Type Scale
 
-| Name | Size | Weight | Line Height | Usage |
-|------|------|--------|-------------|-------|
-| **Display** | 32px / 2rem | 600 | 1.2 | Page titles |
-| **Heading 1** | 24px / 1.5rem | 600 | 1.3 | Section headers |
-| **Heading 2** | 20px / 1.25rem | 600 | 1.4 | Card titles, modal headers |
-| **Heading 3** | 16px / 1rem | 600 | 1.5 | Subsection headers |
-| **Body** | 14px / 0.875rem | 400 | 1.5 | Default text |
-| **Body Small** | 13px / 0.8125rem | 400 | 1.5 | Secondary info, timestamps |
-| **Caption** | 12px / 0.75rem | 400 | 1.4 | Labels, helper text |
-| **Micro** | 11px / 0.6875rem | 500 | 1.3 | Badges, tiny labels |
+| Name | Size | Weight | Line Height | Letter Spacing | Use |
+|------|------|--------|-------------|----------------|-----|
+| `headline-1` | 48px | 400 | 64px | -1.06px | Page titles |
+| `headline-2` | 36px | 400 | 48px | -0.79px | Section headers |
+| `headline-3` | 24px | 400 | 32px | -0.46px | Card titles |
+| `headline-4` | 18px | 500 | 32px | -0.25px | Subheadings |
+| `body-1-regular` | 16px | 400 | 24px | -0.18px | Body text |
+| `body-1-medium` | 16px | 600 | 24px | -0.18px | Emphasized body |
+| `body-2-regular` | 14px | 400 | 21px | -0.08px | Secondary text |
+| `body-2-medium` | 14px | 600 | 21px | -0.08px | Labels |
+| `label-1-regular` | 12px | 400 | 16px | 0.001px | UI labels |
+| `label-1-medium` | 12px | 600 | 16px | 0.001px | Button text, emphasized labels |
+| `label-2-regular` | 11px | 400 | 16px | 0.055px | Small text, tooltips |
+| `badge` | 9px | 500 | 16px | 0.14px | Badges |
 
-### Font Weights
-
-- **Regular (400)** - Body text, descriptions
-- **Medium (500)** - Emphasis, navigation items, labels
-- **Semibold (600)** - Headings, buttons, important UI
+**Tailwind setup:**
+```css
+@theme {
+  --font-size-xs: 0.6875rem;   /* 11px - label-2 */
+  --font-size-sm: 0.75rem;     /* 12px - label-1 */
+  --font-size-base: 0.875rem;  /* 14px - body-2 */
+  --font-size-lg: 1rem;        /* 16px - body-1 */
+  --font-size-xl: 1.125rem;    /* 18px - headline-4 */
+  --font-size-2xl: 1.5rem;     /* 24px - headline-3 */
+  --font-size-3xl: 2.25rem;    /* 36px - headline-2 */
+  --font-size-4xl: 3rem;       /* 48px - headline-1 */
+}
+```
 
 ---
 
-## Spacing
+## Spacing & Sizing
 
-Use a consistent 4px base grid. Tailwind's default spacing works well:
+### Base Unit
+The design uses an **8px grid system** with occasional 4px adjustments.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `1` | 4px | Tight spacing, icon gaps |
-| `2` | 8px | Default element gaps |
-| `3` | 12px | Small component padding |
-| `4` | 16px | Standard padding, gaps |
-| `5` | 20px | Medium spacing |
-| `6` | 24px | Section spacing |
-| `8` | 32px | Large gaps between sections |
-| `10` | 40px | Page-level spacing |
-| `12` | 48px | Major section breaks |
+### Common Spacings
+```css
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
+--space-10: 40px;
+--space-12: 48px;
+```
+
+### Component Heights
+| Component | Height |
+|-----------|--------|
+| Button (small) | 24px |
+| Button (medium) | 32px |
+| Button (large) | 48px |
+| Input field | 32px |
+| Dense input | 24px |
+| Menu item | 32px |
+| Tab trigger | 32px |
+| Avatar (default) | 32px |
 
 ---
 
 ## Border Radius
 
-Descript uses soft, rounded corners throughout:
+```css
+--radius-sm: 2px;    /* Checkboxes, small chips */
+--radius-md: 4px;    /* Small buttons, tooltips, avatars */
+--radius-lg: 6px;    /* Menu items, nested elements */
+--radius-xl: 8px;    /* Buttons, cards, inputs, dialogs, menus */
+--radius-full: 9999px;  /* Pills, switches, avatars (rounded) */
+```
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `rounded-sm` | 4px | Small elements, badges |
-| `rounded` | 6px | Default (inputs, small buttons) |
-| `rounded-md` | 8px | Cards, dropdowns |
-| `rounded-lg` | 12px | Modals, larger cards |
-| `rounded-xl` | 16px | Feature cards |
-| `rounded-full` | 9999px | Pills, avatars, toggle buttons |
+**Primary radius for most components: `8px`**
 
 ---
 
-## Shadows
-
-Subtle, layered shadows for depth without heaviness:
+## Shadows & Elevation
 
 ```css
-/* Card shadow - subtle elevation */
---shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+/* Tooltips */
+--elevation-1: 0px 2px 4px rgba(0, 0, 0, 0.16);
 
-/* Dropdown/popover shadow */
---shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+/* Buttons, dropdowns, popovers */
+--elevation-5: 0px 8px 16px rgba(0, 0, 0, 0.12),
+               0px 8px 8px rgba(0, 0, 0, 0.08);
 
-/* Modal shadow */
---shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+/* Modals, large dialogs */
+--elevation-10: 0px 120px 136px rgba(0, 0, 0, 0.12),
+                0px 16px 38px rgba(0, 0, 0, 0.16);
+```
 
-/* Hover lift */
---shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+---
+
+## Animation & Transitions
+
+### Duration
+```css
+--duration-faster: 150ms;  /* Quick feedback */
+--duration-fast: 350ms;    /* Standard transitions */
+```
+
+### Easing Functions
+```css
+--ease-linear: cubic-bezier(0, 0, 1, 1);
+--ease-casual: cubic-bezier(0.25, 1, 0.5, 1);     /* Natural feel */
+--ease-productive: cubic-bezier(0.22, 1, 0.36, 1); /* Primary easing - slightly bouncy */
+--ease-expressive: cubic-bezier(0.87, 0, 0.13, 1); /* Dramatic animations */
+```
+
+**Default transition:**
+```css
+transition: all 350ms cubic-bezier(0.22, 1, 0.36, 1);
 ```
 
 ---
@@ -149,252 +216,368 @@ Subtle, layered shadows for depth without heaviness:
 
 ### Buttons
 
-**Primary Button**
-- Background: Blurple (`#6366F1`)
-- Text: White
-- Padding: `10px 16px` (py-2.5 px-4)
-- Border radius: `rounded-lg` (8px)
-- Font: 14px, weight 500
-- Hover: Darker blurple (`#4F46E5`)
+**Sizes:**
+- Small: `h-6 px-2 text-xs rounded`
+- Medium: `h-8 px-4 text-sm rounded-lg` (default)
+- Large: `h-12 px-4 text-sm rounded-lg`
 
-**Secondary Button**
-- Background: White
-- Border: 1px solid Gray 200
-- Text: Gray 700
-- Same padding/radius as primary
-- Hover: Gray 50 background
+**Variants:**
 
-**Ghost Button**
-- Background: Transparent
-- Text: Gray 600
-- Hover: Gray 100 background
+| Variant | Background | Text | Border |
+|---------|------------|------|--------|
+| Primary (black) | `linear-gradient(0deg, #262626, #404040)` | white | `inset 0 0 0 1px rgba(255,255,255,0.16)` |
+| Secondary | white | grey-800 | `1px solid var(--border-color)` |
+| Light | transparent | grey-800 | none |
+| Destructive | red-500 | white | none |
+| Upgrade | purple-800 | white | none |
 
-**Pill Button (action chips)**
-- Background: White
-- Border: 1px solid Gray 200
-- Border radius: `rounded-full`
-- Padding: `8px 16px`
-- Often includes emoji prefix
+**Hover states:**
+- Primary/Black: Overlay `rgba(255,255,255,0.08)` on background
+- Secondary/Light: Background `var(--grey-50-a)` (5% black)
 
-### Inputs
+**Disabled state:**
+```css
+opacity: 0.3;  /* or var(--state-inactive) */
+```
 
-**Text Input**
-- Background: White
-- Border: 1px solid Gray 200
-- Border radius: `rounded-md` (8px)
-- Padding: `10px 12px`
-- Font: 14px
-- Focus: Blurple ring (2px), border color blurple
-- Placeholder: Gray 400
+**Focus ring:**
+```css
+box-shadow: 0 0 0 1px var(--grey-0), 0 0 0 3px var(--cyan-600);
+```
 
-**Select/Dropdown**
-- Same styling as text input
-- Chevron icon on right
-- Dropdown panel: White background, `shadow-dropdown`, rounded-lg
+### Input Fields
 
-**Toggle Switch**
-- Track: Gray 200 (off), Blurple (on)
-- Thumb: White with subtle shadow
-- Size: 40px × 24px
+**Base styling:**
+```css
+min-height: 32px;
+border-radius: 8px;
+background: var(--grey-30-a);  /* rgba(0,0,0,0.03) */
+padding: 0 8px;
+color: var(--grey-800);
+font-size: 12px;
+```
+
+**States:**
+- Hover: `border: 2px solid var(--border-color)`
+- Focus: `border: 2px solid var(--cyan-600)` (focus ring color)
+- Error: `border: 2px solid var(--red-500)`
+- Disabled: `opacity: 0.3; pointer-events: none`
+
+**Placeholder:** `color: var(--grey-400)`
+
+### Checkboxes
+
+```css
+/* Unchecked */
+width: 12px;
+height: 12px;
+border: 1px solid var(--grey-800);
+border-radius: 2px;
+
+/* Checked */
+background: var(--grey-800);
+border: none;
+/* Check icon in white */
+```
+
+### Switches
+
+```css
+/* Track */
+width: 32px;
+height: calc(32px * 0.6);  /* 19.2px */
+border-radius: 9999px;
+background: transparent;
+box-shadow: inset 0 0 0 1px var(--grey-800);
+
+/* Track (on) */
+background: var(--grey-800);
+
+/* Thumb */
+height: 100%;
+aspect-ratio: 1/1;
+border-radius: 50%;
+background: white;
+border: 1px solid var(--grey-800);
+```
 
 ### Cards
 
-**Standard Card**
-- Background: White
-- Border: 1px solid Gray 200 OR no border with shadow
-- Border radius: `rounded-lg` (12px)
-- Padding: 16-24px
-- Hover (if interactive): Subtle shadow lift
+```css
+background: var(--grey-5);  /* white */
+border-radius: 8px;
+border: 1px solid var(--border-color);
+padding: 8px;
+```
 
-**Feature Card (like "Popular features")**
-- Larger padding (24px)
-- May include image/illustration
-- Title: Heading 3 weight
-- Description: Body Small, Gray 500
-
-### Navigation
-
-**Sidebar**
-- Background: Gray 50 or White
-- Width: ~240px
-- Item padding: `8px 12px`
-- Active item: Gray 100 background, Gray 900 text
-- Inactive item: Gray 600 text
-- Section headers: Caption size, Gray 400, uppercase optional
-
-**Tabs**
-- Horizontal row of text links
-- Active: Blurple text or underline
-- Inactive: Gray 500 text
-- Padding between: 24px
-
-### Tables
-
-- Header: Caption size, Gray 500, uppercase or sentence case
-- Header background: Transparent or Gray 50
-- Row height: ~52px
-- Row hover: Gray 50 background
-- Cell padding: `12px 16px`
-- Borders: Only horizontal dividers (Gray 200)
-
-### Modals / Dialogs
-
-- Overlay: Black at 50% opacity
-- Panel: White background, `shadow-modal`
-- Border radius: `rounded-xl` (16px)
-- Header padding: 24px
-- Content padding: 24px
-- Max width: Varies (480px for small, 640px for medium, 800px for large)
-- Close button: Top right, icon only
-
-### Avatars
-
-- Shape: Circle (`rounded-full`)
-- Sizes: 24px (small), 32px (default), 40px (large), 64px (profile)
-- Border: Optional 2px white border for overlapping avatars
-- Fallback: Gray background with initials
-
----
-
-## Icons
-
-Use a consistent icon set. Recommended: **Lucide Icons** (works great with shadcn)
-
-- Size: 16px (small), 20px (default), 24px (large)
-- Stroke width: 1.5px or 2px
-- Color: Inherit from text color
-
----
-
-## Animations & Transitions
-
-Keep animations subtle and quick:
+### Dialogs/Modals
 
 ```css
-/* Default transition */
-transition: all 150ms ease;
+background: var(--grey-0);
+border: 1px solid var(--border-color);
+border-radius: 8px;
+box-shadow: var(--elevation-10);
+max-width: 424px;
 
-/* Hover transitions */
-transition: background-color 150ms ease, box-shadow 150ms ease;
-
-/* Modal entrance */
-animation: fadeIn 200ms ease, scaleIn 200ms ease;
-
-/* Dropdown */
-animation: slideDown 150ms ease;
+/* Overlay */
+background: rgba(0, 0, 0, 0.30);
 ```
 
----
-
-## Layout Patterns
-
-### Sidebar + Content Layout
-
-```
-┌──────────────────────────────────────────────┐
-│ Header (56px)                                │
-├──────────┬───────────────────────────────────┤
-│ Sidebar  │ Main Content                      │
-│ (240px)  │                                   │
-│          │                                   │
-│          │                                   │
-│          │                                   │
-└──────────┴───────────────────────────────────┘
+**Header:**
+```css
+padding: 0 16px;
+min-height: 32px;
+font-weight: 600;
+font-size: 12px;
 ```
 
-### Content Max Widths
-
-- Narrow content (forms, settings): 480-640px
-- Standard content: 800-960px
-- Wide content (tables, grids): 1200px
-- Full width with max: `max-w-7xl` (1280px)
-
----
-
-## Tailwind CSS 4.1 Configuration
+### Popovers & Menus
 
 ```css
-/* In your CSS file with Tailwind 4.1 */
-@theme {
-  --color-blurple: #6366F1;
-  --color-blurple-hover: #4F46E5;
-  --color-coral: #F472B6;
-  
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-dropdown: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+background: var(--grey-0);
+border: 1px solid var(--border-color);
+border-radius: 8px;
+box-shadow: var(--elevation-5);
+background-clip: padding-box;
+```
+
+**Menu items:**
+```css
+min-height: 32px;
+padding: 0 8px;
+border-radius: 6px;  /* internal items */
+font-size: 12px;
+color: var(--grey-800);
+```
+
+**Hover state (menu items):**
+```css
+background: var(--grey-50-a);  /* rgba(0,0,0,0.05) */
+```
+
+### Tooltips
+
+```css
+background: var(--grey-800);  /* dark */
+color: var(--grey-0);  /* white */
+border-radius: 4px;
+padding: 4px 8px;
+font-size: 11px;
+box-shadow: var(--elevation-1);
+```
+
+### Tabs
+
+```css
+/* Tab list container */
+background: var(--grey-50);  /* #f2f2f2 */
+border-radius: 8px;
+padding: 0 1px;
+
+/* Active tab */
+background: var(--grey-0);  /* white */
+border: 1px solid var(--grey-100-a);
+border-radius: 6px;
+```
+
+### Badges
+
+```css
+/* Notification dot */
+height: 10px;
+width: 10px;
+border-radius: 50%;
+background: var(--red-500);
+border: 2px solid var(--grey-0);
+
+/* Count badge */
+height: 20px;
+padding: 2px 6px;
+border-radius: 8px;
+background: var(--grey-400-a);
+color: var(--grey-0);
+font-size: 9px;
+```
+
+### Avatar
+
+```css
+width: 32px;
+height: 32px;
+border-radius: 4px;  /* or 50% for rounded */
+background: var(--grey-50-a);
+font-size: 11px;
+font-weight: 400;
+color: var(--grey-800);
+```
+
+### Toasts
+
+```css
+background: var(--grey-0);
+border: 1px solid var(--border-color);
+border-radius: 8px;
+box-shadow: var(--elevation-5);
+min-height: 40px;
+padding: 0 8px;
+font-size: 12px;
+color: var(--grey-800);
+```
+
+---
+
+## Focus & Accessibility
+
+### Focus Ring Pattern
+
+```css
+/* Standard focus ring (external) */
+box-shadow: 0 0 0 1px var(--grey-0), 0 0 0 3px var(--cyan-600);
+
+/* Inset focus ring (for contained elements) */
+box-shadow: inset 0 0 0 2px var(--cyan-600);
+```
+
+**Implementation note:** Focus rings only show for keyboard navigation. Use `[data-keyboard-focus]` or `:focus-visible` to conditionally show.
+
+### Disabled State
+```css
+opacity: 0.3;  /* Light mode */
+opacity: 0.42; /* Dark mode */
+pointer-events: none;
+```
+
+---
+
+## Dark Mode
+
+Descript uses a class-based dark mode with `.dark-ok` class. Colors are swapped by reassigning CSS variables:
+
+```css
+.dark-ok {
+  --grey-0: #222222;
+  --grey-5: #262626;
+  --grey-50: #1b1b1b;
+  --grey-200: #404040;
+  --grey-400: #8f8f8f;
+  --grey-800: #eaeaea;
+
+  --grey-30-a: rgba(255, 255, 255, 0.10);
+  --grey-50-a: rgba(255, 255, 255, 0.08);
+  --grey-100-a: rgba(255, 255, 255, 0.16);
+
+  --border-color: rgba(255, 255, 255, 0.16);
+  --state-inactive: 0.42;
 }
 ```
 
+**Pattern:** In dark mode, semantic colors stay the same but the RGB values are swapped to their dark equivalents, maintaining the same visual hierarchy.
+
 ---
 
-## shadcn/ui Theming Notes
+## Applying to shadcn/ui + Tailwind 4.1
 
-When setting up shadcn/ui, use these CSS variables in your theme:
+### CSS Variables Setup
 
 ```css
-:root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 10%;
-  
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  
-  --primary: 239 84% 67%;        /* Blurple */
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 32%;
-  
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  
-  --accent: 330 81% 71%;          /* Coral */
-  --accent-foreground: 0 0% 100%;
-  
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 239 84% 67%;            /* Blurple for focus rings */
-  
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    /* Core */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;
+
+    /* Muted */
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 50%;
+
+    /* Card/Popover */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    /* Primary (Black button style) */
+    --primary: 0 0% 20%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 20%;
+
+    /* Accent (hover states) */
+    --accent: 0 0% 0% / 0.05;
+    --accent-foreground: 0 0% 20%;
+
+    /* Destructive */
+    --destructive: 356 93% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 0 0% 0% / 0.10;
+    --input: 0 0% 0% / 0.03;
+    --ring: 195 100% 38%;
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 13%;
+    --foreground: 0 0% 92%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 56%;
+    --border: 0 0% 100% / 0.16;
+    --input: 0 0% 100% / 0.10;
+    --accent: 0 0% 100% / 0.08;
+  }
 }
 ```
 
+### Key Overrides for shadcn Components
+
+**Button:**
+```tsx
+// Add gradient to default variant
+className="bg-gradient-to-t from-[#262626] to-[#404040] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]"
+```
+
+**Input:**
+```tsx
+className="h-8 rounded-lg bg-black/[0.03] border-0 focus:ring-2 focus:ring-cyan-600"
+```
+
+**Card:**
+```tsx
+className="rounded-lg border border-black/10 bg-white"
+```
+
 ---
 
-## Quick Reference: Common Patterns
+## Quick Reference Cheatsheet
 
-### Page Header
-```html
-<div class="flex items-center justify-between pb-6">
-  <h1 class="text-2xl font-semibold text-gray-900">Page Title</h1>
-  <div class="flex gap-3">
-    <Button variant="secondary">Secondary</Button>
-    <Button>Primary Action</Button>
-  </div>
-</div>
-```
+| Element | Border Radius | Height | Font Size | Key Color |
+|---------|---------------|--------|-----------|-----------|
+| Button (md) | 8px | 32px | 12px | grey-800 text |
+| Input | 8px | 32px | 12px | grey-800 text |
+| Card | 8px | — | — | grey-5 bg |
+| Dialog | 8px | — | 12px | grey-0 bg |
+| Menu | 8px | — | 12px | grey-0 bg |
+| Menu item | 6px | 32px | 12px | grey-50-a hover |
+| Tooltip | 4px | — | 11px | grey-800 bg |
+| Checkbox | 2px | 12px | — | grey-800 |
+| Switch | 9999px | 19px | — | grey-800 |
+| Badge | 8px | 20px | 9px | grey-400-a bg |
+| Avatar | 4px | 32px | 11px | grey-50-a bg |
 
-### Card Grid
-```html
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-  <!-- Cards -->
-</div>
-```
+---
 
-### Settings Row
-```html
-<div class="flex items-center justify-between py-4 border-b border-gray-200">
-  <div>
-    <p class="text-sm font-medium text-gray-900">Setting Name</p>
-    <p class="text-sm text-gray-500">Description of the setting</p>
-  </div>
-  <Switch />
-</div>
-```
+## Brand Notes
+
+- **Primary action buttons are black**, not blue (unlike many SaaS apps)
+- **Blue is reserved for links and selection states**
+- **Cyan is the focus color** - provides clear visual feedback
+- **Purple is the "upgrade" color** - used for premium features
+- **Inter is the primary font** - clean, modern, highly legible
+- **Minimal use of shadows** - elevation is subtle, mostly for popovers
+- **Animation is quick and snappy** - 150-350ms with productive easing
 
