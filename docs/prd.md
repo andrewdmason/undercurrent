@@ -30,7 +30,9 @@ Will have the following fields and sections:
 - URL
 - Business Description
 - Content Inspiration Sources
-    - A list of websites or search terms that should be queried when generating new Ideas
+    - A list of websites or search terms passed as context to the AI when generating ideas
+    - Examples: "tabletoplibrary.com/events" or "new board game releases"
+    - For v1, we don't actually fetch/scrape these — just pass them as hints to the AI
 - Video Marketing Strategy (this is the long prompt that they’ll have created through onboarding. Will cover:
     - Distribution channels and frequency
     - Content
@@ -38,25 +40,36 @@ Will have the following fields and sections:
 
 ### Once onboarding is complete, the app will revolve around an idea feed
 
-- The user can click a button to generate new ideas on demand (eventually we’ll generate these automatically but for v1 we’ll just do it manually on-demand)
-- They’ll then see a feed of idea cards, with an image and a short description. Think ChatGPT Pulse for inspiration here
+- The user can click a button to generate new ideas on demand — generates 5 ideas per click (eventually we'll generate these automatically but for v1 we'll just do it manually on-demand)
+- They'll then see a feed of idea cards, with an AI-generated image and a short description. Think ChatGPT Pulse for inspiration here
 - When they click on a card, they should see a video creation prompt that they can paste into Descript Underlord… and then Underlord will take it from there, generating the video or guiding them through the video creation
     - When viewing the idea details, the user should be able to iterate on the prompt by chatting with the agent and generating new versions
-- Users should be able to thumb up / thumb down Ideas, which should be stored as feedback into the strategy that generated them. We should probably just store these ratings as structured data
+- Users should be able to thumb up / thumb down ideas
+    - Ratings are stored as structured data
+    - Recent liked/disliked ideas are passed to the AI when generating new ideas (simple feedback loop)
 
 ### Onboarding flow
 
-- When a user first sets up a business, they’ll go through a chatbot onboarding flow, the goal of which will be to populate several fields on the business’s strategy doc.
+- When a user first sets up a business, they'll go through a chatbot onboarding flow, the goal of which will be to populate several fields on the business's strategy doc.
     - Primarily, there will be a field to store the strategy in markdown format, that will include most of the details of their video strategy. Want to keep this flexible so we can iterate on the details over time
-    - If there’s other information that you think is worth storing in structured data - e.g. sources for content inspiration (web url or search key terms) when generating new ideas, we can do that
+    - If there's other information that you think is worth storing in structured data - e.g. sources for content inspiration (web url or search key terms) when generating new ideas, we can do that
     - 
-- I’ll provide the initial system prompt for the chatbot when we get to that part
+- I'll provide the initial system prompt for the chatbot when we get to that part
 - In general, the way that chat will go is like this:
     - The agent will have a minimum set of data points it needs in order to complete the onboarding conversation
     - It will ask one question at a time
         - It will generally follow the question with a set of multiple choice answers, as well as a recommendation
-        - There will be a few questions where we don’t just want to show text - there’s a part where we’re going to want to present the user with a series of short video clips they can rate to get at their stylistic preferences. So we’ll need to do something to augment the conversation to make that work.
+        - There will be a few questions where we don't just want to show text - there's a part where we're going to want to present the user with a series of short video clips they can rate to get at their stylistic preferences. So we'll need to do something to augment the conversation to make that work.
 - The user should be able to abandon / return to the conversation at any point
+
+### Multi-business & collaboration
+
+- Users can create multiple businesses and switch between them (business switcher in UI)
+- Users can add other users to a business by email address
+    - If the email has an existing account → immediately granted access
+    - If no account exists → show error "User not found, ask them to sign up first"
+- No invitation emails or pending invites for v1
+- No role-based permissions — all business members have equal access
 
 ## Project Plan
 
@@ -76,27 +89,7 @@ Here’s the initial set of PRs:
 
 ## Other implementation notes
 
-- We should have a /prompts folder where we store md files of any longer AI prompts that we create in this process so it’s easy to iterate on them, e.g.
+- We should have a /prompts folder where we store md files of any longer AI prompts that we create in this process so it's easy to iterate on them, e.g.
     - The prompt we use for the agent to converse with the user and create a strategy doc
     - The prompt we use to generate new ideas
     - The prompt we use to create an Underlord prompt based on an idea
-
----
-
-# APPENDIX
-
-## Data Model
-
-This is incomplete but something like this, I’m thinking
-
-- profiles (user records)
-- businesses
-    - strategy_prompt (note: eventually I could imagine supporting multiple strategies per business, but let’s keep v1 simple here)
-- business_users
-    - join table
-- ideas
-    - business_id
-    - created_date
-    - prompt
-    - cover_image
-    - user_rating (thumbs_up, thumbs_down)
