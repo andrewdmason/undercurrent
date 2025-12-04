@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Business, BusinessTalent } from "@/lib/types";
+import { Business, BusinessTalent, DistributionChannel } from "@/lib/types";
 import { BusinessInfoForm } from "@/components/strategy/business-info-form";
 import { TalentSection } from "@/components/strategy/talent-section";
 import { ContentSourcesSection } from "@/components/strategy/content-sources-section";
+import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
 import { StrategyPromptSection } from "@/components/strategy/strategy-prompt-section";
 
 interface StrategyPageProps {
@@ -52,8 +53,16 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     .eq("business_id", business.id)
     .order("created_at", { ascending: true });
 
+  // Get distribution channels for this business
+  const { data: distributionChannels } = await supabase
+    .from("business_distribution_channels")
+    .select("*")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: true });
+
   const typedBusiness = business as Business;
   const typedTalent = (talent || []) as BusinessTalent[];
+  const typedChannels = (distributionChannels || []) as DistributionChannel[];
 
   return (
     <div className="pb-12">
@@ -82,6 +91,12 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
           <ContentSourcesSection
             businessId={business.id}
             sources={typedBusiness.content_inspiration_sources || []}
+          />
+
+          {/* Distribution Channels Section */}
+          <DistributionChannelsSection
+            businessId={business.id}
+            channels={typedChannels}
           />
 
           {/* Strategy Prompt Section */}

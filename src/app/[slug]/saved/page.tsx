@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { IdeasFeed } from "@/components/ideas/ideas-feed";
-import { Idea } from "@/lib/types";
+import { IdeaWithChannels } from "@/lib/types";
 
 interface SavedPageProps {
   params: Promise<{
@@ -44,15 +44,33 @@ export default async function SavedPage({ params }: SavedPageProps) {
     notFound();
   }
 
-  // Fetch bookmarked ideas for this business, newest first
+  // Fetch bookmarked ideas for this business with their channels, newest first
   const { data: ideas } = await supabase
     .from("ideas")
-    .select("*")
+    .select(`
+      *,
+      idea_channels (
+        channel_id,
+        business_distribution_channels (
+          id,
+          platform,
+          custom_label
+        )
+      )
+    `)
     .eq("business_id", business.id)
     .eq("bookmarked", true)
     .order("created_at", { ascending: false });
 
-  const typedIdeas = (ideas || []) as Idea[];
+  // Transform the data to flatten channel info
+  const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
+    ...idea,
+    channels: (idea.idea_channels || [])
+      .map((ic: { business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
+        ic.business_distribution_channels
+      )
+      .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null }>,
+  }));
 
   return (
     <div className="flex-1 flex flex-col">

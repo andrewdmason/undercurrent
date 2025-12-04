@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Idea } from "@/lib/types";
+import { IdeaWithChannels } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
 import { IdeaDetailPanel } from "./idea-detail-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface IdeasFeedProps {
-  ideas: Idea[];
+  ideas: IdeaWithChannels[];
   businessId: string;
 }
 
 export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
-  const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
+  const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  const handleCardClick = (idea: Idea) => {
+  const handleCardClick = (idea: IdeaWithChannels) => {
     setSelectedIdea(idea);
     setPanelOpen(true);
   };

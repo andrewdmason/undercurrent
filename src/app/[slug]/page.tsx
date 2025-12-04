@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { IdeasFeed, IdeasEmptyState } from "@/components/ideas/ideas-feed";
 import { GenerateIdeasButton } from "@/components/ideas/generate-ideas-button";
-import { Idea } from "@/lib/types";
+import { IdeaWithChannels } from "@/lib/types";
 
 interface FeedPageProps {
   params: Promise<{
@@ -43,14 +43,32 @@ export default async function FeedPage({ params }: FeedPageProps) {
     notFound();
   }
 
-  // Fetch ideas for this business, newest first
+  // Fetch ideas for this business with their channels, newest first
   const { data: ideas } = await supabase
     .from("ideas")
-    .select("*")
+    .select(`
+      *,
+      idea_channels (
+        channel_id,
+        business_distribution_channels (
+          id,
+          platform,
+          custom_label
+        )
+      )
+    `)
     .eq("business_id", business.id)
     .order("created_at", { ascending: false });
 
-  const typedIdeas = (ideas || []) as Idea[];
+  // Transform the data to flatten channel info
+  const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
+    ...idea,
+    channels: (idea.idea_channels || [])
+      .map((ic: { business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
+        ic.business_distribution_channels
+      )
+      .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null }>,
+  }));
 
   return (
     <div className="flex-1 flex flex-col">
