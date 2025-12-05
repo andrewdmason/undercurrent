@@ -72,6 +72,9 @@ alter table public.business_users enable row level security;
 -- IDEAS TABLE
 -- ============================================
 
+-- Status enum for idea workflow
+create type idea_status as enum ('new', 'rejected', 'accepted', 'published', 'canceled');
+
 create table public.ideas (
   id uuid primary key default uuid_generate_v4(),
   business_id uuid not null references public.businesses(id) on delete cascade,
@@ -80,9 +83,8 @@ create table public.ideas (
   script text,
   image_url text,
   prompt text,
-  rating text check (rating in ('up', 'down')),
-  rating_reason text,
-  bookmarked boolean default false not null,
+  status idea_status default 'new' not null,
+  reject_reason text,
   generation_batch_id uuid,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -134,11 +136,13 @@ alter table public.business_distribution_channels enable row level security;
 -- IDEA_CHANNELS TABLE (Junction Table)
 -- ============================================
 -- Links ideas to their target distribution channels
+-- video_url stores the published video URL for that specific channel
 
 create table public.idea_channels (
   id uuid primary key default uuid_generate_v4(),
   idea_id uuid not null references public.ideas(id) on delete cascade,
   channel_id uuid not null references public.business_distribution_channels(id) on delete cascade,
+  video_url text,
   created_at timestamptz default now() not null,
   unique(idea_id, channel_id)
 );
@@ -401,6 +405,8 @@ create index business_users_user_id_idx on public.business_users(user_id);
 create index businesses_created_by_idx on public.businesses(created_by);
 create index businesses_slug_idx on public.businesses(slug);
 create index ideas_business_id_idx on public.ideas(business_id);
+create index ideas_status_idx on public.ideas(status);
+create index ideas_business_status_idx on public.ideas(business_id, status);
 create index ideas_generation_batch_id_idx on public.ideas(generation_batch_id);
 create index business_talent_business_id_idx on public.business_talent(business_id);
 create index business_distribution_channels_business_id_idx on public.business_distribution_channels(business_id);

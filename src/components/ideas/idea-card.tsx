@@ -1,21 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw } from "lucide-react";
+import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
-import { IdeaActions } from "./idea-actions";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
+import { acceptIdea, cancelIdea } from "@/lib/actions/ideas";
 import { ImageShimmer } from "@/components/ui/shimmer";
+import { Button } from "@/components/ui/button";
+import { ViewType } from "./ideas-feed";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
   businessId: string;
   onClick: () => void;
   isLoadingImage?: boolean;
+  viewType: ViewType;
+  onReject?: () => void;
+  onPublish?: () => void;
 }
 
 // Platform icons
@@ -43,15 +49,24 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-function PlatformIcon({ platform, className }: { platform: string; className?: string }) {
-  const baseClass = cn("h-3 w-3", className);
+function YouTubeShortsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 98.94 122.88" fill="currentColor" className={className}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M63.49 2.71c11.59-6.04 25.94-1.64 32.04 9.83 6.1 11.47 1.65 25.66-9.94 31.7l-9.53 5.01c8.21.3 16.04 4.81 20.14 12.52 6.1 11.47 1.66 25.66-9.94 31.7l-50.82 26.7c-11.59 6.04-25.94 1.64-32.04-9.83-6.1-11.47-1.65-25.66 9.94-31.7l9.53-5.01c-8.21-.3-16.04-4.81-20.14-12.52-6.1-11.47-1.65-25.66 9.94-31.7l50.82-26.7zM36.06 42.53v37.89l30.76-18.9-30.76-18.99z"/>
+    </svg>
+  );
+}
+
+export function PlatformIcon({ platform, className }: { platform: string; className?: string }) {
+  const baseClass = cn("h-3.5 w-3.5", className);
   
   switch (platform) {
     case "tiktok":
-      return <TikTokIcon className={cn(baseClass, "text-black")} />;
+      return <TikTokIcon className={cn(baseClass, "text-black dark:text-white")} />;
     case "instagram_reels":
       return <Instagram className={cn(baseClass, "text-pink-500")} />;
     case "youtube_shorts":
+      return <YouTubeShortsIcon className={cn(baseClass, "text-red-600")} />;
     case "youtube":
       return <Youtube className={cn(baseClass, "text-red-600")} />;
     case "snapchat_spotlight":
@@ -61,21 +76,32 @@ function PlatformIcon({ platform, className }: { platform: string; className?: s
     case "facebook":
       return <Facebook className={cn(baseClass, "text-blue-600")} />;
     case "x":
-      return <XIcon className={cn(baseClass, "text-black")} />;
+      return <XIcon className={cn(baseClass, "text-black dark:text-white")} />;
     default:
       return <Globe className={cn(baseClass, "text-[var(--grey-500)]")} />;
   }
 }
 
-function getChannelLabel(platform: string, customLabel?: string | null): string {
+export function getChannelLabel(platform: string, customLabel?: string | null): string {
   if (platform === "custom" && customLabel) {
     return customLabel;
   }
   return DISTRIBUTION_PLATFORMS.find((p) => p.value === platform)?.label || platform;
 }
 
-export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: IdeaCardProps) {
+export function IdeaCard({ 
+  idea, 
+  businessId, 
+  onClick, 
+  isLoadingImage = false, 
+  viewType,
+  onReject,
+  onPublish,
+}: IdeaCardProps) {
+  const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const hasImage = !!idea.image_url;
   const showShimmer = isLoadingImage || isGenerating || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
@@ -100,13 +126,65 @@ export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: 
     }
   };
 
+  const handleAccept = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAccepting) return;
+
+    setIsAccepting(true);
+    try {
+      const result = await acceptIdea(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Idea added to production queue");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to accept idea");
+      console.error(error);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleReject = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onReject?.();
+  };
+
+  const handleCancel = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isCanceling) return;
+
+    setIsCanceling(true);
+    try {
+      const result = await cancelIdea(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Idea removed from queue");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to cancel idea");
+      console.error(error);
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const handlePublish = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPublish?.();
+  };
+
   return (
     <article
       onClick={onClick}
       className={cn(
-        "group cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--grey-5)]",
+        "group cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
         "overflow-hidden transition-all duration-150",
-        "hover:bg-[var(--grey-50-a)] hover:shadow-sm",
+        "hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]"
       )}
       tabIndex={0}
@@ -119,36 +197,63 @@ export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: 
       role="button"
       aria-label={`View details for ${idea.title}`}
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--grey-100)]">
-        {hasImage && (
+      {/* Image - Fixed 4:3 aspect ratio container, crops tall images */}
+      <div className="relative w-full aspect-[4/3] overflow-hidden bg-[var(--grey-100)]">
+        {hasImage ? (
           <Image
             src={idea.image_url!}
             alt=""
             fill
             className={cn(
-              "object-contain transition-transform duration-300 group-hover:scale-105",
+              "object-cover transition-transform duration-300 group-hover:scale-[1.02]",
               showShimmer && "opacity-0"
             )}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            style={{ objectPosition: "center 35%" }}
+            sizes="(max-width: 540px) 100vw, 540px"
           />
+        ) : (
+          <ImageShimmer />
         )}
         
         {/* Shimmer loading state */}
-        {showShimmer && <ImageShimmer />}
+        {showShimmer && hasImage && (
+          <div className="absolute inset-0">
+            <ImageShimmer />
+          </div>
+        )}
+
+        {/* Bottom gradient overlay for channel badges */}
+        {idea.channels && idea.channels.length > 0 && !showShimmer && (
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
+        )}
+
+        {/* Channel badges - white icons on gradient */}
+        {idea.channels && idea.channels.length > 0 && !showShimmer && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+            {idea.channels.map((channel) => (
+              <span
+                key={channel.id}
+                className="text-white drop-shadow-md"
+                title={getChannelLabel(channel.platform, channel.custom_label)}
+              >
+                <PlatformIcon platform={channel.platform} className="h-4 w-4 !text-white" />
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Regenerate button on hover (only show when not loading) */}
         {!showShimmer && (
           <button
             onClick={handleGenerateThumbnail}
             className={cn(
-              "absolute bottom-2 right-2 p-1.5 rounded-md",
+              "absolute bottom-3 right-3 p-2 rounded-md",
               "bg-black/60 text-white opacity-0 group-hover:opacity-100",
               "transition-opacity duration-200",
               "hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
             )}
-            title="Generate AI thumbnail"
-            aria-label="Generate AI thumbnail"
+            title="Regenerate thumbnail"
+            aria-label="Regenerate thumbnail"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -156,47 +261,77 @@ export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: 
       </div>
 
       {/* Content */}
-      <div className="p-3">
-        {/* Channel Tags */}
-        {idea.channels && idea.channels.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {idea.channels.map((channel) => (
-              <span
-                key={channel.id}
-                className={cn(
-                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium",
-                  "bg-[var(--grey-50)] text-[var(--grey-600)]"
-                )}
-                title={getChannelLabel(channel.platform, channel.custom_label)}
-              >
-                <PlatformIcon platform={channel.platform} />
-              </span>
-            ))}
-          </div>
-        )}
+      <div className="p-4">
 
         {/* Title */}
-        <h3 className="text-sm font-medium text-[var(--grey-800)] tracking-[-0.08px] line-clamp-2 mb-1">
+        <h3 className="text-base font-medium text-[var(--grey-800)] tracking-[-0.08px] line-clamp-2 mb-1.5">
           {idea.title}
         </h3>
 
         {/* Description */}
         {idea.description && (
-          <p className="text-xs text-[var(--grey-400)] tracking-[-0.001px] leading-relaxed line-clamp-2 mb-3">
+          <p className="text-sm text-[var(--grey-400)] tracking-[-0.001px] leading-relaxed line-clamp-2 mb-4">
             {idea.description}
           </p>
         )}
 
         {/* Footer: Actions + Timestamp */}
-        <div className="flex items-center justify-between">
-          <IdeaActions
-            ideaId={idea.id}
-            businessId={businessId}
-            rating={idea.rating}
-            bookmarked={idea.bookmarked}
-            size="sm"
-          />
-          <span className="text-[11px] text-[var(--grey-400)]">
+        <div className="flex items-center justify-between gap-3">
+          {/* Actions based on view type */}
+          <div className="flex items-center gap-2">
+            {viewType === "inbox" && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleReject}
+                  className="text-[var(--grey-400)] hover:text-destructive hover:bg-destructive/10"
+                >
+                  <X className="h-4 w-4 mr-1.5" />
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAccept}
+                  disabled={isAccepting}
+                  className="bg-[var(--green-500)] hover:bg-[var(--green-500)]/90 text-white"
+                >
+                  <Check className="h-4 w-4 mr-1.5" />
+                  {isAccepting ? "Adding..." : "Accept"}
+                </Button>
+              </>
+            )}
+            {viewType === "queue" && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancel}
+                  disabled={isCanceling}
+                  className="text-[var(--grey-400)] hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Ban className="h-4 w-4 mr-1.5" />
+                  {isCanceling ? "Canceling..." : "Cancel"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handlePublish}
+                  className="bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
+                >
+                  <Play className="h-4 w-4 mr-1.5" />
+                  Publish
+                </Button>
+              </>
+            )}
+            {viewType === "published" && (
+              <span className="text-xs text-[var(--green-500)] font-medium flex items-center gap-1">
+                <Check className="h-3.5 w-3.5" />
+                Published
+              </span>
+            )}
+          </div>
+          
+          <span className="text-xs text-[var(--grey-400)] shrink-0">
             {timeAgo}
           </span>
         </div>
@@ -204,4 +339,3 @@ export function IdeaCard({ idea, businessId, onClick, isLoadingImage = false }: 
     </article>
   );
 }
-

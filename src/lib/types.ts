@@ -1,5 +1,7 @@
 // Database types
 
+export type IdeaStatus = "new" | "rejected" | "accepted" | "published" | "canceled";
+
 export interface Idea {
   id: string;
   business_id: string;
@@ -8,9 +10,8 @@ export interface Idea {
   script: string | null;
   image_url: string | null;
   prompt: string | null;
-  rating: "up" | "down" | null;
-  rating_reason: string | null;
-  bookmarked: boolean;
+  status: IdeaStatus;
+  reject_reason: string | null;
   generation_batch_id: string | null;
   created_at: string;
   updated_at: string;
@@ -73,6 +74,7 @@ export interface IdeaChannel {
   id: string;
   idea_id: string;
   channel_id: string;
+  video_url: string | null;
   created_at: string;
 }
 
@@ -82,6 +84,7 @@ export interface IdeaWithChannels extends Idea {
     id: string;
     platform: string;
     custom_label: string | null;
+    video_url: string | null;
   }>;
 }
 

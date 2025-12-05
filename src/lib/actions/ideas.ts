@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
+import { IdeaStatus } from "@/lib/types";
 
 interface GeneratedIdea {
   title: string;
@@ -15,65 +16,159 @@ interface GeneratedIdea {
   channels?: string[];
 }
 
-export async function updateIdeaRating(
-  ideaId: string,
-  rating: "up" | "down" | null,
-  businessId: string
-) {
+// Helper to get business slug and revalidate paths
+async function revalidateBusinessPaths(businessId: string) {
   const supabase = await createClient();
-
-  // Get business slug for revalidation
   const { data: business } = await supabase
     .from("businesses")
     .select("slug")
     .eq("id", businessId)
     .single();
 
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}`);
+    revalidatePath(`/${business.slug}/queue`);
+    revalidatePath(`/${business.slug}/published`);
+  }
+  return business?.slug;
+}
+
+// Accept an idea - move it to the production queue
+export async function acceptIdea(ideaId: string) {
+  const supabase = await createClient();
+
+  // Get idea to find business_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("business_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
   const { error } = await supabase
     .from("ideas")
-    .update({ rating })
+    .update({ status: "accepted" as IdeaStatus })
     .eq("id", ideaId);
 
   if (error) {
-    console.error("Error updating idea rating:", error);
+    console.error("Error accepting idea:", error);
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}`);
-    revalidatePath(`/${business.slug}/saved`);
-  }
+  await revalidateBusinessPaths(idea.business_id);
   return { success: true };
 }
 
-export async function updateIdeaBookmark(
-  ideaId: string,
-  bookmarked: boolean,
-  businessId: string
-) {
+// Reject an idea with optional reason
+export async function rejectIdea(ideaId: string, reason?: string) {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("slug")
-    .eq("id", businessId)
+  // Get idea to find business_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("business_id")
+    .eq("id", ideaId)
     .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
 
   const { error } = await supabase
     .from("ideas")
-    .update({ bookmarked })
+    .update({ 
+      status: "rejected" as IdeaStatus,
+      reject_reason: reason || null,
+    })
     .eq("id", ideaId);
 
   if (error) {
-    console.error("Error updating idea bookmark:", error);
+    console.error("Error rejecting idea:", error);
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}`);
-    revalidatePath(`/${business.slug}/saved`);
+  await revalidateBusinessPaths(idea.business_id);
+  return { success: true };
+}
+
+// Cancel an idea from the production queue
+export async function cancelIdea(ideaId: string) {
+  const supabase = await createClient();
+
+  // Get idea to find business_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("business_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
   }
+
+  const { error } = await supabase
+    .from("ideas")
+    .update({ status: "canceled" as IdeaStatus })
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error canceling idea:", error);
+    return { error: error.message };
+  }
+
+  await revalidateBusinessPaths(idea.business_id);
+  return { success: true };
+}
+
+// Publish an idea with video URLs for each channel
+export async function publishIdea(
+  ideaId: string, 
+  channelUrls: Array<{ channelId: string; videoUrl: string | null }>
+) {
+  const supabase = await createClient();
+
+  // Get idea to find business_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("business_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  // Update idea status to published
+  const { error: statusError } = await supabase
+    .from("ideas")
+    .update({ status: "published" as IdeaStatus })
+    .eq("id", ideaId);
+
+  if (statusError) {
+    console.error("Error publishing idea:", statusError);
+    return { error: statusError.message };
+  }
+
+  // Update video URLs for each channel
+  for (const { channelId, videoUrl } of channelUrls) {
+    if (videoUrl) {
+      const { error: urlError } = await supabase
+        .from("idea_channels")
+        .update({ video_url: videoUrl })
+        .eq("idea_id", ideaId)
+        .eq("channel_id", channelId);
+
+      if (urlError) {
+        console.error("Error updating channel URL:", urlError);
+        // Continue with other channels even if one fails
+      }
+    }
+  }
+
+  await revalidateBusinessPaths(idea.business_id);
   return { success: true };
 }
 
@@ -105,10 +200,10 @@ export async function generateIdeas(businessId: string) {
     .eq("business_id", businessId)
     .order("created_at", { ascending: true });
 
-  // Fetch last 20 ideas for context
+  // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
     .from("ideas")
-    .select("title, rating, rating_reason")
+    .select("title, status, reject_reason")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -154,18 +249,17 @@ export async function generateIdeas(businessId: string) {
           .join("\n")
       : "No distribution channels configured.";
 
-  // Format past ideas section
+  // Format past ideas section - now using status instead of rating
   const pastIdeasSection =
     pastIdeas && pastIdeas.length > 0
       ? pastIdeas
           .map((idea) => {
             let line = `- "${idea.title}"`;
-            if (idea.rating === "up") {
-              line += " [👍 liked]";
-              if (idea.rating_reason) line += ` "${idea.rating_reason}"`;
-            } else if (idea.rating === "down") {
-              line += " [👎 disliked]";
-              if (idea.rating_reason) line += ` "${idea.rating_reason}"`;
+            if (idea.status === "accepted" || idea.status === "published") {
+              line += " [✓ accepted]";
+            } else if (idea.status === "rejected") {
+              line += " [✗ rejected]";
+              if (idea.reject_reason) line += ` "${idea.reject_reason}"`;
             }
             return line;
           })
@@ -241,7 +335,7 @@ export async function generateIdeas(businessId: string) {
       throw new Error("No ideas were generated");
     }
 
-    // Insert the generated ideas
+    // Insert the generated ideas (status defaults to 'new')
     const ideasToInsert = generatedIdeas.map((idea) => ({
       business_id: businessId,
       title: idea.title,
@@ -307,10 +401,7 @@ export async function generateIdeas(businessId: string) {
       });
     }
 
-    if (business.slug) {
-      revalidatePath(`/${business.slug}`);
-      revalidatePath(`/${business.slug}/saved`);
-    }
+    await revalidateBusinessPaths(businessId);
 
     return { success: true, count: generatedIdeas.length, ideaIds };
   } catch (error) {
