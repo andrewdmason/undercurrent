@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { BusinessTalent } from "@/lib/types";
 import {
   createTalent,
@@ -10,9 +10,79 @@ import {
 } from "@/lib/actions/talent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Upload, X, User } from "lucide-react";
+import { Plus, Trash2, Upload, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Simple markdown renderer for bullet points
+function renderSimpleMarkdown(text: string) {
+  const lines = text.split("\n");
+  const result: React.ReactNode[] = [];
+  let currentList: string[] = [];
+
+  const flushList = () => {
+    if (currentList.length > 0) {
+      result.push(
+        <ul key={result.length} className="list-disc list-inside space-y-0.5">
+          {currentList.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      );
+      currentList = [];
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const bulletMatch = line.match(/^[\*\-]\s+(.+)$/);
+    if (bulletMatch) {
+      currentList.push(bulletMatch[1]);
+    } else {
+      flushList();
+      if (line.trim()) {
+        result.push(
+          <p key={index} className={result.length > 0 ? "mt-1" : ""}>
+            {line}
+          </p>
+        );
+      }
+    }
+  });
+
+  flushList();
+  return result;
+}
+
+// Auto-expanding textarea hook
+function useAutoExpandTextarea(value: string, minRows: number = 2, maxHeight: number = 200) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const resize = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto";
+    const lineHeight = 20; // approximate line height in px
+    const minHeight = minRows * lineHeight + 16; // 16px for padding
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${newHeight}px`;
+    // Enable scrolling if content exceeds max height
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  // Callback ref to resize when textarea is first mounted
+  const setRef = (element: HTMLTextAreaElement | null) => {
+    textareaRef.current = element;
+    if (element) {
+      resize(element);
+    }
+  };
+
+  // Resize when value changes
+  useLayoutEffect(() => {
+    if (textareaRef.current) {
+      resize(textareaRef.current);
+    }
+  }, [value, minRows, maxHeight]);
+
+  return setRef;
+}
 
 interface TalentSectionProps {
   businessId: string;
@@ -139,7 +209,19 @@ function TalentCard({
   const [name, setName] = useState(talent.name);
   const [description, setDescription] = useState(talent.description || "");
   const [isUploading, setIsUploading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textareaRef = useAutoExpandTextarea(description);
+
+  // Check if description is truncated
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (el && !isExpanded) {
+      setIsTruncated(el.scrollHeight > el.clientHeight);
+    }
+  }, [talent.description, isExpanded]);
 
   const handleSave = () => {
     onUpdate({ name, description: description || undefined });
@@ -191,15 +273,15 @@ function TalentCard({
               className="h-8 rounded-lg bg-white border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[#007bc2]"
             />
             <textarea
+              ref={textareaRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description (e.g., Host, Expert, Mascot)"
-              rows={2}
               className={cn(
                 "w-full rounded-lg bg-white border border-[var(--border)] px-3 py-2",
                 "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
                 "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-                "resize-none"
+                "resize-none min-h-[56px]"
               )}
             />
             <div className="flex gap-2">
@@ -241,9 +323,33 @@ function TalentCard({
             {talent.name}
           </div>
           {talent.description && (
-            <div className="text-xs text-[var(--grey-400)] mt-1 line-clamp-2">
-              {talent.description}
-            </div>
+            <>
+              <div
+                ref={descriptionRef}
+                className={cn(
+                  "text-xs text-[var(--grey-400)] mt-1",
+                  !isExpanded && "line-clamp-2"
+                )}
+              >
+                {renderSimpleMarkdown(talent.description)}
+              </div>
+              {isTruncated && !isExpanded && (
+                <button
+                  onClick={() => setIsExpanded(true)}
+                  className="text-xs text-[var(--grey-500)] hover:text-[var(--grey-700)] mt-1 font-medium"
+                >
+                  More
+                </button>
+              )}
+              {isExpanded && (
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="text-xs text-[var(--grey-500)] hover:text-[var(--grey-700)] mt-1 font-medium"
+                >
+                  Less
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -290,6 +396,7 @@ interface NewTalentFormProps {
 function NewTalentForm({ onSave, onCancel }: NewTalentFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const textareaRef = useAutoExpandTextarea(description);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -312,15 +419,15 @@ function NewTalentForm({ onSave, onCancel }: NewTalentFormProps) {
             className="h-8 rounded-lg bg-white border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[#007bc2]"
           />
           <textarea
+            ref={textareaRef}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (e.g., Host, Expert, Mascot)"
-            rows={2}
             className={cn(
               "w-full rounded-lg bg-white border border-[var(--border)] px-3 py-2",
               "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
               "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-              "resize-none"
+              "resize-none min-h-[56px]"
             )}
           />
           <div className="flex gap-2">
