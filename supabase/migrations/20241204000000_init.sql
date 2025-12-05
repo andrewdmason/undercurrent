@@ -2,8 +2,7 @@
 -- Undercurrent Initial Schema
 -- ============================================
 
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- Note: gen_random_uuid() is built-in to PostgreSQL 13+ (no extension needed)
 
 -- ============================================
 -- PROFILES TABLE
@@ -38,7 +37,7 @@ create policy "Users can insert their own profile"
 -- ============================================
 
 create table public.businesses (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text unique not null,
   url text,
@@ -58,7 +57,7 @@ alter table public.businesses enable row level security;
 -- ============================================
 
 create table public.business_users (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz default now() not null,
@@ -76,7 +75,7 @@ alter table public.business_users enable row level security;
 create type idea_status as enum ('new', 'rejected', 'accepted', 'published', 'canceled');
 
 create table public.ideas (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   title text not null,
   description text,
@@ -99,7 +98,7 @@ alter table public.ideas enable row level security;
 -- Stores on-screen talent for video content
 
 create table public.business_talent (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   name text not null,
   description text,
@@ -117,7 +116,7 @@ alter table public.business_talent enable row level security;
 -- Stores distribution channels for video content
 
 create table public.business_distribution_channels (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   platform text not null,
   custom_label text,
@@ -139,7 +138,7 @@ alter table public.business_distribution_channels enable row level security;
 -- video_url stores the published video URL for that specific channel
 
 create table public.idea_channels (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   idea_id uuid not null references public.ideas(id) on delete cascade,
   channel_id uuid not null references public.business_distribution_channels(id) on delete cascade,
   video_url text,
@@ -156,7 +155,7 @@ alter table public.idea_channels enable row level security;
 -- Stores AI generation requests and responses for auditing
 
 create table public.generation_logs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   prompt_sent text not null,
   response_raw text,
@@ -420,7 +419,8 @@ create index generation_logs_created_at_idx on public.generation_logs(created_at
 -- ============================================
 
 insert into storage.buckets (id, name, public)
-values ('idea-images', 'idea-images', true);
+values ('idea-images', 'idea-images', true)
+on conflict (id) do nothing;
 
 -- Storage policies for idea-images bucket
 -- Allow authenticated users to upload images
@@ -457,7 +457,8 @@ create policy "Users can delete idea images"
 -- ============================================
 
 insert into storage.buckets (id, name, public)
-values ('talent-images', 'talent-images', true);
+values ('talent-images', 'talent-images', true)
+on conflict (id) do nothing;
 
 -- Storage policies for talent-images bucket
 -- Allow authenticated users to upload images
