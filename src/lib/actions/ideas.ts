@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
-import { unstable_after as after } from "next/server";
+import { after } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
