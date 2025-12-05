@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
+import { unstable_after as after } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
@@ -394,12 +395,17 @@ export async function generateIdeas(businessId: string) {
       model: DEFAULT_MODEL,
     });
 
-    // Fire-and-forget: trigger thumbnail generation for each new idea
-    for (const insertedIdea of insertedIdeas || []) {
-      generateThumbnail(insertedIdea.id, businessId).catch((err) => {
-        console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
-      });
-    }
+    // Use after() to generate thumbnails in the background
+    // This keeps the serverless function alive until thumbnails complete
+    after(async () => {
+      for (const insertedIdea of insertedIdeas || []) {
+        try {
+          await generateThumbnail(insertedIdea.id, businessId);
+        } catch (err) {
+          console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
+        }
+      }
+    });
 
     await revalidateBusinessPaths(businessId);
 

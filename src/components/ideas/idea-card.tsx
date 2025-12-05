@@ -242,8 +242,8 @@ export function IdeaCard({
           </div>
         )}
 
-        {/* Regenerate button on hover (only show when not loading) */}
-        {!showShimmer && (
+        {/* Regenerate/Generate button on hover (hide while actively generating or polling) */}
+        {!isLoadingImage && !isGenerating && (
           <button
             onClick={handleGenerateThumbnail}
             className={cn(
@@ -252,8 +252,8 @@ export function IdeaCard({
               "transition-opacity duration-200",
               "hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
             )}
-            title="Regenerate thumbnail"
-            aria-label="Regenerate thumbnail"
+            title={hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
+            aria-label={hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
