@@ -5,18 +5,27 @@ import { useRouter } from "next/navigation";
 import { IdeaWithChannels } from "@/lib/types";
 import { IdeaCard } from "./idea-card";
 import { IdeaDetailPanel } from "./idea-detail-panel";
+import { RejectIdeaModal } from "./reject-idea-modal";
+import { PublishIdeaModal } from "./publish-idea-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
+
+export type ViewType = "inbox" | "queue" | "published";
 
 interface IdeasFeedProps {
   ideas: IdeaWithChannels[];
   businessId: string;
+  viewType: ViewType;
 }
 
-export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
+export function IdeasFeed({ ideas, businessId, viewType }: IdeasFeedProps) {
   const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  
+  // Modal states
+  const [rejectModalIdea, setRejectModalIdea] = useState<IdeaWithChannels | null>(null);
+  const [publishModalIdea, setPublishModalIdea] = useState<IdeaWithChannels | null>(null);
 
   // Find ideas that are missing thumbnails
   const pendingIdeaIds = useMemo(
@@ -48,8 +57,8 @@ export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
 
   return (
     <>
-      {/* Ideas Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Single Column Feed */}
+      <div className="flex flex-col gap-4">
         {ideas.map((idea) => (
           <IdeaCard
             key={idea.id}
@@ -57,6 +66,9 @@ export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
             businessId={businessId}
             onClick={() => handleCardClick(idea)}
             isLoadingImage={!idea.image_url}
+            viewType={viewType}
+            onReject={() => setRejectModalIdea(idea)}
+            onPublish={() => setPublishModalIdea(idea)}
           />
         ))}
       </div>
@@ -67,7 +79,43 @@ export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
         businessId={businessId}
         open={panelOpen}
         onClose={handleClosePanel}
+        viewType={viewType}
+        onReject={() => {
+          if (selectedIdea) {
+            setRejectModalIdea(selectedIdea);
+          }
+        }}
+        onPublish={() => {
+          if (selectedIdea) {
+            setPublishModalIdea(selectedIdea);
+          }
+        }}
       />
+
+      {/* Reject Modal */}
+      {rejectModalIdea && (
+        <RejectIdeaModal
+          ideaId={rejectModalIdea.id}
+          ideaTitle={rejectModalIdea.title}
+          open={!!rejectModalIdea}
+          onOpenChange={(open) => {
+            if (!open) setRejectModalIdea(null);
+          }}
+        />
+      )}
+
+      {/* Publish Modal */}
+      {publishModalIdea && (
+        <PublishIdeaModal
+          ideaId={publishModalIdea.id}
+          ideaTitle={publishModalIdea.title}
+          channels={publishModalIdea.channels}
+          open={!!publishModalIdea}
+          onOpenChange={(open) => {
+            if (!open) setPublishModalIdea(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -75,17 +123,17 @@ export function IdeasFeed({ ideas, businessId }: IdeasFeedProps) {
 // Loading skeleton for the feed
 export function IdeasFeedSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-lg border border-[var(--border)] overflow-hidden">
-          <Skeleton className="aspect-[4/3] w-full" />
-          <div className="p-3 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-2/3" />
-            <div className="flex justify-between pt-2">
-              <Skeleton className="h-6 w-20" />
-              <Skeleton className="h-3 w-16" />
+    <div className="flex flex-col gap-4">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+          <Skeleton className="aspect-video w-full" />
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+            <div className="flex gap-2 pt-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-24" />
             </div>
           </div>
         </div>
