@@ -1,6 +1,15 @@
 import { SignupForm } from "@/components/auth/signup-form";
 
-export default function SignupPage() {
+interface SignupPageProps {
+  searchParams: Promise<{
+    invite?: string;
+    business?: string;
+  }>;
+}
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const { invite, business } = await searchParams;
+
   return (
     <main className="flex min-h-screen">
       {/* Left side - Decorative */}
@@ -31,10 +40,12 @@ export default function SignupPage() {
             </div>
           </div>
           <h2 className="text-2xl font-normal tracking-[-0.46px] text-[var(--grey-800)] mb-3">
-            Start creating in minutes
+            {invite && business ? `Join ${business}` : invite ? "Join your team" : "Start creating in minutes"}
           </h2>
           <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px] leading-relaxed">
-            Join thousands of creators using Undercurrent to plan, generate, and execute their video content strategy.
+            {invite
+              ? `Create an account to join ${business ? business : "the team"} and start collaborating on video content.`
+              : "Join thousands of creators using Undercurrent to plan, generate, and execute their video content strategy."}
           </p>
         </div>
       </div>
@@ -47,10 +58,14 @@ export default function SignupPage() {
               Create your account
             </h1>
             <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px]">
-              Get started with Undercurrent today
+              {invite && business
+                ? `Sign up to join ${business}`
+                : invite
+                ? "Sign up to join your team"
+                : "Get started with Undercurrent today"}
             </p>
           </div>
-          <SignupForm />
+          <SignupForm inviteToken={invite} businessName={business} />
         </div>
       </div>
     </main>

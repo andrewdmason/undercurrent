@@ -192,7 +192,10 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
                   Configure Video Strategy
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                <DropdownMenuItem 
+                  onClick={() => router.push(`/${slug}/team`)}
+                  className="cursor-pointer"
+                >
                   <Users className="mr-2 h-4 w-4" />
                   Manage Team
                 </DropdownMenuItem>
