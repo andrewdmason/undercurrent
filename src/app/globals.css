@@ -58,6 +58,9 @@
 :root {
   --radius: 0.5rem;
   
+  /* Descript Accent Colors */
+  --cyan-600: #007bc2;
+  
   /* Descript Grey Scale - Light Mode */
   --grey-0: #ffffff;
   --grey-5: #ffffff;

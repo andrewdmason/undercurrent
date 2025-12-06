@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, MessageSquare, Send, Sparkles, MoreHorizontal, ListTodo, Clock } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, MessageSquare, Send, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IdeaWithChannels } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { cancelIdea } from "@/lib/actions/ideas";
+import { cancelIdea, generateScript, generateUnderlordPrompt } from "@/lib/actions/ideas";
 import { cn } from "@/lib/utils";
 import { ImageShimmer } from "@/components/ui/shimmer";
 import { PlatformIcon, getChannelLabel } from "./idea-card";
@@ -77,6 +77,10 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [isGeneratingUnderlordPrompt, setIsGeneratingUnderlordPrompt] = useState(false);
+  const [currentScript, setCurrentScript] = useState<string | null>(idea.script);
+  const [currentPrompt, setCurrentPrompt] = useState<string | null>(idea.prompt);
   const [isCanceling, setIsCanceling] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [underlordModalOpen, setUnderlordModalOpen] = useState(false);
@@ -129,9 +133,9 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   };
 
   const handleCopyPrompt = async () => {
-    if (!idea.prompt) return;
+    if (!currentPrompt) return;
     try {
-      await navigator.clipboard.writeText(idea.prompt);
+      await navigator.clipboard.writeText(currentPrompt);
       setCopiedPrompt(true);
       toast.success("Prompt copied to clipboard");
       setTimeout(() => setCopiedPrompt(false), 2000);
@@ -141,14 +145,64 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   };
 
   const handleCopyScript = async () => {
-    if (!idea.script) return;
+    if (!currentScript) return;
     try {
-      await navigator.clipboard.writeText(idea.script);
+      await navigator.clipboard.writeText(currentScript);
       setCopiedScript(true);
       toast.success("Script copied to clipboard");
       setTimeout(() => setCopiedScript(false), 2000);
     } catch {
       toast.error("Failed to copy script");
+    }
+  };
+
+  const handleGenerateScript = async () => {
+    if (isGeneratingScript) return;
+
+    setIsGeneratingScript(true);
+    try {
+      const result = await generateScript(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else if (result.script) {
+        setCurrentScript(result.script);
+        toast.success("Script generated successfully");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate script");
+      console.error(error);
+    } finally {
+      setIsGeneratingScript(false);
+    }
+  };
+
+  const handleGenerateUnderlordPrompt = async () => {
+    if (isGeneratingUnderlordPrompt) return;
+
+    setIsGeneratingUnderlordPrompt(true);
+    try {
+      const result = await generateUnderlordPrompt(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else if (result.underlordPrompt) {
+        setCurrentPrompt(result.underlordPrompt);
+        toast.success("Underlord prompt generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate Underlord prompt");
+      console.error(error);
+    } finally {
+      setIsGeneratingUnderlordPrompt(false);
+    }
+  };
+
+  const handleOpenUnderlordModal = async () => {
+    setUnderlordModalOpen(true);
+    // If no prompt exists yet, generate it
+    if (!currentPrompt && !isGeneratingUnderlordPrompt) {
+      await handleGenerateUnderlordPrompt();
     }
   };
 
@@ -181,7 +235,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
           <Link
             href={`/${businessSlug}/queue`}
             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[var(--grey-500)] hover:text-[var(--grey-800)] hover:bg-[var(--grey-50)] transition-colors flex-shrink-0"
-            aria-label="Back to Queue"
+            aria-label="Back to Create"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -191,15 +245,20 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
             </h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {idea.prompt && (
-              <button
-                onClick={() => setUnderlordModalOpen(true)}
-                className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-lg bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110 transition-all"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Create with Underlord
-              </button>
-            )}
+            <button
+              onClick={handleOpenUnderlordModal}
+              disabled={!currentScript}
+              title={!currentScript ? "Generate a script first" : undefined}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-lg transition-all",
+                currentScript
+                  ? "bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110"
+                  : "bg-[var(--grey-100)] text-[var(--grey-400)] cursor-not-allowed"
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Create with Underlord
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -235,7 +294,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
             <div className="flex flex-col gap-4">
 
               {/* Image */}
-              <div className="group/image relative w-full aspect-[4/3] overflow-hidden rounded-lg bg-[var(--grey-100)]">
+              <div className="group/image relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--grey-100)]">
                 {hasImage && (
                   <Image
                     src={idea.image_url!}
@@ -245,7 +304,6 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                       "object-cover",
                       showShimmer && "opacity-0"
                     )}
-                    style={{ objectPosition: "center 35%" }}
                     sizes="(max-width: 768px) 100vw, 400px"
                   />
                 )}
@@ -274,7 +332,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 <Button
                   size="sm"
                   onClick={() => setPublishModalOpen(true)}
-                  className="bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
+                  className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
                 >
                   <Play className="h-4 w-4 mr-1.5" />
                   Publish
@@ -312,34 +370,85 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
 
             {/* Middle Column - Script */}
             <div className="flex flex-col min-h-0">
-              {/* Script */}
-              {idea.script && (
-                <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                    <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                      Script
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyScript}
-                      className="h-7 px-2"
-                      title={copiedScript ? "Copied" : "Copy"}
-                    >
-                      {copiedScript ? (
-                        <Check size={14} className="text-[#00975a]" />
-                      ) : (
-                        <Copy size={14} />
-                      )}
-                    </Button>
+              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                {/* Script Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                    Script
+                  </h4>
+                  {currentScript && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleGenerateScript}
+                        disabled={isGeneratingScript}
+                        className="h-7 px-2"
+                        title="Regenerate script"
+                      >
+                        <RefreshCw size={14} className={cn(isGeneratingScript && "animate-spin")} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyScript}
+                        className="h-7 px-2"
+                        title={copiedScript ? "Copied" : "Copy"}
+                      >
+                        {copiedScript ? (
+                          <Check size={14} className="text-[#00975a]" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Script Content or Empty/Loading State */}
+                {isGeneratingScript ? (
+                  // Loading state
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                      <Loader2 className="h-6 w-6 text-[#007bc2] animate-spin" />
+                    </div>
+                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                      Generating Script
+                    </h3>
+                    <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                      AI is writing a ready-to-shoot script for this idea...
+                    </p>
                   </div>
+                ) : currentScript ? (
+                  // Script content
                   <div className="flex-1 overflow-auto p-4">
                     <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
-                      {idea.script}
+                      {currentScript}
                     </pre>
                   </div>
-                </div>
-              )}
+                ) : (
+                  // Empty state
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                      <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                    </div>
+                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                      No Script Yet
+                    </h3>
+                    <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
+                      Generate a ready-to-shoot script based on this idea.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={handleGenerateScript}
+                      className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      Generate Script
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Right Column - Checklist & Chat */}
@@ -487,41 +596,83 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[var(--cyan-600)]" />
+              <Sparkles className="h-5 w-5 text-[#007bc2]" />
               Create with Underlord
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2">
-            <p className="text-sm text-[var(--grey-500)] mb-4">
-              Copy this prompt and paste it into Underlord to generate your video.
-            </p>
-            <div className="relative rounded-lg border border-[var(--border)] bg-[var(--grey-50)]">
-              <div className="absolute top-3 right-3">
+            {isGeneratingUnderlordPrompt ? (
+              // Loading state
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                  <Loader2 className="h-6 w-6 text-[#007bc2] animate-spin" />
+                </div>
+                <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                  Generating Underlord Prompt
+                </h3>
+                <p className="text-xs text-[var(--grey-400)] max-w-[240px]">
+                  Creating detailed editing instructions based on your script...
+                </p>
+              </div>
+            ) : currentPrompt ? (
+              // Prompt content
+              <>
+                <p className="text-sm text-[var(--grey-500)] mb-4">
+                  Copy this prompt and paste it into Underlord to generate your video.
+                </p>
+                <div className="relative rounded-lg border border-[var(--border)] bg-[var(--grey-50)]">
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleGenerateUnderlordPrompt}
+                      className="h-8 px-2"
+                      title="Regenerate prompt"
+                    >
+                      <RefreshCw size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyPrompt}
+                      className="h-8 px-3 gap-1.5"
+                    >
+                      {copiedPrompt ? (
+                        <>
+                          <Check size={14} className="text-[#00975a]" />
+                          <span className="text-[#00975a]">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="p-4 pt-12 max-h-[400px] overflow-auto">
+                    <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
+                      {currentPrompt}
+                    </pre>
+                  </div>
+                </div>
+              </>
+            ) : (
+              // Error/fallback state (shouldn't normally happen)
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-[var(--grey-500)]">
+                  Unable to generate prompt. Please try again.
+                </p>
                 <Button
-                  variant="ghost"
                   size="sm"
-                  onClick={handleCopyPrompt}
-                  className="h-8 px-3 gap-1.5"
+                  onClick={handleGenerateUnderlordPrompt}
+                  className="mt-4 bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
                 >
-                  {copiedPrompt ? (
-                    <>
-                      <Check size={14} className="text-[#00975a]" />
-                      <span className="text-[#00975a]">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Copy</span>
-                    </>
-                  )}
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Try Again
                 </Button>
               </div>
-              <div className="p-4 pt-12 max-h-[400px] overflow-auto">
-                <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
-                  {idea.prompt}
-                </pre>
-              </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -30,6 +30,12 @@ A video marketing idea generator for small businesses, powered by AI.
 - One migration file per branch
 - Don't commit to main directly
 
+## Domain Concepts
+
+### Descript Underlord
+
+Underlord is Descript's AI editing assistant - think of it as the video editing equivalent of Cursor. It's a "vibe-editing" chatbot where you describe what you want done and it executes like an assistant editor would. Unlike simple command-based tools, Underlord can accept long, detailed prompts including full scripts, multi-step editing instructions, and creative direction. When Undercurrent generates an "Underlord prompt," users copy/paste it into Descript to automate their video production workflow.
+
 ## Specialized Instructions
 
 When working on specific areas, reference these additional rule files:

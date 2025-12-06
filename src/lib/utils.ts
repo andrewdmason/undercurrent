@@ -72,3 +72,20 @@ export function generateUniqueSlug(
   
   return uniqueSlug;
 }
+
+/**
+ * Generate a URL-friendly slug for a distribution channel
+ * For standard platforms: uses the platform value (e.g., "tiktok", "instagram_reels")
+ * For custom channels: slugifies the custom label
+ */
+export function getChannelSlug(channel: { platform: string; custom_label: string | null }): string {
+  if (channel.platform === "custom" && channel.custom_label) {
+    // Slugify custom label: lowercase, replace spaces with hyphens, remove special chars
+    return channel.custom_label
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  }
+  // For standard platforms, use the platform value directly (already URL-friendly)
+  return channel.platform;
+}

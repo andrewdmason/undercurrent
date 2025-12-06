@@ -171,7 +171,7 @@ export function IdeaDetailPanel({
           {/* Left column - Image & Description */}
           <div className="w-1/2 border-r border-[var(--border)] p-6 flex flex-col">
             {/* Image */}
-            <div className="group/image relative w-full aspect-[4/3] overflow-hidden rounded-lg bg-[var(--grey-100)] flex-shrink-0">
+            <div className="group/image relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--grey-100)] flex-shrink-0">
               {hasImage && (
               <Image
                   src={idea.image_url!}
@@ -181,7 +181,6 @@ export function IdeaDetailPanel({
                     "object-cover",
                     showShimmer && "opacity-0"
                   )}
-                  style={{ objectPosition: "center 35%" }}
                 sizes="(max-width: 768px) 100vw, 480px"
               />
               )}
@@ -247,7 +246,7 @@ export function IdeaDetailPanel({
                     <Button
                       size="sm"
                       onClick={() => onPublish?.()}
-                      className="bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
+                      className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
                     >
                       <Play className="h-4 w-4 mr-1.5" />
                       Publish

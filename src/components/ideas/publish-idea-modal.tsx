@@ -79,8 +79,8 @@ export function PublishIdeaModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--cyan-600)]/10">
-              <Play className="h-4 w-4 text-[var(--cyan-600)]" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#007bc2]/10">
+              <Play className="h-4 w-4 text-[#007bc2]" />
             </div>
             Mark as Published
           </DialogTitle>
@@ -146,7 +146,7 @@ export function PublishIdeaModal({
           <Button
             onClick={handlePublish}
             disabled={isSubmitting}
-            className="bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
+            className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
           >
             {isSubmitting ? "Publishing..." : "Mark as Published"}
           </Button>

@@ -64,8 +64,11 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
 
   return (
     <>
-      {/* Single Column Feed */}
-      <div className="flex flex-col gap-4">
+      {/* Feed - Grid for queue, single column for others */}
+      <div className={viewType === "queue" 
+        ? "grid grid-cols-3 gap-4" 
+        : "flex flex-col gap-4"
+      }>
         {ideas.map((idea) => (
           <IdeaCard
             key={idea.id}
