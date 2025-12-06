@@ -10,7 +10,12 @@ import { Label } from "@/components/ui/label";
 
 const isDev = process.env.NODE_ENV === "development";
 
-export function LoginForm() {
+interface LoginFormProps {
+  inviteToken?: string;
+  businessName?: string;
+}
+
+export function LoginForm({ inviteToken, businessName }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,13 +43,23 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/");
+    // If there's an invite token, redirect to the invite page
+    if (inviteToken) {
+      router.push(`/invite/${inviteToken}`);
+    } else {
+      router.push("/");
+    }
     router.refresh();
   };
 
   const handleDevLogin = () => {
     signIn("andrew@test.com", "password123");
   };
+
+  // Preserve invite token and business name in the signup link
+  const signupHref = inviteToken 
+    ? `/signup?invite=${inviteToken}${businessName ? `&business=${encodeURIComponent(businessName)}` : ''}`
+    : "/signup";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -109,7 +124,7 @@ export function LoginForm() {
       <p className="text-center text-xs text-[var(--grey-400)] pt-2">
         Don&apos;t have an account?{" "}
         <Link 
-          href="/signup" 
+          href={signupHref}
           className="text-[#1a5eff] hover:underline underline-offset-2"
         >
           Sign up

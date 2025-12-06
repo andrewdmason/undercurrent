@@ -1,6 +1,15 @@
 import { LoginForm } from "@/components/auth/login-form";
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{
+    invite?: string;
+    business?: string;
+  }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { invite, business } = await searchParams;
+
   return (
     <main className="flex min-h-screen">
       {/* Left side - Decorative */}
@@ -31,10 +40,12 @@ export default function LoginPage() {
             </div>
           </div>
           <h2 className="text-2xl font-normal tracking-[-0.46px] text-[var(--grey-800)] mb-3">
-            Build your content strategy with AI
+            {invite && business ? `Join ${business}` : invite ? "Sign in to join your team" : "Build your content strategy with AI"}
           </h2>
           <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px] leading-relaxed">
-            Undercurrent helps you generate, organize, and publish video ideas that resonate with your audience.
+            {invite
+              ? `Sign in to your existing account to join ${business ? business : "the team"}.`
+              : "Undercurrent helps you generate, organize, and publish video ideas that resonate with your audience."}
           </p>
         </div>
       </div>
@@ -47,10 +58,14 @@ export default function LoginPage() {
               Welcome back
             </h1>
             <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px]">
-              Sign in to your account to continue
+              {invite && business
+                ? `Sign in to join ${business}`
+                : invite
+                ? "Sign in to accept your invitation"
+                : "Sign in to your account to continue"}
             </p>
           </div>
-          <LoginForm />
+          <LoginForm inviteToken={invite} businessName={business} />
         </div>
       </div>
     </main>

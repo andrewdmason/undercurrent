@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require auth
-  const publicRoutes = ["/login", "/signup", "/forgot-password"];
+  const publicRoutes = ["/login", "/signup", "/forgot-password", "/invite"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
   const isAuthCallback = pathname.startsWith("/auth/callback");
 
@@ -47,8 +47,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If user is logged in and trying to access auth pages, redirect to home
-  if (user && isPublicRoute) {
+  // If user is logged in and trying to access auth pages (but not invite), redirect to home
+  const isAuthPage = ["/login", "/signup", "/forgot-password"].some((route) => pathname.startsWith(route));
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

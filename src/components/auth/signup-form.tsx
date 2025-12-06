@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function SignupForm() {
+interface SignupFormProps {
+  inviteToken?: string;
+  businessName?: string;
+}
+
+export function SignupForm({ inviteToken, businessName }: SignupFormProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,9 +43,19 @@ export function SignupForm() {
       return;
     }
 
-    router.push("/");
+    // If there's an invite token, redirect to the invite page
+    if (inviteToken) {
+      router.push(`/invite/${inviteToken}`);
+    } else {
+      router.push("/");
+    }
     router.refresh();
   };
+
+  // Preserve invite token and business name in the login link
+  const loginHref = inviteToken 
+    ? `/login?invite=${inviteToken}${businessName ? `&business=${encodeURIComponent(businessName)}` : ''}`
+    : "/login";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -102,7 +117,7 @@ export function SignupForm() {
       <p className="text-center text-xs text-[var(--grey-400)] pt-2">
         Already have an account?{" "}
         <Link 
-          href="/login" 
+          href={loginHref}
           className="text-[#1a5eff] hover:underline underline-offset-2"
         >
           Sign in

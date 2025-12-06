@@ -1,0 +1,97 @@
+import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { getTeamMembers, getInviteLink } from "@/lib/actions/team";
+import { TeamMembersList } from "@/components/team/team-members-list";
+import { InviteLinkSection } from "@/components/team/invite-link-section";
+
+interface TeamPageProps {
+  params: Promise<{
+    slug: string;
+  }>;
+}
+
+export default async function TeamPage({ params }: TeamPageProps) {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  // Verify user is authenticated
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    notFound();
+  }
+
+  // Get business by slug
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (!business) {
+    notFound();
+  }
+
+  // Verify user has access to this business
+  const { data: membership } = await supabase
+    .from("business_users")
+    .select("id")
+    .eq("business_id", business.id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) {
+    notFound();
+  }
+
+  // Get team members and invite link
+  const [membersResult, inviteLinkResult] = await Promise.all([
+    getTeamMembers(business.id),
+    getInviteLink(business.id),
+  ]);
+
+  const members = membersResult.members || [];
+  const inviteUrl = inviteLinkResult.inviteUrl || "";
+
+  return (
+    <div className="pb-12">
+      {/* Header */}
+      <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+          <h1 className="text-xl font-medium text-[var(--grey-800)] tracking-[-0.25px]">
+            Manage Team
+          </h1>
+          <p className="text-sm text-[var(--grey-400)] mt-0.5">
+            Invite team members to collaborate on {business.name}
+          </p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          {/* Invite Link Section */}
+          <InviteLinkSection businessId={business.id} initialInviteUrl={inviteUrl} />
+
+          {/* Team Members Section */}
+          <div className="rounded-lg border border-[var(--border)] bg-white">
+            <div className="px-4 py-3 border-b border-[var(--border)]">
+              <h2 className="text-sm font-semibold text-[var(--grey-800)]">
+                Team Members
+              </h2>
+              <p className="text-xs text-[var(--grey-400)] mt-0.5">
+                {members.length} {members.length === 1 ? "member" : "members"}
+              </p>
+            </div>
+            <TeamMembersList
+              members={members}
+              businessId={business.id}
+              currentUserId={user.id}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
