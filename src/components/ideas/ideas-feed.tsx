@@ -15,10 +15,11 @@ export type ViewType = "inbox" | "queue" | "published";
 interface IdeasFeedProps {
   ideas: IdeaWithChannels[];
   businessId: string;
+  businessSlug?: string;
   viewType: ViewType;
 }
 
-export function IdeasFeed({ ideas, businessId, viewType }: IdeasFeedProps) {
+export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFeedProps) {
   const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -45,6 +46,12 @@ export function IdeasFeed({ ideas, businessId, viewType }: IdeasFeedProps) {
   });
 
   const handleCardClick = (idea: IdeaWithChannels) => {
+    // For queue items, navigate to the detail page
+    if (viewType === "queue" && businessSlug) {
+      router.push(`/${businessSlug}/ideas/${idea.id}`);
+      return;
+    }
+    // For inbox/published, open the modal
     setSelectedIdea(idea);
     setPanelOpen(true);
   };

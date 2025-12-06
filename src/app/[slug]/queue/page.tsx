@@ -91,7 +91,7 @@ export default async function QueuePage({ params }: QueuePageProps) {
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} businessId={business.id} viewType="queue" />
+            <IdeasFeed ideas={typedIdeas} businessId={business.id} businessSlug={business.slug} viewType="queue" />
           ) : (
             <QueueEmptyState />
           )}
