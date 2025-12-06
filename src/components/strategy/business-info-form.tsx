@@ -7,7 +7,7 @@ import { updateBusinessInfo, checkSlugAvailability } from "@/lib/actions/busines
 import { generateSlug } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, normalizeUrl } from "@/lib/utils";
 
 interface BusinessInfoFormProps {
   business: Business;
@@ -75,7 +75,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
       const result = await updateBusinessInfo(business.id, {
         name: data.name,
         slug: data.slug,
-        url: data.url || null,
+        url: normalizeUrl(data.url || "") || null,
         description: data.description || null,
       });
 
@@ -212,10 +212,10 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
           </Label>
           <Input
             id="url"
-            type="url"
+            type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com"
+            placeholder="example.com"
             className="h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]"
           />
         </div>
