@@ -173,7 +173,7 @@ export async function publishIdea(
   return { success: true };
 }
 
-export async function generateIdeas(businessId: string) {
+export async function generateIdeas(businessId: string, customInstructions?: string) {
   const supabase = await createClient();
 
   // Fetch business profile
@@ -268,7 +268,7 @@ export async function generateIdeas(businessId: string) {
       : "No previous ideas generated yet.";
 
   // Build the final prompt
-  const prompt = promptTemplate
+  let prompt = promptTemplate
     .replace("{{businessName}}", business.name || "Unnamed Business")
     .replace(
       "{{businessDescription}}",
@@ -282,6 +282,11 @@ export async function generateIdeas(businessId: string) {
     .replace("{{talent}}", talentSection)
     .replace("{{distributionChannels}}", channelsSection)
     .replace("{{pastIdeas}}", pastIdeasSection);
+
+  // Append custom instructions if provided
+  if (customInstructions) {
+    prompt += `\n\n## Additional Instructions\n\n${customInstructions}`;
+  }
 
   // Build a map of platform values to channel IDs for linking
   const channelIdMap = new Map<string, string>();
@@ -326,6 +331,9 @@ export async function generateIdeas(businessId: string) {
       generatedIdeas = parsed.videoIdeas;
     } else if (Array.isArray(parsed.videos)) {
       generatedIdeas = parsed.videos;
+    } else if (parsed.title && parsed.description && parsed.underlordPrompt && parsed.script) {
+      // Handle single idea object (e.g., when user asks for "just one idea")
+      generatedIdeas = [parsed];
     } else {
       // Log what we actually got for debugging
       console.error("Unexpected response structure:", JSON.stringify(parsed, null, 2).slice(0, 500));
