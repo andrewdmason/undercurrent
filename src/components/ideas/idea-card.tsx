@@ -198,7 +198,7 @@ export function IdeaCard({
       aria-label={`View details for ${idea.title}`}
     >
       {/* Image - Fixed 4:3 aspect ratio container, crops tall images */}
-      <div className="relative w-full aspect-[4/3] overflow-hidden bg-[var(--grey-100)]">
+      <div className="relative w-full aspect-video overflow-hidden bg-[var(--grey-100)]">
         {hasImage ? (
           <Image
             src={idea.image_url!}
@@ -208,7 +208,6 @@ export function IdeaCard({
               "object-cover transition-transform duration-300 group-hover:scale-[1.02]",
               showShimmer && "opacity-0"
             )}
-            style={{ objectPosition: "center 35%" }}
             sizes="(max-width: 540px) 100vw, 540px"
           />
         ) : (
@@ -275,66 +274,46 @@ export function IdeaCard({
           </p>
         )}
 
-        {/* Footer: Actions + Timestamp */}
-        <div className="flex items-center justify-between gap-3">
-          {/* Actions based on view type */}
-          <div className="flex items-center gap-2">
-            {viewType === "inbox" && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleReject}
-                  className="text-[var(--grey-400)] hover:text-destructive hover:bg-destructive/10"
-                >
-                  <X className="h-4 w-4 mr-1.5" />
-                  Reject
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleAccept}
-                  disabled={isAccepting}
-                  className="bg-[var(--green-500)] hover:bg-[var(--green-500)]/90 text-white"
-                >
-                  <Check className="h-4 w-4 mr-1.5" />
-                  {isAccepting ? "Adding..." : "Accept"}
-                </Button>
-              </>
-            )}
-            {viewType === "queue" && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleCancel}
-                  disabled={isCanceling}
-                  className="text-[var(--grey-400)] hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Ban className="h-4 w-4 mr-1.5" />
-                  {isCanceling ? "Canceling..." : "Cancel"}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handlePublish}
-                  className="bg-[var(--cyan-600)] hover:bg-[var(--cyan-600)]/90 text-white"
-                >
-                  <Play className="h-4 w-4 mr-1.5" />
-                  Publish
-                </Button>
-              </>
-            )}
-            {viewType === "published" && (
-              <span className="text-xs text-[var(--green-500)] font-medium flex items-center gap-1">
-                <Check className="h-3.5 w-3.5" />
-                Published
-              </span>
-            )}
+        {/* Footer: Actions + Timestamp (hidden for queue view) */}
+        {viewType !== "queue" && (
+          <div className="flex items-center justify-between gap-3">
+            {/* Actions based on view type */}
+            <div className="flex items-center gap-2">
+              {viewType === "inbox" && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleReject}
+                    className="text-[var(--grey-400)] hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="h-4 w-4 mr-1.5" />
+                    Reject
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAccept}
+                    disabled={isAccepting}
+                    className="bg-[var(--green-500)] hover:bg-[var(--green-500)]/90 text-white"
+                  >
+                    <Check className="h-4 w-4 mr-1.5" />
+                    {isAccepting ? "Adding..." : "Accept"}
+                  </Button>
+                </>
+              )}
+              {viewType === "published" && (
+                <span className="text-xs text-[var(--green-500)] font-medium flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5" />
+                  Published
+                </span>
+              )}
+            </div>
+            
+            <span className="text-xs text-[var(--grey-400)] shrink-0">
+              {timeAgo}
+            </span>
           </div>
-          
-          <span className="text-xs text-[var(--grey-400)] shrink-0">
-            {timeAgo}
-          </span>
-        </div>
+        )}
       </div>
     </article>
   );

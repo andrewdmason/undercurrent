@@ -2,15 +2,22 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { IdeasFeed, IdeasEmptyState } from "@/components/ideas/ideas-feed";
 import { IdeaWithChannels } from "@/lib/types";
+import { ChannelFilter } from "@/components/ideas/channel-filter";
+import { getChannelSlug } from "@/lib/utils";
 
 interface QueuePageProps {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    channels?: string;
+  }>;
 }
 
-export default async function QueuePage({ params }: QueuePageProps) {
+export default async function QueuePage({ params, searchParams }: QueuePageProps) {
   const { slug } = await params;
+  const { channels: channelFilter } = await searchParams;
+  const selectedSlugs = channelFilter ? channelFilter.split(",") : [];
   const supabase = await createClient();
 
   // Verify user is authenticated
@@ -42,7 +49,14 @@ export default async function QueuePage({ params }: QueuePageProps) {
     notFound();
   }
 
-  // Fetch ACCEPTED ideas for this business (production queue), oldest first (FIFO)
+  // Fetch available distribution channels for this business (for the filter)
+  const { data: distributionChannels } = await supabase
+    .from("business_distribution_channels")
+    .select("id, platform, custom_label")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: true });
+
+  // Fetch ACCEPTED ideas for this business (production queue), newest first
   const { data: ideas } = await supabase
     .from("ideas")
     .select(`
@@ -59,10 +73,10 @@ export default async function QueuePage({ params }: QueuePageProps) {
     `)
     .eq("business_id", business.id)
     .eq("status", "accepted")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   // Transform the data to flatten channel info
-  const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
+  const allIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
     ...idea,
     channels: (idea.idea_channels || [])
       .map((ic: { video_url: string | null; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
@@ -74,19 +88,35 @@ export default async function QueuePage({ params }: QueuePageProps) {
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
   }));
 
+  // Filter ideas by selected channel slugs (if any)
+  const typedIdeas = selectedSlugs.length > 0
+    ? allIdeas.filter((idea) =>
+        idea.channels.some((ch) => selectedSlugs.includes(getChannelSlug(ch)))
+      )
+    : allIdeas;
+
   return (
     <div className="flex-1 flex flex-col bg-[var(--grey-25)]">
       {/* Feed Content */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-[540px] mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-lg font-medium text-[var(--grey-800)] tracking-[-0.25px]">
-              Production Queue
-            </h1>
-            <p className="text-sm text-[var(--grey-400)] mt-0.5">
-              {typedIdeas.length} {typedIdeas.length === 1 ? "video" : "videos"} ready to produce
-            </p>
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-lg font-medium text-[var(--grey-800)] tracking-[-0.25px]">
+                Create
+              </h1>
+              <p className="text-sm text-[var(--grey-400)] mt-0.5">
+                {typedIdeas.length} {typedIdeas.length === 1 ? "video" : "videos"} ready to create
+                {selectedSlugs.length > 0 && ` (filtered)`}
+              </p>
+            </div>
+            {(distributionChannels?.length ?? 0) > 0 && (
+              <ChannelFilter
+                channels={distributionChannels || []}
+                selectedSlugs={selectedSlugs}
+              />
+            )}
           </div>
 
           {/* Feed */}
@@ -123,10 +153,10 @@ function QueueEmptyState() {
         </svg>
       </div>
       <h3 className="text-lg font-normal text-[var(--grey-800)] mb-2">
-        Queue is empty
+        Nothing to create yet
       </h3>
       <p className="text-sm text-[var(--grey-400)] text-center max-w-sm">
-        Accept ideas from your inbox to add them to the production queue.
+        Accept ideas from your inbox to start creating.
       </p>
     </div>
   );

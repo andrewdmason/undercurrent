@@ -100,7 +100,7 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
       isActive: pathname === `/${slug}`,
     },
     {
-      name: "Queue",
+      name: "Create",
       href: `/${slug}/queue`,
       count: queueCount,
       isActive: pathname === `/${slug}/queue`,
@@ -214,7 +214,7 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
                       >
                         <span className="truncate flex-1">{business.name}</span>
                         {business.slug === slug && (
-                          <Check className="ml-2 h-4 w-4 text-[var(--cyan-600)]" />
+                          <Check className="ml-2 h-4 w-4 text-[#007bc2]" />
                         )}
                       </DropdownMenuItem>
                     ))}

@@ -12,8 +12,6 @@ import { IdeaStatus } from "@/lib/types";
 interface GeneratedIdea {
   title: string;
   description: string;
-  underlordPrompt: string;
-  script: string;
   channels?: string[];
 }
 
@@ -320,6 +318,11 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     // Parse the response - handle various wrapper formats the AI might use
     const parsed = JSON.parse(responseRaw);
     
+    // Check if the AI returned an error message (e.g., asking for clarification)
+    if (parsed.error && typeof parsed.error === "string") {
+      throw new Error(`AI needs clarification: ${parsed.error}`);
+    }
+    
     // Try to find the ideas array in various possible locations
     if (Array.isArray(parsed)) {
       generatedIdeas = parsed;
@@ -331,7 +334,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
       generatedIdeas = parsed.videoIdeas;
     } else if (Array.isArray(parsed.videos)) {
       generatedIdeas = parsed.videos;
-    } else if (parsed.title && parsed.description && parsed.underlordPrompt && parsed.script) {
+    } else if (parsed.title && parsed.description) {
       // Handle single idea object (e.g., when user asks for "just one idea")
       generatedIdeas = [parsed];
     } else {
@@ -345,12 +348,11 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     }
 
     // Insert the generated ideas (status defaults to 'new')
+    // Note: script and prompt are generated separately on-demand
     const ideasToInsert = generatedIdeas.map((idea) => ({
       business_id: businessId,
       title: idea.title,
       description: idea.description,
-      script: idea.script,
-      prompt: idea.underlordPrompt,
       generation_batch_id: batchId,
     }));
 
@@ -433,6 +435,261 @@ export async function generateIdeas(businessId: string, customInstructions?: str
       error: errorMessage,
     });
 
+    return { error: errorMessage };
+  }
+}
+
+// Generate a script for an existing idea
+export async function generateScript(ideaId: string) {
+  const supabase = await createClient();
+
+  // Fetch the idea with its channels
+  const { data: idea, error: ideaError } = await supabase
+    .from("ideas")
+    .select(`
+      id,
+      title,
+      description,
+      business_id,
+      idea_channels (
+        channel_id,
+        business_distribution_channels (
+          platform,
+          custom_label
+        )
+      )
+    `)
+    .eq("id", ideaId)
+    .single();
+
+  if (ideaError || !idea) {
+    console.error("Error fetching idea:", ideaError);
+    return { error: "Idea not found" };
+  }
+
+  // Fetch business context
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("name, description, strategy_prompt")
+    .eq("id", idea.business_id)
+    .single();
+
+  if (businessError || !business) {
+    console.error("Error fetching business:", businessError);
+    return { error: "Business not found" };
+  }
+
+  // Fetch talent
+  const { data: talent } = await supabase
+    .from("business_talent")
+    .select("name, description")
+    .eq("business_id", idea.business_id);
+
+  // Build the prompt from template
+  const promptTemplate = await readFile(
+    path.join(process.cwd(), "prompts", "generate-script.md"),
+    "utf-8"
+  );
+
+  // Format talent section
+  const talentSection =
+    talent && talent.length > 0
+      ? talent
+          .map((t) => `- **${t.name}**: ${t.description || "No description"}`)
+          .join("\n")
+      : "No talent profiles configured.";
+
+  // Format channels section  
+  const channelsSection =
+    idea.idea_channels && idea.idea_channels.length > 0
+      ? (idea.idea_channels as unknown as Array<{
+          channel_id: string;
+          business_distribution_channels: {
+            platform: string;
+            custom_label: string | null;
+          } | null;
+        }>)
+          .map((ic) => {
+            const channel = ic.business_distribution_channels;
+            if (!channel) return null;
+            return channel.custom_label || channel.platform;
+          })
+          .filter(Boolean)
+          .join(", ")
+      : "No specific channels";
+
+  // Build the final prompt
+  const prompt = promptTemplate
+    .replace("{{ideaTitle}}", idea.title || "Untitled")
+    .replace("{{ideaDescription}}", idea.description || "No description")
+    .replace("{{channels}}", channelsSection)
+    .replace("{{businessName}}", business.name || "Unnamed Business")
+    .replace("{{businessDescription}}", business.description || "No description provided.")
+    .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.")
+    .replace("{{talent}}", talentSection);
+
+  let responseRaw = "";
+
+  try {
+    // Call ChatGPT
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    responseRaw = completion.choices[0]?.message?.content || "";
+    const parsed = JSON.parse(responseRaw);
+
+    const script = parsed.script;
+    if (!script) {
+      throw new Error("No script in response");
+    }
+
+    // Update the idea with the generated script
+    const { error: updateError } = await supabase
+      .from("ideas")
+      .update({ script })
+      .eq("id", ideaId);
+
+    if (updateError) {
+      throw new Error(`Failed to save script: ${updateError.message}`);
+    }
+
+    await revalidateBusinessPaths(idea.business_id);
+
+    return { success: true, script };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("Error generating script:", error);
+    return { error: errorMessage };
+  }
+}
+
+// Generate an Underlord prompt for an existing idea (requires script to exist)
+export async function generateUnderlordPrompt(ideaId: string) {
+  const supabase = await createClient();
+
+  // Fetch the idea with its script and channels
+  const { data: idea, error: ideaError } = await supabase
+    .from("ideas")
+    .select(`
+      id,
+      title,
+      description,
+      script,
+      business_id,
+      idea_channels (
+        channel_id,
+        business_distribution_channels (
+          platform,
+          custom_label
+        )
+      )
+    `)
+    .eq("id", ideaId)
+    .single();
+
+  if (ideaError || !idea) {
+    console.error("Error fetching idea:", ideaError);
+    return { error: "Idea not found" };
+  }
+
+  // Require script to exist before generating Underlord prompt
+  if (!idea.script) {
+    return { error: "Script must be generated before creating Underlord prompt" };
+  }
+
+  // Fetch business context
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("name, strategy_prompt")
+    .eq("id", idea.business_id)
+    .single();
+
+  if (businessError || !business) {
+    console.error("Error fetching business:", businessError);
+    return { error: "Business not found" };
+  }
+
+  // Build the prompt from template
+  const promptTemplate = await readFile(
+    path.join(process.cwd(), "prompts", "generate-underlord-prompt.md"),
+    "utf-8"
+  );
+
+  // Format channels section
+  const channelsSection =
+    idea.idea_channels && idea.idea_channels.length > 0
+      ? (idea.idea_channels as unknown as Array<{
+          channel_id: string;
+          business_distribution_channels: {
+            platform: string;
+            custom_label: string | null;
+          } | null;
+        }>)
+          .map((ic) => {
+            const channel = ic.business_distribution_channels;
+            if (!channel) return null;
+            return channel.custom_label || channel.platform;
+          })
+          .filter(Boolean)
+          .join(", ")
+      : "No specific channels";
+
+  // Build the final prompt
+  const prompt = promptTemplate
+    .replace("{{ideaTitle}}", idea.title || "Untitled")
+    .replace("{{ideaDescription}}", idea.description || "No description")
+    .replace("{{channels}}", channelsSection)
+    .replace("{{script}}", idea.script)
+    .replace("{{businessName}}", business.name || "Unnamed Business")
+    .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.");
+
+  let responseRaw = "";
+
+  try {
+    // Call ChatGPT
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    responseRaw = completion.choices[0]?.message?.content || "";
+    const parsed = JSON.parse(responseRaw);
+
+    const underlordPrompt = parsed.underlordPrompt;
+    if (!underlordPrompt) {
+      throw new Error("No underlordPrompt in response");
+    }
+
+    // Update the idea with the generated Underlord prompt
+    const { error: updateError } = await supabase
+      .from("ideas")
+      .update({ prompt: underlordPrompt })
+      .eq("id", ideaId);
+
+    if (updateError) {
+      throw new Error(`Failed to save Underlord prompt: ${updateError.message}`);
+    }
+
+    await revalidateBusinessPaths(idea.business_id);
+
+    return { success: true, underlordPrompt };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("Error generating Underlord prompt:", error);
     return { error: errorMessage };
   }
 }

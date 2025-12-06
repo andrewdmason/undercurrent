@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { genai, IMAGE_MODEL, getAspectRatioForPlatform } from "@/lib/gemini";
+import { genai, IMAGE_MODEL, THUMBNAIL_ASPECT_RATIO } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
 
 interface TalentMatch {
@@ -110,38 +110,6 @@ export async function generateThumbnail(ideaId: string, businessId: string) {
     return { error: "Idea not found" };
   }
 
-  // Fetch the idea's channels to determine aspect ratio
-  const { data: ideaChannels } = await supabase
-    .from("idea_channels")
-    .select(
-      `
-      channel_id,
-      business_distribution_channels!inner (
-        platform
-      )
-    `
-    )
-    .eq("idea_id", ideaId)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  // Determine aspect ratio from first channel, default to portrait
-  let aspectRatio = "9:16";
-  if (ideaChannels && ideaChannels.length > 0) {
-    // Supabase returns nested relations as arrays
-    const channel = ideaChannels[0] as unknown as {
-      channel_id: string;
-      business_distribution_channels: { platform: string } | { platform: string }[] | null;
-    };
-    const channelData = channel.business_distribution_channels;
-    const platform = Array.isArray(channelData) 
-      ? channelData[0]?.platform 
-      : channelData?.platform;
-    if (platform) {
-      aspectRatio = getAspectRatioForPlatform(platform);
-    }
-  }
-
   // Detect talent mentioned in the idea
   const talentMatches = await detectTalentInIdea(
     businessId,
@@ -157,7 +125,7 @@ export async function generateThumbnail(ideaId: string, businessId: string) {
     .single();
 
   // Build the generation prompt
-  let promptText = `Create a compelling video thumbnail image. The aspect ratio should be ${aspectRatio}.
+  let promptText = `Create a compelling video thumbnail image. The aspect ratio should be ${THUMBNAIL_ASPECT_RATIO} (landscape).
 
 Title: ${idea.title}
 ${idea.description ? `Description: ${idea.description}` : ""}
