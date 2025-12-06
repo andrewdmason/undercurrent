@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { generateUniqueSlug } from "@/lib/utils";
+import { generateUniqueSlug, normalizeUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +52,7 @@ export function CreateBusinessForm() {
       .insert({
         name,
         slug,
-        url: url || null,
+        url: normalizeUrl(url) || null,
         created_by: user.id,
       })
       .select()
@@ -118,8 +118,8 @@ export function CreateBusinessForm() {
             <Label htmlFor="url">Website URL</Label>
             <Input
               id="url"
-              type="url"
-              placeholder="https://example.com"
+              type="text"
+              placeholder="example.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />

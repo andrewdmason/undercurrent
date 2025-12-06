@@ -25,6 +25,27 @@ export function generateSlug(name: string): string {
  * @param existingSlugs - Array of existing slugs to check against
  * @param excludeSlug - Optional slug to exclude from collision check (for updates)
  */
+/**
+ * Normalizes a URL by adding https:// if no protocol is specified
+ * e.g., "example.com" → "https://example.com"
+ *       "www.example.com" → "https://www.example.com"
+ *       "http://example.com" → "http://example.com" (unchanged)
+ */
+export function normalizeUrl(url: string): string {
+  if (!url) return url;
+
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  // If it already has a protocol, return as-is
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Add https:// prefix
+  return `https://${trimmed}`;
+}
+
 export function generateUniqueSlug(
   baseName: string,
   existingSlugs: string[],
