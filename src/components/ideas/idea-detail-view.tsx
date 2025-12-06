@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, MessageSquare, Send, Sparkles, MoreHorizontal } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, MessageSquare, Send, Sparkles, MoreHorizontal, ListTodo, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,45 @@ interface IdeaDetailViewProps {
   businessSlug: string;
 }
 
+interface ChecklistTask {
+  id: string;
+  name: string;
+  estimatedMinutes: number | null;
+  completed: boolean;
+  details: string;
+}
+
+const PLACEHOLDER_TASKS: ChecklistTask[] = [
+  {
+    id: "1",
+    name: "Approve script",
+    estimatedMinutes: 5,
+    completed: false,
+    details: "Review the AI-generated script for accuracy, tone, and brand voice. Make any necessary edits before recording begins.",
+  },
+  {
+    id: "2",
+    name: "Record Andrew",
+    estimatedMinutes: 30,
+    completed: false,
+    details: "Schedule recording session with Andrew. Ensure proper lighting, audio setup, and have the script ready on a teleprompter or notes.",
+  },
+  {
+    id: "3",
+    name: "Create with Underlord",
+    estimatedMinutes: 2,
+    completed: false,
+    details: "Use the Underlord AI to generate the initial video edit from the recorded footage. Copy the prompt and paste it into Underlord.",
+  },
+  {
+    id: "4",
+    name: "Final Polish in Descript",
+    estimatedMinutes: 10,
+    completed: false,
+    details: "Import the Underlord output into Descript for final edits. Add captions, trim dead air, and apply any brand overlays or end cards.",
+  },
+];
+
 export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -41,9 +80,33 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   const [isCanceling, setIsCanceling] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [underlordModalOpen, setUnderlordModalOpen] = useState(false);
+  const [tasks, setTasks] = useState<ChecklistTask[]>(PLACEHOLDER_TASKS);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Derive selectedTask from tasks array to keep modal in sync
+  const selectedTask = selectedTaskId 
+    ? tasks.find(t => t.id === selectedTaskId) ?? null 
+    : null;
 
   const hasImage = !!idea.image_url;
   const showShimmer = isGeneratingThumbnail || !hasImage;
+
+  const toggleTask = (taskId: string) => {
+    setTasks(prev => 
+      prev.map(task => 
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
+  };
+
+  const totalEstimatedMinutes = tasks.reduce(
+    (sum, task) => sum + (task.estimatedMinutes || 0),
+    0
+  );
+
+  const completedMinutes = tasks
+    .filter(task => task.completed)
+    .reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0);
 
   const handleGenerateThumbnail = async () => {
     if (isGeneratingThumbnail) return;
@@ -279,47 +342,130 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
               )}
             </div>
 
-            {/* Right Column - Chat Placeholder */}
-            <div className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
-                <MessageSquare className="h-4 w-4 text-[var(--grey-400)]" />
-                <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                  Refine with AI
-                </h4>
-                <span className="ml-auto text-[10px] font-medium text-[var(--grey-400)] bg-[var(--grey-100)] px-2 py-0.5 rounded">
-                  Coming soon
-                </span>
-              </div>
-
-              {/* Empty State */}
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                  <MessageSquare className="h-6 w-6 text-[var(--grey-300)]" />
+            {/* Right Column - Checklist & Chat */}
+            <div className="flex flex-col gap-4">
+              {/* Production Checklist */}
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                {/* Checklist Header */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
+                  <ListTodo className="h-4 w-4 text-[var(--grey-400)]" />
+                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                    Production Checklist
+                  </h4>
+                  <span className="ml-auto text-[10px] font-medium text-[var(--grey-400)] bg-[var(--grey-100)] px-2 py-0.5 rounded">
+                    Coming soon
+                  </span>
                 </div>
-                <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                  Chat with AI
-                </h3>
-                <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                  Soon you&apos;ll be able to refine your script and prompt through conversation.
-                </p>
+
+                {/* Task List */}
+                <div className="p-3 space-y-1">
+                  {tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-3 p-2 rounded-md hover:bg-[var(--grey-50)] transition-colors cursor-pointer"
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      {/* Checkbox */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTask(task.id);
+                        }}
+                        className={cn(
+                          "flex-shrink-0 w-4 h-4 rounded border transition-colors",
+                          task.completed
+                            ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
+                            : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
+                        )}
+                      >
+                        {task.completed && (
+                          <Check className="h-4 w-4 text-white p-0.5" />
+                        )}
+                      </button>
+
+                      {/* Task Name */}
+                      <span
+                        className={cn(
+                          "flex-1 text-sm transition-colors",
+                          task.completed
+                            ? "text-[var(--grey-400)] line-through"
+                            : "text-[var(--grey-800)]"
+                        )}
+                      >
+                        {task.name}
+                      </span>
+
+                      {/* Time Estimate */}
+                      {task.estimatedMinutes && (
+                        <span className="text-xs text-[var(--grey-400)] tabular-nums">
+                          {task.estimatedMinutes} min
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total Time Footer */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--grey-50)]">
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--grey-500)]">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Total time</span>
+                  </div>
+                  <span className="text-xs font-medium text-[var(--grey-700)] tabular-nums">
+                    {completedMinutes > 0 && (
+                      <span className="text-[var(--grey-400)] line-through mr-1.5">
+                        {totalEstimatedMinutes} min
+                      </span>
+                    )}
+                    {completedMinutes > 0
+                      ? `${totalEstimatedMinutes - completedMinutes} min remaining`
+                      : `${totalEstimatedMinutes} min`}
+                  </span>
+                </div>
               </div>
 
-              {/* Disabled Input */}
-              <div className="p-3 border-t border-[var(--border)]">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] opacity-50">
-                  <input
-                    type="text"
-                    placeholder="Ask AI to refine the script..."
-                    disabled
-                    className="flex-1 bg-transparent text-sm text-[var(--grey-400)] placeholder:text-[var(--grey-300)] outline-none cursor-not-allowed"
-                  />
-                  <button
-                    disabled
-                    className="p-1.5 rounded-md text-[var(--grey-300)] cursor-not-allowed"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+              {/* Chat Placeholder */}
+              <div className="flex-1 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
+                  <MessageSquare className="h-4 w-4 text-[var(--grey-400)]" />
+                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                    Refine with AI
+                  </h4>
+                  <span className="ml-auto text-[10px] font-medium text-[var(--grey-400)] bg-[var(--grey-100)] px-2 py-0.5 rounded">
+                    Coming soon
+                  </span>
+                </div>
+
+                {/* Empty State */}
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                    <MessageSquare className="h-6 w-6 text-[var(--grey-300)]" />
+                  </div>
+                  <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                    Chat with AI
+                  </h3>
+                  <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                    Soon you&apos;ll be able to refine your script and prompt through conversation.
+                  </p>
+                </div>
+
+                {/* Disabled Input */}
+                <div className="p-3 border-t border-[var(--border)]">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] opacity-50">
+                    <input
+                      type="text"
+                      placeholder="Ask AI to refine the script..."
+                      disabled
+                      className="flex-1 bg-transparent text-sm text-[var(--grey-400)] placeholder:text-[var(--grey-300)] outline-none cursor-not-allowed"
+                    />
+                    <button
+                      disabled
+                      className="p-1.5 rounded-md text-[var(--grey-300)] cursor-not-allowed"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -376,6 +522,45 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 </pre>
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Details Modal */}
+      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTaskId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <button
+                onClick={() => selectedTask && toggleTask(selectedTask.id)}
+                className={cn(
+                  "flex-shrink-0 w-5 h-5 rounded border transition-colors",
+                  selectedTask?.completed
+                    ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
+                    : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
+                )}
+              >
+                {selectedTask?.completed && (
+                  <Check className="h-5 w-5 text-white p-0.5" />
+                )}
+              </button>
+              <span className={cn(
+                selectedTask?.completed && "line-through text-[var(--grey-400)]"
+              )}>
+                {selectedTask?.name}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-4">
+            {selectedTask?.estimatedMinutes && (
+              <div className="flex items-center gap-2 text-sm text-[var(--grey-500)]">
+                <Clock className="h-4 w-4" />
+                <span>Estimated time: {selectedTask.estimatedMinutes} minutes</span>
+              </div>
+            )}
+            <p className="text-sm text-[var(--grey-600)] leading-relaxed">
+              {selectedTask?.details}
+            </p>
           </div>
         </DialogContent>
       </Dialog>
