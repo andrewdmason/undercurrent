@@ -5,6 +5,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { generateIdeas } from "@/lib/actions/ideas";
+import { GenerateIdeasModal } from "./generate-ideas-modal";
 
 interface GenerateIdeasButtonProps {
   businessId: string;
@@ -12,12 +13,14 @@ interface GenerateIdeasButtonProps {
 
 export function GenerateIdeasButton({ businessId }: GenerateIdeasButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleClick = async () => {
+  const handleGenerate = async (customInstructions?: string) => {
     setIsGenerating(true);
+    setIsModalOpen(false);
 
     try {
-      const result = await generateIdeas(businessId);
+      const result = await generateIdeas(businessId, customInstructions);
 
       if (result.error) {
         toast.error("Failed to generate ideas", {
@@ -39,18 +42,31 @@ export function GenerateIdeasButton({ businessId }: GenerateIdeasButtonProps) {
   };
 
   return (
-    <Button onClick={handleClick} disabled={isGenerating} className="gap-2">
-      {isGenerating ? (
-        <>
-          <Loader2 size={16} className="animate-spin" />
-          Generating...
-        </>
-      ) : (
-        <>
-          <Sparkles size={16} />
-          Generate Ideas
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        onClick={() => setIsModalOpen(true)}
+        disabled={isGenerating}
+        className="gap-2"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 size={16} className="animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            <Sparkles size={16} />
+            Generate Ideas
+          </>
+        )}
+      </Button>
+
+      <GenerateIdeasModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onGenerate={handleGenerate}
+        isGenerating={isGenerating}
+      />
+    </>
   );
 }
