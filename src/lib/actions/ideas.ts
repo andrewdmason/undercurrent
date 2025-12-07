@@ -26,7 +26,7 @@ async function revalidateBusinessPaths(businessId: string) {
 
   if (business?.slug) {
     revalidatePath(`/${business.slug}`);
-    revalidatePath(`/${business.slug}/queue`);
+    revalidatePath(`/${business.slug}/create`);
     revalidatePath(`/${business.slug}/published`);
   }
   return business?.slug;

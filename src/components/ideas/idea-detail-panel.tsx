@@ -105,7 +105,7 @@ export function IdeaDetailPanel({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea added to production queue");
+        toast.success("Idea moved to Create");
         onClose();
         router.refresh();
       }
@@ -126,7 +126,7 @@ export function IdeaDetailPanel({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea removed from queue");
+        toast.success("Idea removed from Create");
         onClose();
         router.refresh();
       }
@@ -246,7 +246,7 @@ export function IdeaDetailPanel({
                     <Button
                       size="sm"
                       onClick={() => onPublish?.()}
-                      className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
+                      className="bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110"
                     >
                       <Play className="h-4 w-4 mr-1.5" />
                       Publish

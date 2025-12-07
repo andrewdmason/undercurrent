@@ -57,7 +57,7 @@ export function GenerateIdeasModal({
 
         <div className="py-2">
           <Textarea
-            placeholder={`e.g., "Only generate ideas for Andrew" or "Focus on Instagram Reels" or "Just give me one idea"`}
+            placeholder={`e.g., "Only generate ideas for Andrew" or "Focus on Instagram" or "Just give me one idea"`}
             value={customInstructions}
             onChange={(e) => setCustomInstructions(e.target.value)}
             disabled={isGenerating}

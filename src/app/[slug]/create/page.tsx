@@ -5,7 +5,7 @@ import { IdeaWithChannels } from "@/lib/types";
 import { ChannelFilter } from "@/components/ideas/channel-filter";
 import { getChannelSlug } from "@/lib/utils";
 
-interface QueuePageProps {
+interface CreatePageProps {
   params: Promise<{
     slug: string;
   }>;
@@ -14,7 +14,7 @@ interface QueuePageProps {
   }>;
 }
 
-export default async function QueuePage({ params, searchParams }: QueuePageProps) {
+export default async function CreatePage({ params, searchParams }: CreatePageProps) {
   const { slug } = await params;
   const { channels: channelFilter } = await searchParams;
   const selectedSlugs = channelFilter ? channelFilter.split(",") : [];
@@ -96,9 +96,9 @@ export default async function QueuePage({ params, searchParams }: QueuePageProps
     : allIdeas;
 
   return (
-    <div className="flex-1 flex flex-col bg-[var(--grey-25)]">
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
       {/* Feed Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto">
         <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-4 mb-6">
@@ -123,7 +123,7 @@ export default async function QueuePage({ params, searchParams }: QueuePageProps
           {typedIdeas.length > 0 ? (
             <IdeasFeed ideas={typedIdeas} businessId={business.id} businessSlug={business.slug} viewType="queue" />
           ) : (
-            <QueueEmptyState />
+            <CreateEmptyState />
           )}
         </div>
       </div>
@@ -131,7 +131,7 @@ export default async function QueuePage({ params, searchParams }: QueuePageProps
   );
 }
 
-function QueueEmptyState() {
+function CreateEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--grey-50)] mb-6">
@@ -156,10 +156,9 @@ function QueueEmptyState() {
         Nothing to create yet
       </h3>
       <p className="text-sm text-[var(--grey-400)] text-center max-w-sm">
-        Accept ideas from your inbox to start creating.
+        Accept ideas from New to start creating.
       </p>
     </div>
   );
 }
-
 

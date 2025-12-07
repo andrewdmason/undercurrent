@@ -25,11 +25,11 @@ interface Business {
 }
 
 interface AppHeaderProps {
-  inboxCount?: number;
-  queueCount?: number;
+  newCount?: number;
+  createCount?: number;
 }
 
-export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
+export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
@@ -94,22 +94,25 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
   // Navigation tabs
   const tabs = slug ? [
     {
-      name: "Inbox",
-      href: `/${slug}`,
-      count: inboxCount,
-      isActive: pathname === `/${slug}`,
+      name: "New",
+      href: `/${slug}/new`,
+      count: newCount,
+      isActive: pathname === `/${slug}/new` || pathname === `/${slug}`,
+      badgeVariant: "strong" as const,
     },
     {
       name: "Create",
-      href: `/${slug}/queue`,
-      count: queueCount,
-      isActive: pathname === `/${slug}/queue`,
+      href: `/${slug}/create`,
+      count: createCount,
+      isActive: pathname === `/${slug}/create`,
+      badgeVariant: "default" as const,
     },
     {
       name: "Published",
       href: `/${slug}/published`,
       count: null,
       isActive: pathname === `/${slug}/published`,
+      badgeVariant: "default" as const,
     },
   ] : [];
 
@@ -145,7 +148,7 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
                 key={tab.name}
                 href={tab.href}
                 className={cn(
-                  "relative flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                   "hover:bg-[var(--grey-50-a)]",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
                   tab.isActive
@@ -159,8 +162,12 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
                     className={cn(
                       "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold tabular-nums",
                       tab.isActive
-                        ? "bg-[var(--grey-800)] text-white"
-                        : "bg-[var(--grey-200)] text-[var(--grey-600)]"
+                        ? tab.badgeVariant === "strong"
+                          ? "bg-[#0d7377] text-white"
+                          : "bg-[var(--grey-800)] text-white"
+                        : tab.badgeVariant === "strong"
+                          ? "bg-[#0d7377] text-white"
+                          : "bg-[var(--grey-200)] text-[var(--grey-600)]"
                     )}
                   >
                     {tab.count > 99 ? "99+" : tab.count}
@@ -176,7 +183,7 @@ export function AppHeader({ inboxCount = 0, queueCount = 0 }: AppHeaderProps) {
           {mounted && currentBusiness ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 font-medium">
+                <Button variant="ghost" className="gap-2 text-sm font-medium">
                   <span className="max-w-[200px] truncate">
                     {currentBusiness.name}
                   </span>

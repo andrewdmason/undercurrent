@@ -26,7 +26,7 @@ export default async function BusinessLayout({
   }
 
   // Get counts for tabs
-  const [{ count: inboxCount }, { count: queueCount }] = await Promise.all([
+  const [{ count: newCount }, { count: createCount }] = await Promise.all([
     supabase
       .from("ideas")
       .select("*", { count: "exact", head: true })
@@ -40,12 +40,12 @@ export default async function BusinessLayout({
   ]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader 
-        inboxCount={inboxCount ?? 0} 
-        queueCount={queueCount ?? 0} 
+        newCount={newCount ?? 0} 
+        createCount={createCount ?? 0} 
       />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 min-h-0 flex flex-col">{children}</main>
     </div>
   );
 }

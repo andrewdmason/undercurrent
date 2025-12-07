@@ -91,8 +91,8 @@ export interface IdeaWithChannels extends Idea {
 // Platform options for distribution channels
 export const DISTRIBUTION_PLATFORMS = [
   { value: "tiktok", label: "TikTok" },
-  { value: "instagram_reels", label: "Instagram Reels" },
-  { value: "youtube_shorts", label: "YouTube Shorts" },
+  { value: "instagram_reels", label: "Instagram" },
+  { value: "youtube_shorts", label: "Shorts" },
   { value: "snapchat_spotlight", label: "Snapchat Spotlight" },
   { value: "youtube", label: "YouTube" },
   { value: "linkedin", label: "LinkedIn" },

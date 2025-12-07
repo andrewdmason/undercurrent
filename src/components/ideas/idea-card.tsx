@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
@@ -11,6 +11,7 @@ import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { acceptIdea, cancelIdea } from "@/lib/actions/ideas";
 import { ImageShimmer } from "@/components/ui/shimmer";
+import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
 import { Button } from "@/components/ui/button";
 import { ViewType } from "./ideas-feed";
 
@@ -102,9 +103,23 @@ export function IdeaCard({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
   const hasImage = !!idea.image_url;
   const showShimmer = isLoadingImage || isGenerating || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
+  
+  // Check if description is truncated
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (el) {
+      setIsTruncated(el.scrollHeight > el.clientHeight);
+    }
+  }, [idea.description]);
+  
+  const isClickable = viewType !== "inbox";
 
   const handleGenerateThumbnail = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -136,7 +151,7 @@ export function IdeaCard({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea added to production queue");
+        toast.success("Idea moved to Create");
         router.refresh();
       }
     } catch (error) {
@@ -162,7 +177,7 @@ export function IdeaCard({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea removed from queue");
+        toast.success("Idea removed from Create");
         router.refresh();
       }
     } catch (error) {
@@ -180,22 +195,22 @@ export function IdeaCard({
 
   return (
     <article
-      onClick={onClick}
+      onClick={isClickable ? onClick : undefined}
       className={cn(
-        "group cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
+        "group rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
         "overflow-hidden transition-all duration-150",
-        "hover:shadow-md",
+        isClickable && "cursor-pointer hover:shadow-md",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]"
       )}
-      tabIndex={0}
-      onKeyDown={(e) => {
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick();
         }
-      }}
-      role="button"
-      aria-label={`View details for ${idea.title}`}
+      } : undefined}
+      role={isClickable ? "button" : undefined}
+      aria-label={isClickable ? `View details for ${idea.title}` : undefined}
     >
       {/* Image - Fixed 4:3 aspect ratio container, crops tall images */}
       <div className="relative w-full aspect-video overflow-hidden bg-[var(--grey-100)]">
@@ -241,23 +256,43 @@ export function IdeaCard({
           </div>
         )}
 
-        {/* Regenerate/Generate button on hover (hide while actively generating or polling) */}
-        {!isLoadingImage && !isGenerating && (
-          <button
-            onClick={handleGenerateThumbnail}
-            className={cn(
-              "absolute bottom-3 right-3 p-2 rounded-md",
-              "bg-black/60 text-white opacity-0 group-hover:opacity-100",
-              "transition-opacity duration-200",
-              "hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-white/50"
-            )}
-            title={hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
-            aria-label={hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+        {/* Expand image button - top left on hover */}
+        {hasImage && !showShimmer && (
+          <ImageExpandButton
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxOpen(true);
+            }}
+          />
         )}
+
+        {/* Generate/Regenerate button */}
+        <button
+          onClick={handleGenerateThumbnail}
+          disabled={isGenerating}
+          className={cn(
+            "absolute bottom-3 right-3 p-2 rounded-md transition-opacity duration-200",
+            "focus:outline-none focus:ring-2 focus:ring-white/50",
+            "disabled:cursor-not-allowed",
+            hasImage && !isGenerating
+              ? "bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-black/80"
+              : "bg-[var(--grey-800)] text-white opacity-100"
+          )}
+          title={isGenerating ? "Generating..." : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
+          aria-label={isGenerating ? "Generating thumbnail" : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
+        >
+          <RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
+        </button>
       </div>
+
+      {/* Image Lightbox */}
+      {hasImage && (
+        <ImageLightbox
+          src={idea.image_url!}
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+        />
+      )}
 
       {/* Content */}
       <div className="p-4">
@@ -269,9 +304,28 @@ export function IdeaCard({
 
         {/* Description */}
         {idea.description && (
-          <p className="text-sm text-[var(--grey-400)] tracking-[-0.001px] leading-relaxed line-clamp-2 mb-4">
-            {idea.description}
-          </p>
+          <div className="mb-4">
+            <p 
+              ref={descriptionRef}
+              className={cn(
+                "text-sm text-[var(--grey-400)] tracking-[-0.001px] leading-relaxed",
+                !isExpanded && "line-clamp-2"
+              )}
+            >
+              {idea.description}
+            </p>
+            {viewType === "inbox" && isTruncated && !isExpanded && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                }}
+                className="text-sm text-[var(--grey-600)] hover:text-[var(--grey-800)] mt-1 transition-colors underline"
+              >
+                more
+              </button>
+            )}
+          </div>
         )}
 
         {/* Footer: Actions + Timestamp (hidden for queue view) */}

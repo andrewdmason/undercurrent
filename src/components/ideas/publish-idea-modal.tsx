@@ -146,7 +146,7 @@ export function PublishIdeaModal({
           <Button
             onClick={handlePublish}
             disabled={isSubmitting}
-            className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
+            className="bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110"
           >
             {isSubmitting ? "Publishing..." : "Mark as Published"}
           </Button>

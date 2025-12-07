@@ -1,17 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { IdeasFeed, IdeasEmptyState } from "@/components/ideas/ideas-feed";
+import { GenerateIdeasButton } from "@/components/ideas/generate-ideas-button";
 import { IdeaWithChannels } from "@/lib/types";
-import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 
-interface IdeaDetailPageProps {
+interface NewIdeasPageProps {
   params: Promise<{
     slug: string;
-    ideaId: string;
   }>;
 }
 
-export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
-  const { slug, ideaId } = await params;
+export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
+  const { slug } = await params;
   const supabase = await createClient();
 
   // Verify user is authenticated
@@ -43,8 +43,8 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
-  // Fetch the idea with its channels
-  const { data: idea } = await supabase
+  // Fetch NEW ideas for this business, newest first
+  const { data: ideas } = await supabase
     .from("ideas")
     .select(`
       *,
@@ -58,21 +58,12 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         )
       )
     `)
-    .eq("id", ideaId)
     .eq("business_id", business.id)
-    .single();
-
-  if (!idea) {
-    notFound();
-  }
-
-  // Only allow access to accepted ideas (create items)
-  if (idea.status !== "accepted") {
-    redirect(`/${slug}/create`);
-  }
+    .eq("status", "new")
+    .order("created_at", { ascending: false });
 
   // Transform the data to flatten channel info
-  const typedIdea: IdeaWithChannels = {
+  const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
     ...idea,
     channels: (idea.idea_channels || [])
       .map((ic: { video_url: string | null; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
@@ -82,14 +73,35 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         } : null
       )
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
-  };
+  }));
 
   return (
-    <IdeaDetailView 
-      idea={typedIdea} 
-      businessId={business.id}
-      businessSlug={slug}
-    />
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
+      {/* Feed Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[540px] mx-auto px-4 py-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-lg font-medium text-[var(--grey-800)] tracking-[-0.25px]">
+                New Ideas
+              </h1>
+              <p className="text-sm text-[var(--grey-400)] mt-0.5">
+                Review and accept ideas to start creating
+              </p>
+            </div>
+            <GenerateIdeasButton businessId={business.id} />
+          </div>
+
+          {/* Feed */}
+          {typedIdeas.length > 0 ? (
+            <IdeasFeed ideas={typedIdeas} businessId={business.id} viewType="inbox" />
+          ) : (
+            <IdeasEmptyState />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -51,7 +51,11 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
       router.push(`/${businessSlug}/ideas/${idea.id}`);
       return;
     }
-    // For inbox/published, open the modal
+    // For inbox (New), don't do anything on card click
+    if (viewType === "inbox") {
+      return;
+    }
+    // For published, open the modal
     setSelectedIdea(idea);
     setPanelOpen(true);
   };
