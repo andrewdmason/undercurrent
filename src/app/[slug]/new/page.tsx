@@ -95,7 +95,7 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} businessId={business.id} viewType="inbox" />
+            <IdeasFeed ideas={typedIdeas} businessId={business.id} businessSlug={business.slug} viewType="inbox" />
           ) : (
             <IdeasEmptyState />
           )}
