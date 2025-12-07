@@ -28,6 +28,7 @@ import { ImageShimmer } from "@/components/ui/shimmer";
 import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
+import { ScriptDisplay } from "./script-display";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
@@ -520,9 +521,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 ) : currentScript ? (
                   // Script content
                   <div className="flex-1 min-h-0 overflow-auto p-4">
-                    <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
-                      {currentScript}
-                    </pre>
+                    <ScriptDisplay script={currentScript} />
                   </div>
                 ) : (
                   // Empty state
