@@ -196,7 +196,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                   className="cursor-pointer"
                 >
                   <Settings className="mr-2 h-4 w-4" />
-                  Configure Video Strategy
+                  Project Settings
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem 
@@ -210,7 +210,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Building2 className="mr-2 h-4 w-4" />
-                    Switch Business
+                    Switch Project
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-[200px]">
                     {businesses.map((business) => (

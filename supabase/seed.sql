@@ -84,7 +84,7 @@ insert into public.businesses (
   'ttl',
   'https://www.tabletoplibrary.com',
   'Tabletop Library is a 24-table board game club in Berkeley, California opening in early 2026. We''re membership-based with over 800 games in our collection, including rare and out-of-print titles. We host events most days, have an AI concierge to help organize pickup games, and feature a small retail section, coffee, pastries, and a back room with 500 vinyl records.',
-  E'# Video Marketing Strategy for Tabletop Library\n\n## Distribution Channels\n- **Instagram Reels** (3x/week): Quick tips, unboxings, event highlights\n- **TikTok** (5x/week): Trending sounds, quick reviews, behind-the-scenes\n- **YouTube Shorts** (2x/week): Longer reviews, staff picks, tutorials\n\n## Content Themes\n1. **Product Highlights**: Unboxings, new arrivals, staff picks, rare game spotlights\n2. **Educational**: How to play, game comparisons, buying guides\n3. **Community**: Event recaps, member spotlights, game night vibes\n4. **Behind the Scenes**: Club life, collection curation, staff banter\n5. **Berkeley/Local**: Local community tie-ins, neighborhood features\n\n## Style & Tone\n- Warm, welcoming, and inclusive - like a living room\n- Knowledgeable but not gatekeep-y\n- "Board games are having a moment" energy\n- Genuine enthusiasm, not corporate\n- Slight humor, board game puns welcome\n\n## Production Values\n- Natural lighting when possible\n- iPhone 15 Pro for most content\n- Lapel mics for talking-head videos\n- Clean backgrounds showing game shelves and cozy club atmosphere\n- Consistent thumbnail style with brand colors\n\n## Brand Elements\n- Logo watermark in corner\n- Cozy, living room aesthetic\n- End cards with membership info and location\n\n## Key Messages\n- Membership-based model (not pay-per-hour)\n- 800+ game collection including rare titles\n- AI concierge for organizing pickup games\n- Events most days\n- "Your mythical third place"',
+  E'## Content Themes\n\n1. **Product Highlights**: Unboxings, new arrivals, staff picks, rare game spotlights\n\n2. **Educational**: How to play, game comparisons, buying guides\n\n3. **Community**: Event recaps, member spotlights, game night vibes\n\n4. **Behind the Scenes**: Club life, collection curation, staff banter\n\n5. **Berkeley/Local**: Local community tie-ins, neighborhood features\n\n\n## Style & Tone\n\n- Warm, welcoming, and inclusive - like a living room\n- Knowledgeable but not gatekeep-y\n- "Board games are having a moment" energy\n- Genuine enthusiasm, not corporate\n- Slight humor, board game puns welcome\n\n\n## Production Values\n\n- Natural lighting when possible\n- iPhone 15 Pro for most content\n- Lapel mics for talking-head videos\n- Clean backgrounds showing game shelves and cozy club atmosphere\n- Consistent thumbnail style with brand colors\n\n\n## Brand Elements\n\n- Logo watermark in corner\n- Cozy, living room aesthetic\n- End cards with membership info and location\n\n\n## Key Messages\n\n- Membership-based model (not pay-per-hour)\n- 800+ game collection including rare titles\n- AI concierge for organizing pickup games\n- Events most days\n- "Your mythical third place"',
   '["tabletoplibrary.com/events", "boardgamegeek.com/hotness", "new board game releases 2025", "board game cafe marketing", "Berkeley local events"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now(),
@@ -105,10 +105,10 @@ insert into public.business_users (
 );
 
 -- ============================================
--- SAMPLE TALENT FOR TESTING
+-- SAMPLE CHARACTERS FOR TESTING
 -- ============================================
 
-insert into public.business_talent (
+insert into public.business_characters (
   id,
   business_id,
   name,
@@ -122,7 +122,7 @@ insert into public.business_talent (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Andrew Mason',
     'Partner and co-founder. Brings entrepreneurial energy and a passion for making board games accessible to everyone. Primary on-camera host for longer-form content.',
-    '/seed/talent/andrew.png',
+    '/seed/characters/andrew.png',
     now(),
     now()
   ),
@@ -131,7 +131,7 @@ insert into public.business_talent (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Nabeel Hyatt',
     'Partner and co-founder. Deep gaming industry experience and expertise in community building. Great for strategic content and industry commentary.',
-    '/seed/talent/nabeel.png',
+    '/seed/characters/nabeel.png',
     now(),
     now()
   ),
@@ -140,7 +140,7 @@ insert into public.business_talent (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Vera Devera',
     'General Manager. The face of day-to-day operations at Tabletop Library. Expert at teaching games and creating welcoming experiences for members.',
-    '/seed/talent/vera.png',
+    '/seed/characters/vera.png',
     now(),
     now()
   );
@@ -207,7 +207,7 @@ insert into public.business_distribution_channels (
 
 -- ============================================
 -- SAMPLE IDEAS FOR TESTING
--- Ideas utilize on-screen talent and target specific distribution channels
+-- Ideas utilize characters and target specific distribution channels
 -- Statuses: new (inbox), accepted (queue), published, rejected, canceled
 -- ============================================
 
@@ -471,8 +471,8 @@ insert into public.business_users (
   now()
 );
 
--- Mason Family Talent
-insert into public.business_talent (
+-- Mason Family Characters
+insert into public.business_characters (
   id,
   business_id,
   name,
@@ -486,7 +486,7 @@ insert into public.business_talent (
     'f1a2b3c4-d5e6-7890-abcd-000000000001',
     'Andrew',
     'Dad, 45. Anchors the household with entrepreneurial energy and a passion for turning ideas into experiments. Brings tech knowledge, strategic thinking, and an infectious curiosity. Primary host for project builds and tech content.',
-    '/seed/talent/andrew.png',
+    '/seed/characters/andrew.png',
     now(),
     now()
   ),
@@ -495,7 +495,7 @@ insert into public.business_talent (
     'f1a2b3c4-d5e6-7890-abcd-000000000001',
     'Jenny',
     'Mom. Co-anchor of the Mason crew, balancing ambitious professional life with deep family engagement. Brings warmth, organization, and grounded perspective. Great for travel content and family coordination moments.',
-    '/seed/talent/jenny.jpg',
+    '/seed/characters/jenny.jpg',
     now(),
     now()
   ),
@@ -504,7 +504,7 @@ insert into public.business_talent (
     'f1a2b3c4-d5e6-7890-abcd-000000000001',
     'Sebastian',
     'Older son, 11. Thoughtful, athletic, and intellectually hungry. Pitches in Little League, uses BlastMotion sensors to analyze his swing, reads Hitchhiker''s Guide for fun, and dives deep into topics like hominids. Can talk baseball mechanics one minute and story structure the next.',
-    '/seed/talent/sebastian.jpg',
+    '/seed/characters/sebastian.jpg',
     now(),
     now()
   ),
@@ -513,7 +513,7 @@ insert into public.business_talent (
     'f1a2b3c4-d5e6-7890-abcd-000000000001',
     'Oscar',
     'Younger son, 9. Imaginative, energetic, and drawn to collaborative play. Loves coding games with Dad, exploring co-op videogames like It Takes Two, and shows early instincts for storytelling and strategy. Brings creative chaos and unexpected perspectives.',
-    '/seed/talent/oscar.jpg',
+    '/seed/characters/oscar.jpg',
     now(),
     now()
   );
