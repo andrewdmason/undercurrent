@@ -91,7 +91,7 @@ export default async function PublishedPage({ params }: PublishedPageProps) {
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} businessId={business.id} viewType="published" />
+            <IdeasFeed ideas={typedIdeas} businessId={business.id} businessSlug={business.slug} viewType="published" />
           ) : (
             <PublishedEmptyState />
           )}

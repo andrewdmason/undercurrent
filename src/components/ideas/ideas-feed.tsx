@@ -78,6 +78,7 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
             key={idea.id}
             idea={idea}
             businessId={businessId}
+            businessSlug={businessSlug}
             onClick={() => handleCardClick(idea)}
             isLoadingImage={!idea.image_url}
             viewType={viewType}
@@ -91,6 +92,7 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
       <IdeaDetailPanel
         idea={selectedIdea}
         businessId={businessId}
+        businessSlug={businessSlug}
         open={panelOpen}
         onClose={handleClosePanel}
         viewType={viewType}

@@ -13,11 +13,13 @@ import { acceptIdea, cancelIdea } from "@/lib/actions/ideas";
 import { ImageShimmer } from "@/components/ui/shimmer";
 import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ViewType } from "./ideas-feed";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
   businessId: string;
+  businessSlug?: string;
   onClick: () => void;
   isLoadingImage?: boolean;
   viewType: ViewType;
@@ -92,7 +94,8 @@ export function getChannelLabel(platform: string, customLabel?: string | null): 
 
 export function IdeaCard({ 
   idea, 
-  businessId, 
+  businessId,
+  businessSlug,
   onClick, 
   isLoadingImage = false, 
   viewType,
@@ -143,6 +146,26 @@ export function IdeaCard({
 
   const handleAccept = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Shift+click goes directly to create view
+    if (e.shiftKey && businessSlug) {
+      setIsAccepting(true);
+      try {
+        const result = await acceptIdea(idea.id);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          router.push(`/${businessSlug}/ideas/${idea.id}`);
+        }
+      } catch (error) {
+        toast.error("Failed to accept idea");
+        console.error(error);
+      } finally {
+        setIsAccepting(false);
+      }
+      return;
+    }
+    
     if (isAccepting) return;
 
     setIsAccepting(true);
@@ -151,7 +174,12 @@ export function IdeaCard({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea moved to Create");
+        toast.success("Idea accepted!", {
+          action: businessSlug ? {
+            label: "View",
+            onClick: () => router.push(`/${businessSlug}/ideas/${idea.id}`),
+          } : undefined,
+        });
         router.refresh();
       }
     } catch (error) {
@@ -344,15 +372,22 @@ export function IdeaCard({
                     <X className="h-4 w-4 mr-1.5" />
                     Reject
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleAccept}
-                    disabled={isAccepting}
-                    className="bg-[var(--green-500)] hover:bg-[var(--green-500)]/90 text-white"
-                  >
-                    <Check className="h-4 w-4 mr-1.5" />
-                    {isAccepting ? "Adding..." : "Accept"}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        onClick={handleAccept}
+                        disabled={isAccepting}
+                        className="bg-[var(--green-500)] hover:bg-[var(--green-500)]/90 text-white"
+                      >
+                        <Check className="h-4 w-4 mr-1.5" />
+                        {isAccepting ? "Adding..." : "Accept"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Shift+click to accept & open</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </>
               )}
               {viewType === "published" && (
