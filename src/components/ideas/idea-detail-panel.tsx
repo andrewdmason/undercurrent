@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { ImageShimmer } from "@/components/ui/shimmer";
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { ViewType } from "./ideas-feed";
+import { ScriptDisplay } from "./script-display";
 
 interface IdeaDetailPanelProps {
   idea: IdeaWithChannels | null;
@@ -324,9 +325,7 @@ export function IdeaDetailPanel({
                   </Button>
                 </div>
                 <div className="flex-1 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] p-4 overflow-auto min-h-0">
-                  <pre className="text-xs text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
-                    {idea.script}
-                  </pre>
+                  <ScriptDisplay script={idea.script} />
                 </div>
               </div>
             )}
