@@ -51,9 +51,21 @@ CREATE POLICY "Users can delete characters for their businesses"
 
 -- ============================================
 -- RENAME STORAGE BUCKET
+-- Cannot simply rename because of foreign key constraint from storage.objects
+-- Must: create new bucket, move objects, delete old bucket
 -- ============================================
 
-UPDATE storage.buckets SET id = 'character-images', name = 'character-images' WHERE id = 'talent-images';
+-- Create new bucket with same settings as the old one
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+SELECT 'character-images', 'character-images', public, file_size_limit, allowed_mime_types
+FROM storage.buckets WHERE id = 'talent-images'
+ON CONFLICT (id) DO NOTHING;
+
+-- Move all objects from old bucket to new bucket
+UPDATE storage.objects SET bucket_id = 'character-images' WHERE bucket_id = 'talent-images';
+
+-- Delete the old bucket (now empty)
+DELETE FROM storage.buckets WHERE id = 'talent-images';
 
 -- ============================================
 -- DROP OLD STORAGE POLICIES
