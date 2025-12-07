@@ -21,8 +21,8 @@ Generate unique video ideas based on the context below. By default, generate exa
 **Content Inspiration Sources:**
 {{contentSources}}
 
-**On-Screen Talent:**
-{{talent}}
+**Characters:**
+{{characters}}
 
 **Distribution Channels:**
 {{distributionChannels}}
@@ -55,7 +55,7 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
 
 2. **Match the Voice**: Use the business's tone and style. A law firm and a skateboard shop need very different approaches.
 
-3. **Consider the Talent**: If talent information is provided, tailor ideas to their strengths and personality.
+3. **Consider the Characters**: If character information is provided, tailor ideas to their strengths and personality.
 
 4. **Learn from Ratings**: 
    - Ideas marked with 👍 indicate preferred styles/topics - generate more like these

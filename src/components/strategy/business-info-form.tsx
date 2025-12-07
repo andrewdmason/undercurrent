@@ -143,7 +143,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
     <div className="rounded-lg border border-[var(--border)] bg-white p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-[var(--grey-800)]">
-          Business Info
+          Project Info
         </h2>
         <SaveStatusIndicator status={saveStatus} />
       </div>
@@ -151,13 +151,13 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-xs text-[var(--grey-600)]">
-            Business Name
+            Name
           </Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Enter business name"
+            placeholder="Enter project name"
             className="h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]"
           />
         </div>
@@ -171,7 +171,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
               id="slug"
               value={slug}
               onChange={(e) => handleSlugChange(e.target.value)}
-              placeholder="my-business"
+              placeholder="my-project"
               className={cn(
                 "h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2] pr-8",
                 slugError && "ring-2 ring-[#f72736] focus-visible:ring-[#f72736]"
@@ -201,7 +201,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
             <p className="text-xs text-[#f72736]">{slugError}</p>
           ) : (
             <p className="text-xs text-[var(--grey-400)]">
-              Your business URL: undercurrent.app/{slug || "my-business"}
+              Your project URL: undercurrent.app/{slug || "my-project"}
             </p>
           )}
         </div>
@@ -225,13 +225,13 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
             htmlFor="description"
             className="text-xs text-[var(--grey-600)]"
           >
-            Business Description
+            Description
           </Label>
           <textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe your business..."
+            placeholder="Describe your project..."
             rows={3}
             className={cn(
               "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",

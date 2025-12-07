@@ -30,7 +30,7 @@ export interface Business {
   created_by: string | null;
 }
 
-export interface BusinessTalent {
+export interface BusinessCharacter {
   id: string;
   business_id: string;
   name: string;

@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Business, BusinessTalent, DistributionChannel } from "@/lib/types";
+import { Business, BusinessCharacter, DistributionChannel } from "@/lib/types";
 import { BusinessInfoForm } from "@/components/strategy/business-info-form";
-import { TalentSection } from "@/components/strategy/talent-section";
+import { CharactersSection } from "@/components/strategy/characters-section";
 import { ContentSourcesSection } from "@/components/strategy/content-sources-section";
 import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
 import { StrategyPromptSection } from "@/components/strategy/strategy-prompt-section";
@@ -46,9 +46,9 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     notFound();
   }
 
-  // Get talent for this business
-  const { data: talent } = await supabase
-    .from("business_talent")
+  // Get characters for this business
+  const { data: characters } = await supabase
+    .from("business_characters")
     .select("*")
     .eq("business_id", business.id)
     .order("created_at", { ascending: true });
@@ -61,7 +61,7 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     .order("created_at", { ascending: true });
 
   const typedBusiness = business as Business;
-  const typedTalent = (talent || []) as BusinessTalent[];
+  const typedCharacters = (characters || []) as BusinessCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
 
   return (
@@ -86,8 +86,8 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
               {/* Business Info Section */}
               <BusinessInfoForm business={typedBusiness} />
 
-              {/* Talent Section */}
-              <TalentSection businessId={business.id} talent={typedTalent} />
+              {/* Characters Section */}
+              <CharactersSection businessId={business.id} characters={typedCharacters} />
 
               {/* Content Sources Section */}
               <ContentSourcesSection

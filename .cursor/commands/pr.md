@@ -1,1 +1,1 @@
-Commit, create a PR, merge the PR, and cleanup the branch.
+Make sure the app builds locally. Then commit, create a PR, merge the PR, and cleanup the branch.

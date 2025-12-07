@@ -24,8 +24,8 @@ Write a complete script for the video idea below. The script should be detailed 
 **Video Marketing Strategy:**
 {{strategyPrompt}}
 
-**On-Screen Talent:**
-{{talent}}
+**Characters:**
+{{characters}}
 
 ## Output Format
 
@@ -58,7 +58,7 @@ Return a JSON object with a single `script` field containing the complete script
    - YouTube (long-form): More depth, can breathe more
    - LinkedIn: Professional tone, thought leadership angle
 
-5. **Talent Consideration**: If talent info is provided, write in their voice and play to their strengths
+5. **Character Consideration**: If character info is provided, write in their voice and play to their strengths
 
 ## Guidelines
 

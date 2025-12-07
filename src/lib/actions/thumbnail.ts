@@ -4,36 +4,36 @@ import { createClient } from "@/lib/supabase/server";
 import { genai, IMAGE_MODEL, THUMBNAIL_ASPECT_RATIO } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
 
-interface TalentMatch {
+interface CharacterMatch {
   name: string;
   imageUrl: string;
 }
 
 /**
- * Detect talent mentioned in the idea's title and description
- * Returns talent with their image URLs
+ * Detect characters mentioned in the idea's title and description
+ * Returns characters with their image URLs
  */
-async function detectTalentInIdea(
+async function detectCharactersInIdea(
   businessId: string,
   title: string,
   description: string | null
-): Promise<TalentMatch[]> {
+): Promise<CharacterMatch[]> {
   const supabase = await createClient();
 
-  // Fetch all talent for this business
-  const { data: talent } = await supabase
-    .from("business_talent")
+  // Fetch all characters for this business
+  const { data: characters } = await supabase
+    .from("business_characters")
     .select("name, image_url")
     .eq("business_id", businessId);
 
-  if (!talent || talent.length === 0) {
+  if (!characters || characters.length === 0) {
     return [];
   }
 
   const textToSearch = `${title} ${description || ""}`.toLowerCase();
-  const matches: TalentMatch[] = [];
+  const matches: CharacterMatch[] = [];
 
-  for (const person of talent) {
+  for (const person of characters) {
     if (!person.image_url) continue;
 
     // Check if any part of the name appears in the text
@@ -110,8 +110,8 @@ export async function generateThumbnail(ideaId: string, businessId: string) {
     return { error: "Idea not found" };
   }
 
-  // Detect talent mentioned in the idea
-  const talentMatches = await detectTalentInIdea(
+  // Detect characters mentioned in the idea
+  const characterMatches = await detectCharactersInIdea(
     businessId,
     idea.title,
     idea.description
@@ -138,17 +138,17 @@ Style guidelines:
 - Professional but approachable
 - DO NOT include any text or titles in the image`;
 
-  if (talentMatches.length > 0) {
-    promptText += `\n\nThe following people should appear in the thumbnail: ${talentMatches.map((t) => t.name).join(", ")}. Use the provided reference photos to accurately depict them.`;
+  if (characterMatches.length > 0) {
+    promptText += `\n\nThe following people should appear in the thumbnail: ${characterMatches.map((c) => c.name).join(", ")}. Use the provided reference photos to accurately depict them.`;
   }
 
   try {
     // Build the content parts for Gemini
     const contents: (string | { inlineData: { data: string; mimeType: string } })[] = [promptText];
 
-    // Add talent images if we have any
-    for (const talent of talentMatches) {
-      const imageData = await fetchImageAsBase64(talent.imageUrl);
+    // Add character images if we have any
+    for (const character of characterMatches) {
+      const imageData = await fetchImageAsBase64(character.imageUrl);
       if (imageData) {
         contents.push({
           inlineData: {

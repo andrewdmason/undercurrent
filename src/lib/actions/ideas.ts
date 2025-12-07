@@ -186,9 +186,9 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     return { error: "Business not found" };
   }
 
-  // Fetch business talent
-  const { data: talent } = await supabase
-    .from("business_talent")
+  // Fetch business characters
+  const { data: characters } = await supabase
+    .from("business_characters")
     .select("name, description")
     .eq("business_id", businessId);
 
@@ -213,13 +213,13 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     "utf-8"
   );
 
-  // Format talent section
-  const talentSection =
-    talent && talent.length > 0
-      ? talent
-          .map((t) => `- **${t.name}**: ${t.description || "No description"}`)
+  // Format characters section
+  const charactersSection =
+    characters && characters.length > 0
+      ? characters
+          .map((c) => `- **${c.name}**: ${c.description || "No description"}`)
           .join("\n")
-      : "No talent profiles configured.";
+      : "No character profiles configured.";
 
   // Format content sources section
   const contentSources = business.content_inspiration_sources;
@@ -277,7 +277,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
       business.strategy_prompt || "No video marketing strategy defined yet."
     )
     .replace("{{contentSources}}", sourcesSection)
-    .replace("{{talent}}", talentSection)
+    .replace("{{characters}}", charactersSection)
     .replace("{{distributionChannels}}", channelsSection)
     .replace("{{pastIdeas}}", pastIdeasSection);
 
@@ -479,9 +479,9 @@ export async function generateScript(ideaId: string) {
     return { error: "Business not found" };
   }
 
-  // Fetch talent
-  const { data: talent } = await supabase
-    .from("business_talent")
+  // Fetch characters
+  const { data: characters } = await supabase
+    .from("business_characters")
     .select("name, description")
     .eq("business_id", idea.business_id);
 
@@ -491,13 +491,13 @@ export async function generateScript(ideaId: string) {
     "utf-8"
   );
 
-  // Format talent section
-  const talentSection =
-    talent && talent.length > 0
-      ? talent
-          .map((t) => `- **${t.name}**: ${t.description || "No description"}`)
+  // Format characters section
+  const charactersSection =
+    characters && characters.length > 0
+      ? characters
+          .map((c) => `- **${c.name}**: ${c.description || "No description"}`)
           .join("\n")
-      : "No talent profiles configured.";
+      : "No character profiles configured.";
 
   // Format channels section  
   const channelsSection =
@@ -526,7 +526,7 @@ export async function generateScript(ideaId: string) {
     .replace("{{businessName}}", business.name || "Unnamed Business")
     .replace("{{businessDescription}}", business.description || "No description provided.")
     .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.")
-    .replace("{{talent}}", talentSection);
+    .replace("{{characters}}", charactersSection);
 
   let responseRaw = "";
 
