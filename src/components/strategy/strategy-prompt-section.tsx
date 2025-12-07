@@ -66,9 +66,9 @@ export function StrategyPromptSection({
         placeholder={`# Video Marketing Strategy
 
 ## Distribution Channels
-- Instagram Reels
+- Instagram
 - TikTok
-- YouTube Shorts
+- Shorts
 
 ## Content Themes
 - Product highlights

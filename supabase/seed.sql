@@ -427,3 +427,150 @@ insert into public.idea_channels (idea_id, channel_id, video_url) values
   -- Rare Games Spotlight (NEW): Instagram Reels + YouTube Shorts (collector content)
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null);
+
+-- ============================================
+-- THE MASON FAMILY HIJINKS - Second Test Business
+-- A family content channel for the Mason family
+-- ============================================
+
+-- Create the Mason Family business
+insert into public.businesses (
+  id,
+  name,
+  slug,
+  url,
+  description,
+  strategy_prompt,
+  content_inspiration_sources,
+  created_by,
+  created_at,
+  updated_at
+) values (
+  'f1a2b3c4-d5e6-7890-abcd-000000000001',
+  'The Mason Family Hijinks',
+  'mason-family',
+  'https://www.youtube.com/@masonfamilyhijinks',
+  'The Mason family is a tightly knit, high-energy Berkeley crew built around curiosity, creativity, and shared projects. Andrew and Jenny anchor the household—balancing ambitious professional lives with deep engagement in family activities. The family turns experiences into shared narratives through board-game clubs, tech side-projects, travel adventures, and whatever else captures their imagination. Sebastian (11) brings athletic intensity and intellectual curiosity, while Oscar (9) adds creative energy and storytelling instincts.',
+  E'# Video Marketing Strategy for The Mason Family Hijinks\n\n## Distribution Channels\n- **YouTube** (2x/week): Main long-form content, family adventures, project builds\n- **Instagram Reels** (4x/week): Behind-the-scenes, quick moments, family life\n- **TikTok** (5x/week): Trending formats, family comedy, relatable parenting\n- **YouTube Shorts** (3x/week): Cross-post best performing short content\n\n## Content Themes\n1. **Family Projects**: Building things together, coding projects, LEGO builds\n2. **Adventures**: Travel vlogs, hiking, exploring new places\n3. **Sports & Activities**: Little League, baseball analytics, family games\n4. **Educational**: Learning together, book discussions, curious exploration\n5. **Comedy**: Family dynamics, kid perspectives, relatable parenting moments\n6. **Behind the Scenes**: Real family life, routines, chaos and all\n\n## Style & Tone\n- Authentic and unscripted feeling\n- Curious and enthusiastic\n- Warm family dynamic, mutual support visible\n- Kids are real participants, not props\n- Balance of chaos and heartfelt moments\n\n## Production Values\n- Mix of polished and casual content\n- iPhone for most content, mirrorless for bigger productions\n- Good audio is priority (lapel mics for interviews)\n- Natural settings: home, yard, Berkeley locations\n\n## Key Messages\n- Families that explore together, grow together\n- Curiosity is contagious\n- Kids have valuable perspectives\n- Making memories through shared projects',
+  '["family vloggers 2025", "kid-friendly content ideas", "family youtube channel inspiration", "Berkeley family activities", "parent-child projects"]'::jsonb,
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  now(),
+  now()
+);
+
+-- Link user to Mason Family business
+insert into public.business_users (
+  id,
+  business_id,
+  user_id,
+  created_at
+) values (
+  'f2b3c4d5-e6f7-8901-bcde-000000000002',
+  'f1a2b3c4-d5e6-7890-abcd-000000000001',
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  now()
+);
+
+-- Mason Family Talent
+insert into public.business_talent (
+  id,
+  business_id,
+  name,
+  description,
+  image_url,
+  created_at,
+  updated_at
+) values
+  (
+    'f3c4d5e6-f7a8-9012-cdef-000000000003',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Andrew',
+    'Dad, 45. Anchors the household with entrepreneurial energy and a passion for turning ideas into experiments. Brings tech knowledge, strategic thinking, and an infectious curiosity. Primary host for project builds and tech content.',
+    '/seed/talent/andrew.png',
+    now(),
+    now()
+  ),
+  (
+    'f4d5e6f7-a8b9-0123-def0-000000000004',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Jenny',
+    'Mom. Co-anchor of the Mason crew, balancing ambitious professional life with deep family engagement. Brings warmth, organization, and grounded perspective. Great for travel content and family coordination moments.',
+    '/seed/talent/jenny.jpg',
+    now(),
+    now()
+  ),
+  (
+    'f5e6f7a8-b9c0-1234-ef01-000000000005',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Sebastian',
+    'Older son, 11. Thoughtful, athletic, and intellectually hungry. Pitches in Little League, uses BlastMotion sensors to analyze his swing, reads Hitchhiker''s Guide for fun, and dives deep into topics like hominids. Can talk baseball mechanics one minute and story structure the next.',
+    '/seed/talent/sebastian.jpg',
+    now(),
+    now()
+  ),
+  (
+    'f6f7a8b9-c0d1-2345-f012-000000000006',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Oscar',
+    'Younger son, 9. Imaginative, energetic, and drawn to collaborative play. Loves coding games with Dad, exploring co-op videogames like It Takes Two, and shows early instincts for storytelling and strategy. Brings creative chaos and unexpected perspectives.',
+    '/seed/talent/oscar.jpg',
+    now(),
+    now()
+  );
+
+-- Mason Family Distribution Channels
+insert into public.business_distribution_channels (
+  id,
+  business_id,
+  platform,
+  custom_label,
+  goal_count,
+  goal_cadence,
+  notes,
+  created_at,
+  updated_at
+) values
+  (
+    'fc1a2b3c-d4e5-6789-abcd-000000000010',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'youtube',
+    null,
+    2,
+    'weekly',
+    'Main channel for long-form family content: adventures, project builds, travel vlogs, and deeper storytelling.',
+    now(),
+    now()
+  ),
+  (
+    'fc2b3c4d-e5f6-7890-bcde-000000000011',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'instagram_reels',
+    null,
+    4,
+    'weekly',
+    'Behind-the-scenes moments, quick family clips, lifestyle content. Good for local Berkeley community connection.',
+    now(),
+    now()
+  ),
+  (
+    'fc3c4d5e-f6a7-8901-cdef-000000000012',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'tiktok',
+    null,
+    5,
+    'weekly',
+    'Trending formats, family comedy, relatable parenting content. Kids'' perspectives perform well here.',
+    now(),
+    now()
+  ),
+  (
+    'fc4d5e6f-a7b8-9012-def1-000000000013',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'youtube_shorts',
+    null,
+    3,
+    'weekly',
+    'Cross-post best performing TikTok/Reels content. Builds YouTube subscriber base.',
+    now(),
+    now()
+  );

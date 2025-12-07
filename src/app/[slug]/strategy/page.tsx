@@ -65,45 +65,49 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
 
   return (
-    <div className="pb-12">
-      {/* Header */}
-      <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          <h1 className="text-xl font-medium text-[var(--grey-800)] tracking-[-0.25px]">
-            Strategy Settings
-          </h1>
-          <p className="text-sm text-[var(--grey-400)] mt-0.5">
-            Configure your business details and video marketing strategy
-          </p>
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto">
+        <div className="pb-12">
+          {/* Header */}
+          <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+              <h1 className="text-xl font-medium text-[var(--grey-800)] tracking-[-0.25px]">
+                Strategy Settings
+              </h1>
+              <p className="text-sm text-[var(--grey-400)] mt-0.5">
+                Configure your business details and video marketing strategy
+              </p>
+            </div>
+          </div>
 
-      {/* Content */}
-      <div>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {/* Business Info Section */}
-          <BusinessInfoForm business={typedBusiness} />
+          {/* Content */}
+          <div>
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+              {/* Business Info Section */}
+              <BusinessInfoForm business={typedBusiness} />
 
-          {/* Talent Section */}
-          <TalentSection businessId={business.id} talent={typedTalent} />
+              {/* Talent Section */}
+              <TalentSection businessId={business.id} talent={typedTalent} />
 
-          {/* Content Sources Section */}
-          <ContentSourcesSection
-            businessId={business.id}
-            sources={typedBusiness.content_inspiration_sources || []}
-          />
+              {/* Content Sources Section */}
+              <ContentSourcesSection
+                businessId={business.id}
+                sources={typedBusiness.content_inspiration_sources || []}
+              />
 
-          {/* Distribution Channels Section */}
-          <DistributionChannelsSection
-            businessId={business.id}
-            channels={typedChannels}
-          />
+              {/* Distribution Channels Section */}
+              <DistributionChannelsSection
+                businessId={business.id}
+                channels={typedChannels}
+              />
 
-          {/* Strategy Prompt Section */}
-          <StrategyPromptSection
-            businessId={business.id}
-            strategyPrompt={typedBusiness.strategy_prompt || ""}
-          />
+              {/* Strategy Prompt Section */}
+              <StrategyPromptSection
+                businessId={business.id}
+                strategyPrompt={typedBusiness.strategy_prompt || ""}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

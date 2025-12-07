@@ -125,7 +125,7 @@ function PublishedEmptyState() {
         No published videos yet
       </h3>
       <p className="text-sm text-[var(--grey-400)] text-center max-w-sm">
-        Once you complete videos from your production queue, they&apos;ll appear here.
+        Once you complete videos from Create, they&apos;ll appear here.
       </p>
     </div>
   );

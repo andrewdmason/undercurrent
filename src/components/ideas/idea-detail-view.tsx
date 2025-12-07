@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IdeaWithChannels } from "@/lib/types";
@@ -24,6 +25,7 @@ import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateScript, generateUnderlordPrompt } from "@/lib/actions/ideas";
 import { cn } from "@/lib/utils";
 import { ImageShimmer } from "@/components/ui/shimmer";
+import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 
@@ -84,6 +86,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   const [isCanceling, setIsCanceling] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [underlordModalOpen, setUnderlordModalOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [tasks, setTasks] = useState<ChecklistTask[]>(PLACEHOLDER_TASKS);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -215,8 +218,8 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea removed from queue");
-        router.push(`/${businessSlug}/queue`);
+        toast.success("Idea removed from Create");
+        router.push(`/${businessSlug}/create`);
         router.refresh();
       }
     } catch (error) {
@@ -231,9 +234,9 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
     <div className="flex-1 flex flex-col bg-[var(--grey-25)] min-h-0">
       {/* Back Navigation & Title Bar */}
       <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
+        <div className="px-6 py-3 flex items-center gap-4">
           <Link
-            href={`/${businessSlug}/queue`}
+            href={`/${businessSlug}/create`}
             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[var(--grey-500)] hover:text-[var(--grey-800)] hover:bg-[var(--grey-50)] transition-colors flex-shrink-0"
             aria-label="Back to Create"
           >
@@ -273,6 +276,14 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 className="min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-1 shadow-[0px_8px_16px_rgba(0,0,0,0.12),0px_8px_8px_rgba(0,0,0,0.08)]"
               >
                 <DropdownMenuItem
+                  onClick={() => setPublishModalOpen(true)}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Publish
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
+                <DropdownMenuItem
                   onClick={handleCancel}
                   disabled={isCanceling}
                   className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
@@ -287,11 +298,11 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
       </div>
 
       {/* Main Content - Three Column Layout */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="grid grid-cols-3 gap-6 h-full">
-            {/* Left Column - Image & Info */}
-            <div className="flex flex-col gap-4">
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full px-6 py-6 flex flex-col">
+          <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '340px minmax(400px, 1fr) 300px' }}>
+            {/* Left Column - Image & Info (scrollable) */}
+            <div className="flex flex-col gap-4 overflow-auto">
 
               {/* Image */}
               <div className="group/image relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--grey-100)]">
@@ -310,6 +321,14 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 
                 {showShimmer && <ImageShimmer />}
 
+                {/* Expand image button - top left on hover */}
+                {hasImage && !showShimmer && (
+                  <ImageExpandButton
+                    onClick={() => setLightboxOpen(true)}
+                    className="opacity-0 group-hover/image:opacity-100"
+                  />
+                )}
+
                 {!showShimmer && (
                   <button
                     onClick={handleGenerateThumbnail}
@@ -327,33 +346,32 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 )}
               </div>
 
-              {/* Meta & Actions */}
-              <div className="flex items-center justify-between">
-                <Button
-                  size="sm"
-                  onClick={() => setPublishModalOpen(true)}
-                  className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
-                >
-                  <Play className="h-4 w-4 mr-1.5" />
-                  Publish
-                </Button>
-                {idea.channels && idea.channels.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    {idea.channels.map((channel) => (
-                      <span
-                        key={channel.id}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium",
-                          "bg-[var(--grey-50)] text-[var(--grey-600)]"
-                        )}
-                      >
-                        <PlatformIcon platform={channel.platform} />
-                        {getChannelLabel(channel.platform, channel.custom_label)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Image Lightbox */}
+              {hasImage && (
+                <ImageLightbox
+                  src={idea.image_url!}
+                  open={lightboxOpen}
+                  onOpenChange={setLightboxOpen}
+                />
+              )}
+
+              {/* Channel Tags */}
+              {idea.channels && idea.channels.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {idea.channels.map((channel) => (
+                    <span
+                      key={channel.id}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium",
+                        "bg-[var(--grey-50)] text-[var(--grey-600)]"
+                      )}
+                    >
+                      <PlatformIcon platform={channel.platform} />
+                      {getChannelLabel(channel.platform, channel.custom_label)}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Description */}
               {idea.description && (
@@ -366,93 +384,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                   </p>
                 </div>
               )}
-            </div>
 
-            {/* Middle Column - Script */}
-            <div className="flex flex-col min-h-0">
-              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Script Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Script
-                  </h4>
-                  {currentScript && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleGenerateScript}
-                        disabled={isGeneratingScript}
-                        className="h-7 px-2"
-                        title="Regenerate script"
-                      >
-                        <RefreshCw size={14} className={cn(isGeneratingScript && "animate-spin")} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopyScript}
-                        className="h-7 px-2"
-                        title={copiedScript ? "Copied" : "Copy"}
-                      >
-                        {copiedScript ? (
-                          <Check size={14} className="text-[#00975a]" />
-                        ) : (
-                          <Copy size={14} />
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Script Content or Empty/Loading State */}
-                {isGeneratingScript ? (
-                  // Loading state
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                      <Loader2 className="h-6 w-6 text-[#007bc2] animate-spin" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                      Generating Script
-                    </h3>
-                    <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                      AI is writing a ready-to-shoot script for this idea...
-                    </p>
-                  </div>
-                ) : currentScript ? (
-                  // Script content
-                  <div className="flex-1 overflow-auto p-4">
-                    <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
-                      {currentScript}
-                    </pre>
-                  </div>
-                ) : (
-                  // Empty state
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                      <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                      No Script Yet
-                    </h3>
-                    <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
-                      Generate a ready-to-shoot script based on this idea.
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={handleGenerateScript}
-                      className="bg-[#007bc2] hover:bg-[#006aa8] text-white"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                      Generate Script
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column - Checklist & Chat */}
-            <div className="flex flex-col gap-4">
               {/* Production Checklist */}
               <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
                 {/* Checklist Header */}
@@ -532,9 +464,94 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                   </span>
                 </div>
               </div>
+            </div>
 
+            {/* Middle Column - Script (full height) */}
+            <div className="flex flex-col min-h-0 h-full">
+              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                {/* Script Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                    Script
+                  </h4>
+                  {currentScript && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleGenerateScript}
+                        disabled={isGeneratingScript}
+                        className="h-7 px-2"
+                        title="Regenerate script"
+                      >
+                        <RefreshCw size={14} className={cn(isGeneratingScript && "animate-spin")} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyScript}
+                        className="h-7 px-2"
+                        title={copiedScript ? "Copied" : "Copy"}
+                      >
+                        {copiedScript ? (
+                          <Check size={14} className="text-[#00975a]" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Script Content or Empty/Loading State */}
+                {isGeneratingScript ? (
+                  // Loading state
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                      <Loader2 className="h-6 w-6 text-[#007bc2] animate-spin" />
+                    </div>
+                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                      Generating Script
+                    </h3>
+                    <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                      AI is writing a ready-to-shoot script for this idea...
+                    </p>
+                  </div>
+                ) : currentScript ? (
+                  // Script content
+                  <div className="flex-1 min-h-0 overflow-auto p-4">
+                    <pre className="text-sm text-[var(--grey-800)] whitespace-pre-wrap font-mono leading-relaxed">
+                      {currentScript}
+                    </pre>
+                  </div>
+                ) : (
+                  // Empty state
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                      <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                    </div>
+                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                      No Script Yet
+                    </h3>
+                    <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
+                      Generate a ready-to-shoot script based on this idea.
+                    </p>
+                    <button
+                      onClick={handleGenerateScript}
+                      className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-lg transition-all bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Generate Script
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column - Chat (full height) */}
+            <div className="flex flex-col min-h-0 h-full">
               {/* Chat Placeholder */}
-              <div className="flex-1 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
                   <MessageSquare className="h-4 w-4 text-[var(--grey-400)]" />
