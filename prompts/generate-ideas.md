@@ -15,11 +15,17 @@ Generate unique video ideas based on the context below. By default, generate exa
 **Business Description:**
 {{businessDescription}}
 
+**Business Objectives:**
+{{businessObjectives}}
+
 **Video Marketing Strategy:**
 {{strategyPrompt}}
 
-**Content Inspiration Sources:**
-{{contentSources}}
+**Topics:**
+{{topics}}
+
+**Topics to Avoid:**
+{{excludedTopics}}
 
 **Characters:**
 {{characters}}
@@ -53,31 +59,35 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
 
 1. **Be Specific**: Generic ideas like "product showcase" aren't helpful. Make each idea concrete and actionable.
 
-2. **Match the Voice**: Use the business's tone and style. A law firm and a skateboard shop need very different approaches.
+2. **Align with Business Objectives**: Every idea should support the business's goals. If they want sign-ups, include clear calls-to-action. If brand awareness, focus on shareability. Consider the target audience and success metrics when crafting ideas.
 
-3. **Consider the Characters**: If character information is provided, tailor ideas to their strengths and personality.
+3. **Respect Excluded Topics**: Never generate ideas related to topics listed under "Topics to Avoid". These are hard constraints the business has explicitly set.
 
-4. **Learn from Ratings**: 
+4. **Match the Voice**: Use the business's tone and style. A law firm and a skateboard shop need very different approaches.
+
+5. **Consider the Characters**: If character information is provided, tailor ideas to their strengths and personality.
+
+6. **Learn from Ratings**: 
    - Ideas marked with 👍 indicate preferred styles/topics - generate more like these
    - Ideas marked with 👎 indicate what to avoid - don't repeat similar angles
    - Pay attention to rating reasons when provided
 
-5. **Mix Formats**: Include variety across your ideas:
+7. **Mix Formats**: Include variety across your ideas:
    - Educational/how-to content
    - Behind-the-scenes/authentic moments  
    - Trending formats adapted to the brand
    - Customer-focused stories
    - Quick tips or listicles
 
-6. **Optimize for Each Platform**: Tailor ideas to the specific distribution channels provided. Consider:
+8. **Optimize for Each Platform**: Tailor ideas to the specific distribution channels provided. Consider:
    - TikTok/Reels/Shorts: Fast-paced, trend-aware, hook-heavy
    - YouTube (long-form): More depth, storytelling, can be educational
    - LinkedIn: Professional tone, industry insights, thought leadership
    - Each platform has different audience expectations and optimal lengths
 
-7. **Assign Channels Thoughtfully**: 
+9. **Assign Channels Thoughtfully**: 
    - Some ideas work across multiple platforms (crosspost-friendly) - assign all applicable channels
    - Some ideas are platform-specific (e.g., duets on TikTok, professional insights for LinkedIn) - assign only that channel
    - Consider the channel notes/strategy when provided
 
-8. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.
+10. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.

@@ -23,6 +23,7 @@ export interface Business {
   slug: string;
   url: string | null;
   description: string | null;
+  business_objectives: string | null;
   strategy_prompt: string | null;
   content_inspiration_sources: string[] | null;
   created_at: string;
@@ -76,6 +77,16 @@ export interface IdeaChannel {
   channel_id: string;
   video_url: string | null;
   created_at: string;
+}
+
+export interface BusinessTopic {
+  id: string;
+  business_id: string;
+  name: string;
+  description: string | null;
+  is_excluded: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Extended Idea type with channel information for display

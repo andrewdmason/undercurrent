@@ -22,6 +22,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
   const [slug, setSlug] = useState(business.slug);
   const [url, setUrl] = useState(business.url || "");
   const [description, setDescription] = useState(business.description || "");
+  const [businessObjectives, setBusinessObjectives] = useState(business.business_objectives || "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
 
   // Debounced save function
   const saveChanges = useCallback(
-    async (data: { name?: string; slug?: string; url?: string; description?: string }) => {
+    async (data: { name?: string; slug?: string; url?: string; description?: string; business_objectives?: string }) => {
       // Don't save if slug is taken or empty
       if (data.slug !== business.slug) {
         if (!data.slug || slugStatus === "taken" || slugStatus === "checking") {
@@ -77,6 +78,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
         slug: data.slug,
         url: normalizeUrl(data.url || "") || null,
         description: data.description || null,
+        business_objectives: data.business_objectives || null,
       });
 
       if (result.error) {
@@ -93,7 +95,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
         if (result.newSlug && result.newSlug !== business.slug) {
           // Update localStorage
           localStorage.setItem("undercurrent:lastBusinessSlug", result.newSlug);
-          router.push(`/${result.newSlug}/strategy`);
+          router.push(`/${result.newSlug}/settings`);
         }
       }
     },
@@ -104,40 +106,50 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
   useEffect(() => {
     if (name === business.name) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [name, slug, url, description, business.name, saveChanges]);
+  }, [name, slug, url, description, businessObjectives, business.name, saveChanges]);
 
   // Debounce effect for slug
   useEffect(() => {
     if (slug === business.slug) return;
     if (slugStatus !== "available") return; // Only save when slug is available
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [slug, name, url, description, business.slug, slugStatus, saveChanges]);
+  }, [slug, name, url, description, businessObjectives, business.slug, slugStatus, saveChanges]);
 
   // Debounce effect for url
   useEffect(() => {
     const originalUrl = business.url || "";
     if (url === originalUrl) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [url, name, slug, description, business.url, saveChanges]);
+  }, [url, name, slug, description, businessObjectives, business.url, saveChanges]);
 
   // Debounce effect for description
   useEffect(() => {
     const originalDesc = business.description || "";
     if (description === originalDesc) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [description, name, slug, url, business.description, saveChanges]);
+  }, [description, name, slug, url, businessObjectives, business.description, saveChanges]);
+
+  // Debounce effect for business objectives
+  useEffect(() => {
+    const originalObjectives = business.business_objectives || "";
+    if (businessObjectives === originalObjectives) return;
+    const timer = setTimeout(() => {
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [businessObjectives, name, slug, url, description, business.business_objectives, saveChanges]);
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-white p-6">
@@ -233,6 +245,28 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe your project..."
             rows={3}
+            className={cn(
+              "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
+              "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+              "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
+              "resize-none"
+            )}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="businessObjectives"
+            className="text-xs text-[var(--grey-600)]"
+          >
+            Business Objectives
+          </Label>
+          <textarea
+            id="businessObjectives"
+            value={businessObjectives}
+            onChange={(e) => setBusinessObjectives(e.target.value)}
+            placeholder="What are your goals for video marketing? (e.g., drive sign-ups, increase sales, build brand awareness)&#10;&#10;How will you measure success?&#10;&#10;Who is your target audience?"
+            rows={4}
             className={cn(
               "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
               "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",

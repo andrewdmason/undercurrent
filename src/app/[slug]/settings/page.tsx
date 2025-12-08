@@ -1,19 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Business, BusinessCharacter, DistributionChannel } from "@/lib/types";
-import { BusinessInfoForm } from "@/components/strategy/business-info-form";
-import { CharactersSection } from "@/components/strategy/characters-section";
-import { ContentSourcesSection } from "@/components/strategy/content-sources-section";
-import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
-import { StrategyPromptSection } from "@/components/strategy/strategy-prompt-section";
+import { Business, BusinessCharacter, DistributionChannel, BusinessTopic } from "@/lib/types";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 
-interface StrategyPageProps {
+interface SettingsPageProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function StrategyPage({ params }: StrategyPageProps) {
+export default async function SettingsPage({ params }: SettingsPageProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
@@ -60,54 +56,41 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
     .eq("business_id", business.id)
     .order("created_at", { ascending: true });
 
+  // Get topics for this business
+  const { data: topics } = await supabase
+    .from("business_topics")
+    .select("*")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: true });
+
   const typedBusiness = business as Business;
   const typedCharacters = (characters || []) as BusinessCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
+  const typedTopics = (topics || []) as BusinessTopic[];
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
       <div className="flex-1 overflow-y-auto">
         <div className="pb-12">
           {/* Header */}
-          <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
+          <div>
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
               <h1 className="text-xl font-medium text-[var(--grey-800)] tracking-[-0.25px]">
-                Strategy Settings
+                Project Settings
               </h1>
               <p className="text-sm text-[var(--grey-400)] mt-0.5">
-                Configure your business details and video marketing strategy
+                Configure your project details and video marketing strategy
               </p>
             </div>
           </div>
 
-          {/* Content */}
-          <div>
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-              {/* Business Info Section */}
-              <BusinessInfoForm business={typedBusiness} />
-
-              {/* Characters Section */}
-              <CharactersSection businessId={business.id} characters={typedCharacters} />
-
-              {/* Content Sources Section */}
-              <ContentSourcesSection
-                businessId={business.id}
-                sources={typedBusiness.content_inspiration_sources || []}
-              />
-
-              {/* Distribution Channels Section */}
-              <DistributionChannelsSection
-                businessId={business.id}
-                channels={typedChannels}
-              />
-
-              {/* Strategy Prompt Section */}
-              <StrategyPromptSection
-                businessId={business.id}
-                strategyPrompt={typedBusiness.strategy_prompt || ""}
-              />
-            </div>
-          </div>
+          {/* Tabs */}
+          <SettingsTabs
+            business={typedBusiness}
+            characters={typedCharacters}
+            channels={typedChannels}
+            topics={typedTopics}
+          />
         </div>
       </div>
     </div>

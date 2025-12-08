@@ -393,7 +393,7 @@ function ChannelCard({
             </span>
           )}
           {channel.notes && (
-            <p className="text-xs text-[var(--grey-400)] mt-0.5 truncate">
+            <p className="text-xs text-[var(--grey-400)] mt-0.5">
               {channel.notes}
             </p>
           )}
