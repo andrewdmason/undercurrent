@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, MessageSquare, Send, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2 } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
+import { ChatSidebar } from "./chat-sidebar";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
@@ -82,6 +83,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingUnderlordPrompt, setIsGeneratingUnderlordPrompt] = useState(false);
+  const [isScriptUpdating, setIsScriptUpdating] = useState(false);
   const [currentScript, setCurrentScript] = useState<string | null>(idea.script);
   const [currentPrompt, setCurrentPrompt] = useState<string | null>(idea.prompt);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -520,8 +522,14 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                   </div>
                 ) : currentScript ? (
                   // Script content
-                  <div className="flex-1 min-h-0 overflow-auto p-4">
+                  <div className={cn(
+                    "flex-1 min-h-0 overflow-auto p-4 relative",
+                    isScriptUpdating && "script-updating"
+                  )}>
                     <ScriptDisplay script={currentScript} />
+                    {isScriptUpdating && (
+                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
+                    )}
                   </div>
                 ) : (
                   // Empty state
@@ -549,50 +557,21 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
 
             {/* Right Column - Chat (full height) */}
             <div className="flex flex-col min-h-0 h-full">
-              {/* Chat Placeholder */}
-              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
-                  <MessageSquare className="h-4 w-4 text-[var(--grey-400)]" />
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Refine with AI
-                  </h4>
-                  <span className="ml-auto text-[10px] font-medium text-[var(--grey-400)] bg-[var(--grey-100)] px-2 py-0.5 rounded">
-                    Coming soon
-                  </span>
-                </div>
-
-                {/* Empty State */}
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                    <MessageSquare className="h-6 w-6 text-[var(--grey-300)]" />
-                  </div>
-                  <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                    Chat with AI
-                  </h3>
-                  <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                    Soon you&apos;ll be able to refine your script and prompt through conversation.
-                  </p>
-                </div>
-
-                {/* Disabled Input */}
-                <div className="p-3 border-t border-[var(--border)]">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] opacity-50">
-                    <input
-                      type="text"
-                      placeholder="Ask AI to refine the script..."
-                      disabled
-                      className="flex-1 bg-transparent text-sm text-[var(--grey-400)] placeholder:text-[var(--grey-300)] outline-none cursor-not-allowed"
-                    />
-                    <button
-                      disabled
-                      className="p-1.5 rounded-md text-[var(--grey-300)] cursor-not-allowed"
-                    >
-                      <Send className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ChatSidebar 
+                ideaId={idea.id} 
+                businessSlug={businessSlug}
+                onScriptUpdate={(script) => setCurrentScript(script)}
+                onIdeaRegenerate={() => router.refresh()}
+                onToolCallStart={(toolName) => {
+                  if (toolName === "update_script") setIsScriptUpdating(true);
+                }}
+                onToolCallEnd={(toolName) => {
+                  // Add minimum delay so shimmer is visible
+                  if (toolName === "update_script") {
+                    setTimeout(() => setIsScriptUpdating(false), 800);
+                  }
+                }}
+              />
             </div>
           </div>
         </div>

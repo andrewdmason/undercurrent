@@ -67,8 +67,16 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
 
       if (businessesData) {
         setBusinesses(businessesData);
-        const current = businessesData.find((b) => b.slug === slug);
-        setCurrentBusiness(current || null);
+        // If we have a slug, find that business; otherwise use first or last used
+        if (slug) {
+          const current = businessesData.find((b) => b.slug === slug);
+          setCurrentBusiness(current || null);
+        } else {
+          // Try to get last used business from localStorage, otherwise use first
+          const lastSlug = localStorage.getItem("undercurrent:lastBusinessSlug");
+          const lastBusiness = businessesData.find((b) => b.slug === lastSlug);
+          setCurrentBusiness(lastBusiness || businessesData[0] || null);
+        }
       }
     }
 
@@ -91,27 +99,28 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
     router.refresh();
   };
 
-  // Navigation tabs
-  const tabs = slug ? [
+  // Navigation tabs - use currentBusiness slug so they work on all pages
+  const navSlug = currentBusiness?.slug;
+  const tabs = navSlug ? [
     {
       name: "New",
-      href: `/${slug}/new`,
+      href: `/${navSlug}/new`,
       count: newCount,
-      isActive: pathname === `/${slug}/new` || pathname === `/${slug}`,
+      isActive: pathname === `/${navSlug}/new` || pathname === `/${navSlug}`,
       badgeVariant: "strong" as const,
     },
     {
       name: "Create",
-      href: `/${slug}/create`,
+      href: `/${navSlug}/create`,
       count: createCount,
-      isActive: pathname === `/${slug}/create`,
+      isActive: pathname === `/${navSlug}/create`,
       badgeVariant: "default" as const,
     },
     {
       name: "Published",
-      href: `/${slug}/published`,
+      href: `/${navSlug}/published`,
       count: null,
-      isActive: pathname === `/${slug}/published`,
+      isActive: pathname === `/${navSlug}/published`,
       badgeVariant: "default" as const,
     },
   ] : [];
@@ -141,7 +150,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
         </div>
 
         {/* Main Navigation */}
-        {slug && (
+        {navSlug && (
           <nav className="flex items-center gap-1">
             {tabs.map((tab) => (
               <Link
@@ -192,7 +201,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
                 <DropdownMenuItem 
-                  onClick={() => router.push(`/${slug}/strategy`)}
+                  onClick={() => router.push(`/${currentBusiness.slug}/strategy`)}
                   className="cursor-pointer"
                 >
                   <Settings className="mr-2 h-4 w-4" />
@@ -200,7 +209,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem 
-                  onClick={() => router.push(`/${slug}/team`)}
+                  onClick={() => router.push(`/${currentBusiness.slug}/team`)}
                   className="cursor-pointer"
                 >
                   <Users className="mr-2 h-4 w-4" />
@@ -220,7 +229,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                         className="cursor-pointer"
                       >
                         <span className="truncate flex-1">{business.name}</span>
-                        {business.slug === slug && (
+                        {business.slug === currentBusiness.slug && (
                           <Check className="ml-2 h-4 w-4 text-[#007bc2]" />
                         )}
                       </DropdownMenuItem>
