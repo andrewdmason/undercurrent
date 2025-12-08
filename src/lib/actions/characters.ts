@@ -37,7 +37,7 @@ export async function createCharacter(
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true, character };
 }
@@ -71,7 +71,7 @@ export async function updateCharacter(
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true };
 }
@@ -114,7 +114,7 @@ export async function deleteCharacter(characterId: string, businessId: string) {
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true };
 }
@@ -194,7 +194,7 @@ export async function uploadCharacterImage(
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true, imageUrl: publicUrl };
 }

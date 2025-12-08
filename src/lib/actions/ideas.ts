@@ -199,6 +199,16 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     .eq("business_id", businessId)
     .order("created_at", { ascending: true });
 
+  // Fetch topics (both included and excluded)
+  const { data: allTopics } = await supabase
+    .from("business_topics")
+    .select("name, description, is_excluded")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: true });
+
+  const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
+  const excludedTopics = allTopics?.filter((t) => t.is_excluded) || [];
+
   // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
     .from("ideas")
@@ -221,12 +231,33 @@ export async function generateIdeas(businessId: string, customInstructions?: str
           .join("\n")
       : "No character profiles configured.";
 
-  // Format content sources section
-  const contentSources = business.content_inspiration_sources;
-  const sourcesSection =
-    contentSources && Array.isArray(contentSources) && contentSources.length > 0
-      ? contentSources.map((s: string) => `- ${s}`).join("\n")
-      : "No content sources configured.";
+  // Format topics section (included topics)
+  const topicsSection =
+    includedTopics.length > 0
+      ? includedTopics
+          .map((t) => {
+            let line = `- **${t.name}**`;
+            if (t.description) {
+              line += `: ${t.description}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No topics configured.";
+
+  // Format excluded topics section
+  const excludedTopicsSection =
+    excludedTopics.length > 0
+      ? excludedTopics
+          .map((t) => {
+            let line = `- **${t.name}**`;
+            if (t.description) {
+              line += `: ${t.description}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No excluded topics.";
 
   // Format distribution channels section
   const channelsSection =
@@ -273,10 +304,15 @@ export async function generateIdeas(businessId: string, customInstructions?: str
       business.description || "No description provided."
     )
     .replace(
+      "{{businessObjectives}}",
+      business.business_objectives || "No business objectives defined yet."
+    )
+    .replace(
       "{{strategyPrompt}}",
       business.strategy_prompt || "No video marketing strategy defined yet."
     )
-    .replace("{{contentSources}}", sourcesSection)
+    .replace("{{topics}}", topicsSection)
+    .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace("{{characters}}", charactersSection)
     .replace("{{distributionChannels}}", channelsSection)
     .replace("{{pastIdeas}}", pastIdeasSection);

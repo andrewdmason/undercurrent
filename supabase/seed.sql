@@ -73,6 +73,7 @@ insert into public.businesses (
   slug,
   url,
   description,
+  business_objectives,
   strategy_prompt,
   content_inspiration_sources,
   created_by,
@@ -84,6 +85,7 @@ insert into public.businesses (
   'ttl',
   'https://www.tabletoplibrary.com',
   'Tabletop Library is a 24-table board game club in Berkeley, California opening in early 2026. We''re membership-based with over 800 games in our collection, including rare and out-of-print titles. We host events most days, have an AI concierge to help organize pickup games, and feature a small retail section, coffee, pastries, and a back room with 500 vinyl records.',
+  E'## Goals\n\n- **Primary**: Drive founding membership sign-ups before launch (target: 200 founding members)\n- **Secondary**: Build brand awareness in the Berkeley/Oakland board game community\n- **Long-term**: Establish Tabletop Library as THE place for board games in the East Bay\n\n## Success Metrics\n\n- Email list sign-ups from video CTAs\n- Website traffic from social platforms\n- Engagement rate (comments, shares, saves)\n- Founding member conversions attributed to video content\n\n## Target Audience\n\n- **Primary**: Board game enthusiasts in Berkeley/Oakland (25-45 years old)\n- **Secondary**: Young professionals looking for social activities beyond bars\n- **Tertiary**: Families looking for wholesome entertainment options\n\nOur ideal member is someone who owns 10+ board games, attends game nights with friends, and is looking for a dedicated space to play and discover new games.',
   E'## Content Themes\n\n1. **Product Highlights**: Unboxings, new arrivals, staff picks, rare game spotlights\n\n2. **Educational**: How to play, game comparisons, buying guides\n\n3. **Community**: Event recaps, member spotlights, game night vibes\n\n4. **Behind the Scenes**: Club life, collection curation, staff banter\n\n5. **Berkeley/Local**: Local community tie-ins, neighborhood features\n\n\n## Style & Tone\n\n- Warm, welcoming, and inclusive - like a living room\n- Knowledgeable but not gatekeep-y\n- "Board games are having a moment" energy\n- Genuine enthusiasm, not corporate\n- Slight humor, board game puns welcome\n\n\n## Production Values\n\n- Natural lighting when possible\n- iPhone 15 Pro for most content\n- Lapel mics for talking-head videos\n- Clean backgrounds showing game shelves and cozy club atmosphere\n- Consistent thumbnail style with brand colors\n\n\n## Brand Elements\n\n- Logo watermark in corner\n- Cozy, living room aesthetic\n- End cards with membership info and location\n\n\n## Key Messages\n\n- Membership-based model (not pay-per-hour)\n- 800+ game collection including rare titles\n- AI concierge for organizing pickup games\n- Events most days\n- "Your mythical third place"',
   '["tabletoplibrary.com/events", "boardgamegeek.com/hotness", "new board game releases 2025", "board game cafe marketing", "Berkeley local events"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -440,6 +442,7 @@ insert into public.businesses (
   slug,
   url,
   description,
+  business_objectives,
   strategy_prompt,
   content_inspiration_sources,
   created_by,
@@ -451,6 +454,7 @@ insert into public.businesses (
   'mason-family',
   'https://www.youtube.com/@masonfamilyhijinks',
   'The Mason family is a tightly knit, high-energy Berkeley crew built around curiosity, creativity, and shared projects. Andrew and Jenny anchor the household—balancing ambitious professional lives with deep engagement in family activities. The family turns experiences into shared narratives through board-game clubs, tech side-projects, travel adventures, and whatever else captures their imagination. Sebastian (11) brings athletic intensity and intellectual curiosity, while Oscar (9) adds creative energy and storytelling instincts.',
+  E'## Goals\n\n- **Primary**: Document our family adventures and create lasting memories\n- **Secondary**: Build a community of like-minded families\n- **Long-term**: Grow the YouTube channel to 50K subscribers and potentially monetize\n\n## Success Metrics\n\n- YouTube subscriber growth\n- Watch time and average view duration\n- Comment engagement from families\n- Kids'' enthusiasm to keep creating content together\n\n## Target Audience\n\n- **Primary**: Parents (30-45) looking for family activity inspiration\n- **Secondary**: Other families with kids in similar age ranges (8-12)\n- **Tertiary**: Grandparents and extended family keeping up with the kids\n\nOur ideal viewer is a parent who wants authentic, non-performative family content that gives them ideas for activities with their own kids.',
   E'# Video Marketing Strategy for The Mason Family Hijinks\n\n## Distribution Channels\n- **YouTube** (2x/week): Main long-form content, family adventures, project builds\n- **Instagram Reels** (4x/week): Behind-the-scenes, quick moments, family life\n- **TikTok** (5x/week): Trending formats, family comedy, relatable parenting\n- **YouTube Shorts** (3x/week): Cross-post best performing short content\n\n## Content Themes\n1. **Family Projects**: Building things together, coding projects, LEGO builds\n2. **Adventures**: Travel vlogs, hiking, exploring new places\n3. **Sports & Activities**: Little League, baseball analytics, family games\n4. **Educational**: Learning together, book discussions, curious exploration\n5. **Comedy**: Family dynamics, kid perspectives, relatable parenting moments\n6. **Behind the Scenes**: Real family life, routines, chaos and all\n\n## Style & Tone\n- Authentic and unscripted feeling\n- Curious and enthusiastic\n- Warm family dynamic, mutual support visible\n- Kids are real participants, not props\n- Balance of chaos and heartfelt moments\n\n## Production Values\n- Mix of polished and casual content\n- iPhone for most content, mirrorless for bigger productions\n- Good audio is priority (lapel mics for interviews)\n- Natural settings: home, yard, Berkeley locations\n\n## Key Messages\n- Families that explore together, grow together\n- Curiosity is contagious\n- Kids have valuable perspectives\n- Making memories through shared projects',
   '["family vloggers 2025", "kid-friendly content ideas", "family youtube channel inspiration", "Berkeley family activities", "parent-child projects"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -571,6 +575,161 @@ insert into public.business_distribution_channels (
     3,
     'weekly',
     'Cross-post best performing TikTok/Reels content. Builds YouTube subscriber base.',
+    now(),
+    now()
+  );
+
+-- ============================================
+-- SAMPLE TOPICS FOR TESTING
+-- Topics to cover and topics to avoid for idea generation
+-- ============================================
+
+insert into public.business_topics (
+  id,
+  business_id,
+  name,
+  description,
+  is_excluded,
+  created_at,
+  updated_at
+) values
+  -- Tabletop Library: Topics to Cover
+  (
+    '01a2b3c4-d4e5-6789-abcd-ef1234567890',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Upcoming Events',
+    'Visit tabletoplibrary.com/events and make videos that promote upcoming events, tournaments, and game nights.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '02b3c4d5-e5f6-7890-bcde-f12345678901',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'New Game Arrivals',
+    'Highlight new games added to our 800+ collection. Check BGG hotness for trending titles.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '03c4d5e6-f6a7-8901-cdef-123456789012',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Membership Benefits',
+    'Explain what members get: unlimited play, event access, AI concierge, rare games, etc.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '04d5e6f7-a7b8-9012-def1-234567890123',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Game Teaching',
+    'Tutorials and how-to-play videos for popular games. Vera is our expert teacher.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '05e6f7a8-b8c9-0123-ef12-345678901234',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Berkeley Local',
+    'Tie-ins with the Berkeley community, local events, neighborhood features.',
+    false,
+    now(),
+    now()
+  ),
+  -- Tabletop Library: Topics to AVOID
+  (
+    '06f7a8b9-c9d0-1234-f123-456789012345',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Politics',
+    'Avoid anything that could be seen as partisan or politically divisive.',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '07a8b9c0-d0e1-2345-a234-567890123456',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Competitor Criticism',
+    'Don''t mention or criticize other board game cafes or competitors by name.',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '08b9c0d1-e1f2-3456-b345-678901234567',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Pricing Details',
+    'Don''t discuss specific membership pricing in videos - direct people to the website instead.',
+    true,
+    now(),
+    now()
+  ),
+  
+  -- Mason Family: Topics to Cover
+  (
+    '09c0d1e2-f2a3-4567-c456-789012345678',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Family Projects',
+    'Building things together: coding projects, LEGO builds, DIY crafts, home improvement.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '0a0d1e2f-f3a4-5678-d567-890123456789',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Sebastian''s Baseball',
+    'Little League games, swing analysis with BlastMotion, baseball mechanics, sports tech.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '0b1e2f3a-a4b5-6789-e678-901234567890',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Travel Adventures',
+    'Family trips, exploring new places, travel vlogs, adventure activities.',
+    false,
+    now(),
+    now()
+  ),
+  (
+    '0c2f3a4b-b5c6-7890-f789-012345678901',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Kids'' Perspectives',
+    'Let Sebastian and Oscar share their thoughts, opinions, and ideas. Their voices matter.',
+    false,
+    now(),
+    now()
+  ),
+  -- Mason Family: Topics to AVOID
+  (
+    '0d3a4b5c-c6d7-8901-a890-123456789012',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'School Details',
+    'Don''t mention specific school names, teachers, or classmates for privacy reasons.',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '0e4b5c6d-d7e8-9012-b901-234567890123',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Location Specifics',
+    'Avoid showing our exact home address or revealing too much about our neighborhood.',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '0f5c6d7e-e8f9-0123-c012-345678901234',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Other Kids',
+    'Don''t film other children without parent permission. Focus on our family only.',
+    true,
     now(),
     now()
   );

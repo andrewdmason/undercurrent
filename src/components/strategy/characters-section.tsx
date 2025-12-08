@@ -19,8 +19,6 @@ import {
 import { Plus, Trash2, Upload, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
 // Simple markdown renderer for bullet points
 function renderSimpleMarkdown(text: string) {
   const lines = text.split("\n");
@@ -59,6 +57,8 @@ function renderSimpleMarkdown(text: string) {
   flushList();
   return result;
 }
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface CharactersSectionProps {
   businessId: string;
@@ -199,20 +199,11 @@ interface CharacterCardProps {
 }
 
 function CharacterCard({ character, onEdit, onDelete }: CharacterCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const descriptionRef = useRef<HTMLDivElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-
-  // Check if description is truncated
-  useEffect(() => {
-    const el = descriptionRef.current;
-    if (el && !isExpanded) {
-      setIsTruncated(el.scrollHeight > el.clientHeight);
-    }
-  }, [character.description, isExpanded]);
-
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-50)] p-4 group">
+    <div 
+      className="rounded-lg border border-[var(--border)] bg-[var(--grey-50)] p-4 group cursor-pointer hover:border-[var(--grey-200)] transition-colors"
+      onClick={onEdit}
+    >
       <div className="flex gap-4">
         <div className="w-16 h-16 rounded-lg bg-black/[0.03] flex items-center justify-center overflow-hidden flex-shrink-0">
           {character.image_url ? (
@@ -231,33 +222,9 @@ function CharacterCard({ character, onEdit, onDelete }: CharacterCardProps) {
             {character.name}
           </div>
           {character.description && (
-            <>
-              <div
-                ref={descriptionRef}
-                className={cn(
-                  "text-xs text-[var(--grey-400)] mt-1",
-                  !isExpanded && "line-clamp-2"
-                )}
-              >
-                {renderSimpleMarkdown(character.description)}
-              </div>
-              {isTruncated && !isExpanded && (
-                <button
-                  onClick={() => setIsExpanded(true)}
-                  className="text-xs text-[var(--grey-500)] hover:text-[var(--grey-700)] mt-1 font-medium"
-                >
-                  More
-                </button>
-              )}
-              {isExpanded && (
-                <button
-                  onClick={() => setIsExpanded(false)}
-                  className="text-xs text-[var(--grey-500)] hover:text-[var(--grey-700)] mt-1 font-medium"
-                >
-                  Less
-                </button>
-              )}
-            </>
+            <div className="text-xs text-[var(--grey-400)] mt-1">
+              {renderSimpleMarkdown(character.description)}
+            </div>
           )}
         </div>
 
@@ -265,27 +232,10 @@ function CharacterCard({ character, onEdit, onDelete }: CharacterCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={onEdit}
-            className="h-7 w-7 p-0 text-[var(--grey-400)] hover:text-[var(--grey-800)]"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              <path d="m15 5 4 4" />
-            </svg>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="h-7 w-7 p-0 text-[var(--grey-400)] hover:text-[#f72736]"
           >
             <Trash2 size={14} />

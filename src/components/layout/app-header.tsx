@@ -201,7 +201,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
                 <DropdownMenuItem 
-                  onClick={() => router.push(`/${currentBusiness.slug}/strategy`)}
+                  onClick={() => router.push(`/${currentBusiness.slug}/settings`)}
                   className="cursor-pointer"
                 >
                   <Settings className="mr-2 h-4 w-4" />

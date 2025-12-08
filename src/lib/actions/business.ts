@@ -10,6 +10,7 @@ export async function updateBusinessInfo(
     slug?: string;
     url?: string | null;
     description?: string | null;
+    business_objectives?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -50,11 +51,11 @@ export async function updateBusinessInfo(
   const newSlug = data.slug || oldSlug;
   if (oldSlug) {
     revalidatePath(`/${oldSlug}`);
-    revalidatePath(`/${oldSlug}/strategy`);
+    revalidatePath(`/${oldSlug}/settings`);
   }
   if (newSlug && newSlug !== oldSlug) {
     revalidatePath(`/${newSlug}`);
-    revalidatePath(`/${newSlug}/strategy`);
+    revalidatePath(`/${newSlug}/settings`);
   }
 
   return { success: true, newSlug: data.slug };
@@ -84,36 +85,7 @@ export async function updateStrategyPrompt(
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
-  }
-  return { success: true };
-}
-
-export async function updateContentSources(
-  businessId: string,
-  sources: string[]
-) {
-  const supabase = await createClient();
-
-  // Get the business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("slug")
-    .eq("id", businessId)
-    .single();
-
-  const { error } = await supabase
-    .from("businesses")
-    .update({ content_inspiration_sources: sources })
-    .eq("id", businessId);
-
-  if (error) {
-    console.error("Error updating content sources:", error);
-    return { error: error.message };
-  }
-
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true };
 }
@@ -180,7 +152,7 @@ export async function addDistributionChannel(
   }
 
   if (business?.slug) {
-    revalidatePath(`/${business.slug}/strategy`);
+    revalidatePath(`/${business.slug}/settings`);
   }
   return { success: true, channel };
 }
@@ -215,7 +187,7 @@ export async function updateDistributionChannel(
 
   const businesses = channel?.businesses as unknown as { slug: string } | null;
   if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/strategy`);
+    revalidatePath(`/${businesses.slug}/settings`);
   }
   return { success: true };
 }
@@ -242,7 +214,111 @@ export async function deleteDistributionChannel(channelId: string) {
 
   const businesses = channel?.businesses as unknown as { slug: string } | null;
   if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/strategy`);
+    revalidatePath(`/${businesses.slug}/settings`);
+  }
+  return { success: true };
+}
+
+// ============================================
+// TOPICS
+// ============================================
+
+export async function addTopic(
+  businessId: string,
+  data: {
+    name: string;
+    description?: string | null;
+    is_excluded?: boolean;
+  }
+) {
+  const supabase = await createClient();
+
+  // Get the business slug for revalidation
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("slug")
+    .eq("id", businessId)
+    .single();
+
+  const { data: topic, error } = await supabase
+    .from("business_topics")
+    .insert({
+      business_id: businessId,
+      name: data.name,
+      description: data.description || null,
+      is_excluded: data.is_excluded ?? false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding topic:", error);
+    return { error: error.message };
+  }
+
+  if (business?.slug) {
+    revalidatePath(`/${business.slug}/settings`);
+  }
+  return { success: true, topic };
+}
+
+export async function updateTopic(
+  topicId: string,
+  data: {
+    name?: string;
+    description?: string | null;
+    is_excluded?: boolean;
+  }
+) {
+  const supabase = await createClient();
+
+  // Get the topic with business slug for revalidation
+  const { data: topic } = await supabase
+    .from("business_topics")
+    .select("business_id, businesses(slug)")
+    .eq("id", topicId)
+    .single();
+
+  const { error } = await supabase
+    .from("business_topics")
+    .update(data)
+    .eq("id", topicId);
+
+  if (error) {
+    console.error("Error updating topic:", error);
+    return { error: error.message };
+  }
+
+  const businesses = topic?.businesses as unknown as { slug: string } | null;
+  if (businesses?.slug) {
+    revalidatePath(`/${businesses.slug}/settings`);
+  }
+  return { success: true };
+}
+
+export async function deleteTopic(topicId: string) {
+  const supabase = await createClient();
+
+  // Get the topic with business slug for revalidation
+  const { data: topic } = await supabase
+    .from("business_topics")
+    .select("business_id, businesses(slug)")
+    .eq("id", topicId)
+    .single();
+
+  const { error } = await supabase
+    .from("business_topics")
+    .delete()
+    .eq("id", topicId);
+
+  if (error) {
+    console.error("Error deleting topic:", error);
+    return { error: error.message };
+  }
+
+  const businesses = topic?.businesses as unknown as { slug: string } | null;
+  if (businesses?.slug) {
+    revalidatePath(`/${businesses.slug}/settings`);
   }
   return { success: true };
 }
