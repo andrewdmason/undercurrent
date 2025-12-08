@@ -103,3 +103,65 @@ export const DISTRIBUTION_PLATFORMS = [
 
 export type DistributionPlatform = (typeof DISTRIBUTION_PLATFORMS)[number]["value"];
 
+// ============================================
+// Chat Types
+// ============================================
+
+export type ChatModel = "gpt-5.1" | "gemini-3-pro-preview";
+
+export type ChatRole = "user" | "assistant" | "system" | "tool";
+
+export interface IdeaChat {
+  id: string;
+  idea_id: string;
+  name: string | null;
+  model: ChatModel;
+  created_at: string;
+}
+
+export interface IdeaChatMessage {
+  id: string;
+  chat_id: string;
+  role: ChatRole;
+  content: string;
+  tool_calls: ToolCall[] | null;
+  tool_call_id: string | null;
+  token_count: number | null;
+  created_at: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ChatLog {
+  id: string;
+  chat_id: string;
+  business_id: string;
+  model: string;
+  messages_sent: unknown;
+  response_raw: string | null;
+  tool_calls_made: ToolCall[] | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  error: string | null;
+  created_at: string;
+}
+
+// Model options for the chat model picker
+export const CHAT_MODELS = [
+  { value: "gpt-5.1" as ChatModel, label: "ChatGPT 5.1", provider: "OpenAI" },
+  { value: "gemini-3-pro-preview" as ChatModel, label: "Gemini 3", provider: "Google" },
+] as const;
+
+// Context window limits by model
+export const MODEL_CONTEXT_LIMITS: Record<ChatModel, { max: number; warning: number }> = {
+  "gpt-5.1": { max: 128_000, warning: 100_000 },
+  "gemini-3-pro-preview": { max: 1_000_000, warning: 800_000 },
+};
+

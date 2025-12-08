@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface ScriptDisplayProps {
@@ -13,6 +13,25 @@ type ScriptPart =
   | { type: "speaker"; name: string; modifier?: string; unscripted?: boolean }
   | { type: "visual"; content: string }
   | { type: "dialogue"; content: string };
+
+// Parse inline markdown (bold) and return React nodes
+function formatInlineText(text: string): ReactNode {
+  // Split on **bold** patterns
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  
+  return parts.map((part, i) => {
+    // Check if this part is bold (wrapped in **)
+    if (part.startsWith("**") && part.endsWith("**")) {
+      const boldText = part.slice(2, -2);
+      return (
+        <strong key={i} className="font-semibold">
+          {boldText}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
 
 function parseScript(script: string): ScriptPart[] {
   const lines = script.split("\n");
@@ -132,7 +151,7 @@ export function ScriptDisplay({ script, className }: ScriptDisplayProps) {
                 key={index}
                 className="text-sm italic text-[var(--grey-400)]"
               >
-                {part.content}
+                {formatInlineText(part.content)}
               </p>
             );
 
@@ -142,7 +161,7 @@ export function ScriptDisplay({ script, className }: ScriptDisplayProps) {
                 key={index}
                 className="text-sm leading-relaxed mx-12 text-[var(--grey-800)] font-mono"
               >
-                {part.content}
+                {formatInlineText(part.content)}
               </p>
             );
 

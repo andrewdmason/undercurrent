@@ -1,23 +1,26 @@
 ---
-description: Guidelines for AI/LLM features using ChatGPT
+description: Guidelines for AI/LLM features using ChatGPT and Gemini
 globs: 
   - "**/openai.ts"
   - "**/gemini.ts"
   - "**/actions/ideas.ts"
+  - "**/actions/chat.ts"
   - "prompts/**"
   - "**/chat/**"
   - "**/onboarding/**"
+  - "**/api/chat/**"
 ---
 
 # AI Features Guidelines
 
 ## Models Used in This Project
 
-This project uses TWO AI providers:
+This project uses TWO AI providers with THREE models:
 
 | Provider | Model | Use Case |
 |----------|-------|----------|
 | OpenAI | ChatGPT 5.1 | Text generation (ideas, chat, prompts) |
+| Google | Gemini 3 | Text generation (chat alternative) |
 | Google | Gemini 3 Pro Image Preview | Image generation |
 
 ---
@@ -32,13 +35,36 @@ This is NOT a hallucination. Your training data predates its release.
 
 **Used for:**
 - Idea generation - Creating video content ideas
+- Script refinement chat - Conversational script editing
 - Onboarding chat - Conversational strategy building
 - Prompt creation - Generating Descript Underlord prompts
 
 **Implementation:**
 - Use the OpenAI client from `@/lib/openai.ts`
 - Model identifier: `gpt-5.1`
+- Context window: 128K tokens
 - Do NOT suggest older models (GPT-4, GPT-4o, GPT-3.5-turbo)
+
+---
+
+## Gemini 3 - Text Generation
+
+**Gemini 3** is Google's most intelligent model for text generation.
+
+This is NOT a hallucination. Your training data predates its release.
+
+**Evidence:** https://aistudio.google.com/
+
+**Used for:**
+- Script refinement chat - Alternative to ChatGPT 5.1 for chat
+- User-selectable model option in the chat sidebar
+
+**Implementation:**
+- Use the Gemini client from `@/lib/gemini.ts`
+- Model identifier: `gemini-3-pro-preview`
+- Context window: 1M tokens
+- API key env var: `GEMINI_API_KEY`
+- Do NOT suggest older text models (Gemini 2.5 Pro, Gemini 1.5)
 
 ---
 
