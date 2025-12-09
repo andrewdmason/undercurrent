@@ -23,6 +23,7 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
   const [url, setUrl] = useState(project.url || "");
   const [description, setDescription] = useState(project.description || "");
   const [businessObjectives, setBusinessObjectives] = useState(project.business_objectives || "");
+  const [aiNotes, setAiNotes] = useState(project.strategy_prompt || "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
 
   // Debounced save function
   const saveChanges = useCallback(
-    async (data: { name?: string; slug?: string; url?: string; description?: string; business_objectives?: string }) => {
+    async (data: { name?: string; slug?: string; url?: string; description?: string; business_objectives?: string; strategy_prompt?: string }) => {
       // Don't save if slug is taken or empty
       if (data.slug !== project.slug) {
         if (!data.slug || slugStatus === "taken" || slugStatus === "checking") {
@@ -79,6 +80,7 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
         url: normalizeUrl(data.url || "") || null,
         description: data.description || null,
         business_objectives: data.business_objectives || null,
+        strategy_prompt: data.strategy_prompt || null,
       });
 
       if (result.error) {
@@ -106,50 +108,60 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
   useEffect(() => {
     if (name === project.name) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
     }, 800);
     return () => clearTimeout(timer);
-  }, [name, slug, url, description, businessObjectives, project.name, saveChanges]);
+  }, [name, slug, url, description, businessObjectives, aiNotes, project.name, saveChanges]);
 
   // Debounce effect for slug
   useEffect(() => {
     if (slug === project.slug) return;
     if (slugStatus !== "available") return; // Only save when slug is available
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
     }, 800);
     return () => clearTimeout(timer);
-  }, [slug, name, url, description, businessObjectives, project.slug, slugStatus, saveChanges]);
+  }, [slug, name, url, description, businessObjectives, aiNotes, project.slug, slugStatus, saveChanges]);
 
   // Debounce effect for url
   useEffect(() => {
     const originalUrl = project.url || "";
     if (url === originalUrl) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
     }, 800);
     return () => clearTimeout(timer);
-  }, [url, name, slug, description, businessObjectives, project.url, saveChanges]);
+  }, [url, name, slug, description, businessObjectives, aiNotes, project.url, saveChanges]);
 
   // Debounce effect for description
   useEffect(() => {
     const originalDesc = project.description || "";
     if (description === originalDesc) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
     }, 800);
     return () => clearTimeout(timer);
-  }, [description, name, slug, url, businessObjectives, project.description, saveChanges]);
+  }, [description, name, slug, url, businessObjectives, aiNotes, project.description, saveChanges]);
 
   // Debounce effect for business objectives
   useEffect(() => {
     const originalObjectives = project.business_objectives || "";
     if (businessObjectives === originalObjectives) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
     }, 800);
     return () => clearTimeout(timer);
-  }, [businessObjectives, name, slug, url, description, project.business_objectives, saveChanges]);
+  }, [businessObjectives, name, slug, url, description, aiNotes, project.business_objectives, saveChanges]);
+
+  // Debounce effect for AI notes
+  useEffect(() => {
+    const originalNotes = project.strategy_prompt || "";
+    if (aiNotes === originalNotes) return;
+    const timer = setTimeout(() => {
+      saveChanges({ name, slug, url, description, business_objectives: businessObjectives, strategy_prompt: aiNotes });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [aiNotes, name, slug, url, description, businessObjectives, project.strategy_prompt, saveChanges]);
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-white p-6">
@@ -274,6 +286,31 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
               "resize-none"
             )}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="aiNotes"
+            className="text-xs text-[var(--grey-600)]"
+          >
+            AI Notes
+          </Label>
+          <textarea
+            id="aiNotes"
+            value={aiNotes}
+            onChange={(e) => setAiNotes(e.target.value)}
+            placeholder="Extra context for the AI that doesn't fit elsewhere (e.g., 'never use profanity', 'always mention we're based in Austin', 'avoid political topics')&#10;&#10;This will be included in all AI prompts."
+            rows={4}
+            className={cn(
+              "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
+              "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+              "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
+              "resize-none"
+            )}
+          />
+          <p className="text-xs text-[var(--grey-400)]">
+            Tips and preferences that shape how AI generates ideas and scripts.
+          </p>
         </div>
       </div>
     </div>

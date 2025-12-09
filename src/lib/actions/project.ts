@@ -11,6 +11,7 @@ export async function updateProjectInfo(
     url?: string | null;
     description?: string | null;
     business_objectives?: string | null;
+    strategy_prompt?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -321,4 +322,172 @@ export async function deleteTopic(topicId: string) {
     revalidatePath(`/${projects.slug}/settings`);
   }
   return { success: true };
+}
+
+// ============================================
+// REJECTION LEARNING - Apply AI-suggested edits
+// ============================================
+
+export type ProjectEditSuggestion =
+  | { type: "add_excluded_topic"; name: string; description?: string }
+  | { type: "add_topic"; name: string; description?: string }
+  | { type: "update_topic"; id: string; name?: string; description: string; oldDescription?: string }
+  | { type: "add_template"; name: string; description?: string }
+  | { type: "update_template"; id: string; name?: string; description: string; oldDescription?: string }
+  | { type: "update_character"; id: string; name?: string; description: string; oldDescription?: string }
+  | { type: "update_description"; text: string; oldText?: string }
+  | { type: "update_objectives"; text: string; oldText?: string }
+  | { type: "update_ai_notes"; text: string; oldText?: string };
+
+export async function applyRejectionEdits(
+  projectId: string,
+  edits: ProjectEditSuggestion[]
+): Promise<{ success: boolean; error?: string; appliedCount?: number }> {
+  const supabase = await createClient();
+
+  // Get the project for revalidation and current values
+  const { data: project } = await supabase
+    .from("projects")
+    .select("slug, strategy_prompt")
+    .eq("id", projectId)
+    .single();
+
+  if (!project) {
+    return { success: false, error: "Project not found" };
+  }
+
+  let appliedCount = 0;
+  const errors: string[] = [];
+
+  for (const edit of edits) {
+    try {
+      switch (edit.type) {
+        case "add_excluded_topic": {
+          const { error } = await supabase.from("project_topics").insert({
+            project_id: projectId,
+            name: edit.name,
+            description: edit.description || null,
+            is_excluded: true,
+          });
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "add_topic": {
+          const { error } = await supabase.from("project_topics").insert({
+            project_id: projectId,
+            name: edit.name,
+            description: edit.description || null,
+            is_excluded: false,
+          });
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_topic": {
+          const { error } = await supabase
+            .from("project_topics")
+            .update({ description: edit.description })
+            .eq("id", edit.id)
+            .eq("project_id", projectId); // Security: ensure topic belongs to this project
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "add_template": {
+          const { error } = await supabase.from("project_templates").insert({
+            project_id: projectId,
+            name: edit.name,
+            description: edit.description || null,
+          });
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_template": {
+          const { error } = await supabase
+            .from("project_templates")
+            .update({ description: edit.description })
+            .eq("id", edit.id)
+            .eq("project_id", projectId); // Security: ensure template belongs to this project
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_character": {
+          const { error } = await supabase
+            .from("project_characters")
+            .update({ description: edit.description })
+            .eq("id", edit.id)
+            .eq("project_id", projectId); // Security: ensure character belongs to this project
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_description": {
+          const { error } = await supabase
+            .from("projects")
+            .update({ description: edit.text })
+            .eq("id", projectId);
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_objectives": {
+          const { error } = await supabase
+            .from("projects")
+            .update({ business_objectives: edit.text })
+            .eq("id", projectId);
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+
+        case "update_ai_notes": {
+          // Append to existing AI notes (strategy_prompt)
+          const currentNotes = project.strategy_prompt || "";
+          const newNotes = currentNotes
+            ? `${currentNotes}\n\n${edit.text}`
+            : edit.text;
+          const { error } = await supabase
+            .from("projects")
+            .update({ strategy_prompt: newNotes })
+            .eq("id", projectId);
+          if (error) throw error;
+          appliedCount++;
+          break;
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error(`Error applying edit ${edit.type}:`, error);
+      errors.push(`${edit.type}: ${message}`);
+    }
+  }
+
+  // Revalidate paths
+  if (project.slug) {
+    revalidatePath(`/${project.slug}`);
+    revalidatePath(`/${project.slug}/settings`);
+    revalidatePath(`/${project.slug}/settings/topics`);
+    revalidatePath(`/${project.slug}/settings/templates`);
+    revalidatePath(`/${project.slug}/settings/characters`);
+  }
+
+  if (errors.length > 0) {
+    return {
+      success: false,
+      error: `Some edits failed: ${errors.join("; ")}`,
+      appliedCount,
+    };
+  }
+
+  return { success: true, appliedCount };
 }

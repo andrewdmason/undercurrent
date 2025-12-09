@@ -113,6 +113,7 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
         <RejectIdeaModal
           ideaId={rejectModalIdea.id}
           ideaTitle={rejectModalIdea.title}
+          projectId={projectId}
           open={!!rejectModalIdea}
           onOpenChange={(open) => {
             if (!open) setRejectModalIdea(null);
