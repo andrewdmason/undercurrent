@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Business, BusinessCharacter, DistributionChannel, BusinessTopic, BusinessTemplateWithChannels } from "@/lib/types";
-import { BusinessInfoForm } from "@/components/strategy/business-info-form";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
+import { ProjectInfoForm } from "@/components/strategy/project-info-form";
 import { CharactersSection } from "@/components/strategy/characters-section";
 import { TopicsSection } from "@/components/strategy/topics-section";
 import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
@@ -13,15 +13,15 @@ const VALID_TABS = ["general", "topics", "channels", "characters", "templates"] 
 type TabValue = (typeof VALID_TABS)[number];
 
 interface SettingsTabsProps {
-  business: Business;
-  characters: BusinessCharacter[];
+  project: Project;
+  characters: ProjectCharacter[];
   channels: DistributionChannel[];
-  topics: BusinessTopic[];
-  templates: BusinessTemplateWithChannels[];
+  topics: ProjectTopic[];
+  templates: ProjectTemplateWithChannels[];
 }
 
 export function SettingsTabs({
-  business,
+  project,
   characters,
   channels,
   topics,
@@ -86,24 +86,24 @@ export function SettingsTabs({
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <TabsContent value="general" className="mt-0">
-          <BusinessInfoForm business={business} />
+          <ProjectInfoForm project={project} />
         </TabsContent>
 
         <TabsContent value="topics" className="mt-0">
-          <TopicsSection businessId={business.id} topics={topics} />
+          <TopicsSection projectId={project.id} topics={topics} />
         </TabsContent>
 
         <TabsContent value="channels" className="mt-0">
-          <DistributionChannelsSection businessId={business.id} channels={channels} />
+          <DistributionChannelsSection projectId={project.id} channels={channels} />
         </TabsContent>
 
         <TabsContent value="characters" className="mt-0">
-          <CharactersSection businessId={business.id} characters={characters} />
+          <CharactersSection projectId={project.id} characters={characters} />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-0">
           <TemplatesSection
-            businessId={business.id}
+            projectId={project.id}
             templates={templates}
             channels={channels}
           />

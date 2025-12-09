@@ -2,27 +2,27 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Business } from "@/lib/types";
-import { updateBusinessInfo, checkSlugAvailability } from "@/lib/actions/business";
+import { Project } from "@/lib/types";
+import { updateProjectInfo, checkSlugAvailability } from "@/lib/actions/project";
 import { generateSlug } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, normalizeUrl } from "@/lib/utils";
 
-interface BusinessInfoFormProps {
-  business: Business;
+interface ProjectInfoFormProps {
+  project: Project;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type SlugStatus = "idle" | "checking" | "available" | "taken";
 
-export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
+export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
   const router = useRouter();
-  const [name, setName] = useState(business.name);
-  const [slug, setSlug] = useState(business.slug);
-  const [url, setUrl] = useState(business.url || "");
-  const [description, setDescription] = useState(business.description || "");
-  const [businessObjectives, setBusinessObjectives] = useState(business.business_objectives || "");
+  const [name, setName] = useState(project.name);
+  const [slug, setSlug] = useState(project.slug);
+  const [url, setUrl] = useState(project.url || "");
+  const [description, setDescription] = useState(project.description || "");
+  const [businessObjectives, setBusinessObjectives] = useState(project.business_objectives || "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
 
   // Check slug availability when it changes
   useEffect(() => {
-    if (slug === business.slug) {
+    if (slug === project.slug) {
       setSlugStatus("idle");
       return;
     }
@@ -49,7 +49,7 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
 
     const timer = setTimeout(async () => {
       setSlugStatus("checking");
-      const { available } = await checkSlugAvailability(slug, business.id);
+      const { available } = await checkSlugAvailability(slug, project.id);
       if (available) {
         setSlugStatus("available");
         setSlugError(null);
@@ -60,20 +60,20 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [slug, business.slug, business.id]);
+  }, [slug, project.slug, project.id]);
 
   // Debounced save function
   const saveChanges = useCallback(
     async (data: { name?: string; slug?: string; url?: string; description?: string; business_objectives?: string }) => {
       // Don't save if slug is taken or empty
-      if (data.slug !== business.slug) {
+      if (data.slug !== project.slug) {
         if (!data.slug || slugStatus === "taken" || slugStatus === "checking") {
           return;
         }
       }
 
       setSaveStatus("saving");
-      const result = await updateBusinessInfo(business.id, {
+      const result = await updateProjectInfo(project.id, {
         name: data.name,
         slug: data.slug,
         url: normalizeUrl(data.url || "") || null,
@@ -92,64 +92,64 @@ export function BusinessInfoForm({ business }: BusinessInfoFormProps) {
         setTimeout(() => setSaveStatus("idle"), 2000);
 
         // If slug changed, redirect to new URL
-        if (result.newSlug && result.newSlug !== business.slug) {
+        if (result.newSlug && result.newSlug !== project.slug) {
           // Update localStorage
-          localStorage.setItem("undercurrent:lastBusinessSlug", result.newSlug);
+          localStorage.setItem("undercurrent:lastProjectSlug", result.newSlug);
           router.push(`/${result.newSlug}/settings`);
         }
       }
     },
-    [business.id, business.slug, slugStatus, router]
+    [project.id, project.slug, slugStatus, router]
   );
 
   // Debounce effect for name
   useEffect(() => {
-    if (name === business.name) return;
+    if (name === project.name) return;
     const timer = setTimeout(() => {
       saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [name, slug, url, description, businessObjectives, business.name, saveChanges]);
+  }, [name, slug, url, description, businessObjectives, project.name, saveChanges]);
 
   // Debounce effect for slug
   useEffect(() => {
-    if (slug === business.slug) return;
+    if (slug === project.slug) return;
     if (slugStatus !== "available") return; // Only save when slug is available
     const timer = setTimeout(() => {
       saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [slug, name, url, description, businessObjectives, business.slug, slugStatus, saveChanges]);
+  }, [slug, name, url, description, businessObjectives, project.slug, slugStatus, saveChanges]);
 
   // Debounce effect for url
   useEffect(() => {
-    const originalUrl = business.url || "";
+    const originalUrl = project.url || "";
     if (url === originalUrl) return;
     const timer = setTimeout(() => {
       saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [url, name, slug, description, businessObjectives, business.url, saveChanges]);
+  }, [url, name, slug, description, businessObjectives, project.url, saveChanges]);
 
   // Debounce effect for description
   useEffect(() => {
-    const originalDesc = business.description || "";
+    const originalDesc = project.description || "";
     if (description === originalDesc) return;
     const timer = setTimeout(() => {
       saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [description, name, slug, url, businessObjectives, business.description, saveChanges]);
+  }, [description, name, slug, url, businessObjectives, project.description, saveChanges]);
 
   // Debounce effect for business objectives
   useEffect(() => {
-    const originalObjectives = business.business_objectives || "";
+    const originalObjectives = project.business_objectives || "";
     if (businessObjectives === originalObjectives) return;
     const timer = setTimeout(() => {
       saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
     }, 800);
     return () => clearTimeout(timer);
-  }, [businessObjectives, name, slug, url, description, business.business_objectives, saveChanges]);
+  }, [businessObjectives, name, slug, url, description, project.business_objectives, saveChanges]);
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-white p-6">

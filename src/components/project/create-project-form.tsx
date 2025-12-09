@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export function CreateBusinessForm() {
+export function CreateProjectForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -33,22 +33,22 @@ export function CreateBusinessForm() {
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      setError("You must be logged in to create a business");
+      setError("You must be logged in to create a project");
       setLoading(false);
       return;
     }
 
     // Get existing slugs to ensure uniqueness
-    const { data: existingBusinesses } = await supabase
-      .from("businesses")
+    const { data: existingProjects } = await supabase
+      .from("projects")
       .select("slug");
     
-    const existingSlugs = (existingBusinesses || []).map((b) => b.slug);
+    const existingSlugs = (existingProjects || []).map((p) => p.slug);
     const slug = generateUniqueSlug(name, existingSlugs);
 
-    // Create the business with generated slug
-    const { data: business, error: businessError } = await supabase
-      .from("businesses")
+    // Create the project with generated slug
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
       .insert({
         name,
         slug,
@@ -58,17 +58,17 @@ export function CreateBusinessForm() {
       .select()
       .single();
 
-    if (businessError) {
-      setError(businessError.message);
+    if (projectError) {
+      setError(projectError.message);
       setLoading(false);
       return;
     }
 
-    // Add user to business_users
+    // Add user to project_users
     const { error: memberError } = await supabase
-      .from("business_users")
+      .from("project_users")
       .insert({
-        business_id: business.id,
+        project_id: project.id,
         user_id: user.id,
       });
 
@@ -78,22 +78,22 @@ export function CreateBusinessForm() {
       return;
     }
 
-    // Store as last selected business (use slug for URL-based storage)
+    // Store as last selected project (use slug for URL-based storage)
     if (typeof window !== "undefined") {
-      localStorage.setItem("undercurrent:lastBusinessSlug", business.slug);
+      localStorage.setItem("undercurrent:lastProjectSlug", project.slug);
     }
 
-    // Redirect to the business feed using slug
-    router.push(`/${business.slug}`);
+    // Redirect to the project feed using slug
+    router.push(`/${project.slug}`);
     router.refresh();
   };
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold">Create your business</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Create your project</CardTitle>
         <CardDescription>
-          Tell us about your business to get started with video ideas
+          Tell us about your project to get started with video ideas
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -104,7 +104,7 @@ export function CreateBusinessForm() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="name">Business name</Label>
+            <Label htmlFor="name">Project name</Label>
             <Input
               id="name"
               type="text"
@@ -124,18 +124,16 @@ export function CreateBusinessForm() {
               onChange={(e) => setUrl(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Optional — helps us understand your business
+              Optional — helps us understand your project
             </p>
           </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating..." : "Create business"}
+            {loading ? "Creating..." : "Create project"}
           </Button>
         </CardFooter>
       </form>
     </Card>
   );
 }
-
-

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { RedirectToBusiness } from "@/components/redirect-to-business";
+import { RedirectToProject } from "@/components/redirect-to-project";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -11,31 +11,31 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  // Get user's businesses with their slugs
-  const { data: businessUsers } = await supabase
-    .from("business_users")
-    .select("business_id")
+  // Get user's projects with their slugs
+  const { data: projectUsers } = await supabase
+    .from("project_users")
+    .select("project_id")
     .eq("user_id", user.id);
 
-  // If no businesses, redirect to create one
-  if (!businessUsers || businessUsers.length === 0) {
-    redirect("/create-business");
+  // If no projects, redirect to create one
+  if (!projectUsers || projectUsers.length === 0) {
+    redirect("/create-project");
   }
 
-  // Get the business slugs
-  const businessIds = businessUsers.map((bu) => bu.business_id);
+  // Get the project slugs
+  const projectIds = projectUsers.map((pu) => pu.project_id);
   
-  const { data: businesses } = await supabase
-    .from("businesses")
+  const { data: projects } = await supabase
+    .from("projects")
     .select("slug")
-    .in("id", businessIds);
+    .in("id", projectIds);
 
-  if (!businesses || businesses.length === 0) {
-    redirect("/create-business");
+  if (!projects || projects.length === 0) {
+    redirect("/create-project");
   }
 
-  const businessSlugs = businesses.map((b) => b.slug);
+  const projectSlugs = projects.map((p) => p.slug);
 
   // Use client component to check localStorage and redirect
-  return <RedirectToBusiness businessSlugs={businessSlugs} />;
+  return <RedirectToProject projectSlugs={projectSlugs} />;
 }

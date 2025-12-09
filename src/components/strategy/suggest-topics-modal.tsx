@@ -11,14 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { addTopic } from "@/lib/actions/business";
-import { BusinessTopic } from "@/lib/types";
+import { addTopic } from "@/lib/actions/project";
+import { ProjectTopic } from "@/lib/types";
 
 interface SuggestTopicsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  businessId: string;
-  onTopicAdded: (topic: BusinessTopic) => void;
+  projectId: string;
+  onTopicAdded: (topic: ProjectTopic) => void;
 }
 
 interface SuggestedTopic {
@@ -29,7 +29,7 @@ interface SuggestedTopic {
 export function SuggestTopicsModal({
   open,
   onOpenChange,
-  businessId,
+  projectId,
   onTopicAdded,
 }: SuggestTopicsModalProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -48,7 +48,7 @@ export function SuggestTopicsModal({
     setIsRefining(false);
 
     try {
-      const response = await fetch(`/api/suggest-topic/${businessId}`, {
+      const response = await fetch(`/api/suggest-topic/${projectId}`, {
         method: "POST",
         headers: refineData ? { "Content-Type": "application/json" } : {},
         body: refineData ? JSON.stringify(refineData) : undefined,
@@ -95,7 +95,7 @@ export function SuggestTopicsModal({
     } finally {
       setIsGenerating(false);
     }
-  }, [businessId]);
+  }, [projectId]);
 
   // Generate suggestion when modal opens
   useEffect(() => {
@@ -114,7 +114,7 @@ export function SuggestTopicsModal({
   const handleAddTopic = async (isExcluded: boolean) => {
     if (!suggestedTopic) return;
 
-    const result = await addTopic(businessId, {
+    const result = await addTopic(projectId, {
       name: suggestedTopic.name,
       description: suggestedTopic.description,
       is_excluded: isExcluded,
@@ -184,7 +184,7 @@ export function SuggestTopicsModal({
             Suggest Topics
           </DialogTitle>
           <DialogDescription className="text-left">
-            AI-generated topic ideas based on your business profile.
+            AI-generated topic ideas based on your project profile.
           </DialogDescription>
         </DialogHeader>
 

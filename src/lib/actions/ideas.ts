@@ -18,31 +18,31 @@ interface GeneratedIdea {
   topicIds?: string[];
 }
 
-// Helper to get business slug and revalidate paths
-async function revalidateBusinessPaths(businessId: string) {
+// Helper to get project slug and revalidate paths
+async function revalidateProjectPaths(projectId: string) {
   const supabase = await createClient();
-  const { data: business } = await supabase
-    .from("businesses")
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}`);
-    revalidatePath(`/${business.slug}/create`);
-    revalidatePath(`/${business.slug}/published`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}`);
+    revalidatePath(`/${project.slug}/create`);
+    revalidatePath(`/${project.slug}/published`);
   }
-  return business?.slug;
+  return project?.slug;
 }
 
 // Accept an idea - move it to the production queue
 export async function acceptIdea(ideaId: string) {
   const supabase = await createClient();
 
-  // Get idea to find business_id
+  // Get idea to find project_id
   const { data: idea } = await supabase
     .from("ideas")
-    .select("business_id")
+    .select("project_id")
     .eq("id", ideaId)
     .single();
 
@@ -60,7 +60,7 @@ export async function acceptIdea(ideaId: string) {
     return { error: error.message };
   }
 
-  await revalidateBusinessPaths(idea.business_id);
+  await revalidateProjectPaths(idea.project_id);
   return { success: true };
 }
 
@@ -68,10 +68,10 @@ export async function acceptIdea(ideaId: string) {
 export async function rejectIdea(ideaId: string, reason?: string) {
   const supabase = await createClient();
 
-  // Get idea to find business_id
+  // Get idea to find project_id
   const { data: idea } = await supabase
     .from("ideas")
-    .select("business_id")
+    .select("project_id")
     .eq("id", ideaId)
     .single();
 
@@ -92,7 +92,7 @@ export async function rejectIdea(ideaId: string, reason?: string) {
     return { error: error.message };
   }
 
-  await revalidateBusinessPaths(idea.business_id);
+  await revalidateProjectPaths(idea.project_id);
   return { success: true };
 }
 
@@ -100,10 +100,10 @@ export async function rejectIdea(ideaId: string, reason?: string) {
 export async function cancelIdea(ideaId: string) {
   const supabase = await createClient();
 
-  // Get idea to find business_id
+  // Get idea to find project_id
   const { data: idea } = await supabase
     .from("ideas")
-    .select("business_id")
+    .select("project_id")
     .eq("id", ideaId)
     .single();
 
@@ -121,7 +121,7 @@ export async function cancelIdea(ideaId: string) {
     return { error: error.message };
   }
 
-  await revalidateBusinessPaths(idea.business_id);
+  await revalidateProjectPaths(idea.project_id);
   return { success: true };
 }
 
@@ -132,10 +132,10 @@ export async function publishIdea(
 ) {
   const supabase = await createClient();
 
-  // Get idea to find business_id
+  // Get idea to find project_id
   const { data: idea } = await supabase
     .from("ideas")
-    .select("business_id")
+    .select("project_id")
     .eq("id", ideaId)
     .single();
 
@@ -170,43 +170,43 @@ export async function publishIdea(
     }
   }
 
-  await revalidateBusinessPaths(idea.business_id);
+  await revalidateProjectPaths(idea.project_id);
   return { success: true };
 }
 
-export async function generateIdeas(businessId: string, customInstructions?: string) {
+export async function generateIdeas(projectId: string, customInstructions?: string) {
   const supabase = await createClient();
 
-  // Fetch business profile
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Fetch project profile
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("*")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  if (businessError || !business) {
-    console.error("Error fetching business:", businessError);
-    return { error: "Business not found" };
+  if (projectError || !project) {
+    console.error("Error fetching project:", projectError);
+    return { error: "Project not found" };
   }
 
-  // Fetch business characters (with IDs for AI to reference)
+  // Fetch project characters (with IDs for AI to reference)
   const { data: characters } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("id, name, description")
-    .eq("business_id", businessId);
+    .eq("project_id", projectId);
 
   // Fetch distribution channels
   const { data: channels } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .select("id, platform, custom_label, goal_count, goal_cadence, notes")
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
   // Fetch topics (both included and excluded, with IDs for AI to reference)
   const { data: allTopics } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .select("id, name, description, is_excluded")
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
   const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
@@ -214,26 +214,26 @@ export async function generateIdeas(businessId: string, customInstructions?: str
 
   // Fetch templates with their channel associations
   const { data: templates } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .select(`
       id,
       name,
       description,
       template_channels (
-        business_distribution_channels (
+        project_channels (
           platform,
           custom_label
         )
       )
     `)
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: false });
 
   // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
     .from("ideas")
     .select("title, status, reject_reason")
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(20);
 
@@ -324,8 +324,8 @@ export async function generateIdeas(businessId: string, customInstructions?: str
             // template_channels is an array of junction records, each with a nested channel object
             const templateChannels = (t.template_channels || [])
               .map((tc: unknown) => {
-                const tcRecord = tc as { business_distribution_channels: { platform: string; custom_label: string | null } | null };
-                const channel = tcRecord.business_distribution_channels;
+                const tcRecord = tc as { project_channels: { platform: string; custom_label: string | null } | null };
+                const channel = tcRecord.project_channels;
                 return channel ? (channel.custom_label || channel.platform) : null;
               })
               .filter(Boolean);
@@ -344,18 +344,18 @@ export async function generateIdeas(businessId: string, customInstructions?: str
 
   // Build the final prompt
   let prompt = promptTemplate
-    .replace("{{businessName}}", business.name || "Unnamed Business")
+    .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace(
-      "{{businessDescription}}",
-      business.description || "No description provided."
+      "{{projectDescription}}",
+      project.description || "No description provided."
     )
     .replace(
-      "{{businessObjectives}}",
-      business.business_objectives || "No business objectives defined yet."
+      "{{projectObjectives}}",
+      project.business_objectives || "No business objectives defined yet."
     )
     .replace(
       "{{strategyPrompt}}",
-      business.strategy_prompt || "No video marketing strategy defined yet."
+      project.strategy_prompt || "No video marketing strategy defined yet."
     )
     .replace("{{topics}}", topicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)
@@ -436,11 +436,11 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     const validTemplateIds = new Set(templates?.map((t) => t.id) || []);
     
     const ideasToInsert = generatedIdeas.map((idea) => ({
-      business_id: businessId,
+      project_id: projectId,
       title: idea.title,
       description: idea.description,
       generation_batch_id: batchId,
-      // Only set template_id if it's a valid template for this business
+      // Only set template_id if it's a valid template for this project
       template_id: idea.templateId && validTemplateIds.has(idea.templateId) ? idea.templateId : null,
     }));
 
@@ -491,7 +491,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
         const generatedIdea = generatedIdeas[index];
         if (generatedIdea.characterIds && Array.isArray(generatedIdea.characterIds)) {
           for (const characterId of generatedIdea.characterIds) {
-            // Only link if it's a valid character for this business
+            // Only link if it's a valid character for this project
             if (validCharacterIds.has(characterId)) {
               ideaCharacterLinks.push({
                 idea_id: insertedIdea.id,
@@ -522,7 +522,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
         const generatedIdea = generatedIdeas[index];
         if (generatedIdea.topicIds && Array.isArray(generatedIdea.topicIds)) {
           for (const topicId of generatedIdea.topicIds) {
-            // Only link if it's a valid included topic for this business
+            // Only link if it's a valid included topic for this project
             if (validTopicIds.has(topicId)) {
               ideaTopicLinks.push({
                 idea_id: insertedIdea.id,
@@ -548,7 +548,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     // Log the generation
     const ideaIds = insertedIdeas?.map((i) => i.id) || [];
     await supabase.from("generation_logs").insert({
-      business_id: businessId,
+      project_id: projectId,
       prompt_sent: prompt,
       response_raw: responseRaw,
       ideas_created: ideaIds,
@@ -560,14 +560,14 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     after(async () => {
       for (const insertedIdea of insertedIdeas || []) {
         try {
-          await generateThumbnail(insertedIdea.id, businessId);
+          await generateThumbnail(insertedIdea.id, projectId);
         } catch (err) {
           console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
         }
       }
     });
 
-    await revalidateBusinessPaths(businessId);
+    await revalidateProjectPaths(projectId);
 
     return { success: true, count: generatedIdeas.length, ideaIds };
   } catch (error) {
@@ -577,7 +577,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
 
     // Log the failed generation
     await supabase.from("generation_logs").insert({
-      business_id: businessId,
+      project_id: projectId,
       prompt_sent: prompt,
       response_raw: responseRaw || null,
       ideas_created: null,
@@ -600,10 +600,10 @@ export async function generateScript(ideaId: string) {
       id,
       title,
       description,
-      business_id,
+      project_id,
       idea_channels (
         channel_id,
-        business_distribution_channels (
+        project_channels (
           platform,
           custom_label
         )
@@ -617,23 +617,23 @@ export async function generateScript(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  // Fetch business context
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Fetch project context
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("name, description, strategy_prompt")
-    .eq("id", idea.business_id)
+    .eq("id", idea.project_id)
     .single();
 
-  if (businessError || !business) {
-    console.error("Error fetching business:", businessError);
-    return { error: "Business not found" };
+  if (projectError || !project) {
+    console.error("Error fetching project:", projectError);
+    return { error: "Project not found" };
   }
 
   // Fetch characters
   const { data: characters } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("name, description")
-    .eq("business_id", idea.business_id);
+    .eq("project_id", idea.project_id);
 
   // Build the prompt from template
   const promptTemplate = await readFile(
@@ -654,13 +654,13 @@ export async function generateScript(ideaId: string) {
     idea.idea_channels && idea.idea_channels.length > 0
       ? (idea.idea_channels as unknown as Array<{
           channel_id: string;
-          business_distribution_channels: {
+          project_channels: {
             platform: string;
             custom_label: string | null;
           } | null;
         }>)
           .map((ic) => {
-            const channel = ic.business_distribution_channels;
+            const channel = ic.project_channels;
             if (!channel) return null;
             return channel.custom_label || channel.platform;
           })
@@ -673,9 +673,9 @@ export async function generateScript(ideaId: string) {
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
-    .replace("{{businessName}}", business.name || "Unnamed Business")
-    .replace("{{businessDescription}}", business.description || "No description provided.")
-    .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.")
+    .replace("{{projectName}}", project.name || "Unnamed Project")
+    .replace("{{projectDescription}}", project.description || "No description provided.")
+    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.")
     .replace("{{characters}}", charactersSection);
 
   let responseRaw = "";
@@ -711,7 +711,7 @@ export async function generateScript(ideaId: string) {
       throw new Error(`Failed to save script: ${updateError.message}`);
     }
 
-    await revalidateBusinessPaths(idea.business_id);
+    await revalidateProjectPaths(idea.project_id);
 
     return { success: true, script };
   } catch (error) {
@@ -733,10 +733,10 @@ export async function generateUnderlordPrompt(ideaId: string) {
       title,
       description,
       script,
-      business_id,
+      project_id,
       idea_channels (
         channel_id,
-        business_distribution_channels (
+        project_channels (
           platform,
           custom_label
         )
@@ -755,16 +755,16 @@ export async function generateUnderlordPrompt(ideaId: string) {
     return { error: "Script must be generated before creating Underlord prompt" };
   }
 
-  // Fetch business context
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Fetch project context
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("name, strategy_prompt")
-    .eq("id", idea.business_id)
+    .eq("id", idea.project_id)
     .single();
 
-  if (businessError || !business) {
-    console.error("Error fetching business:", businessError);
-    return { error: "Business not found" };
+  if (projectError || !project) {
+    console.error("Error fetching project:", projectError);
+    return { error: "Project not found" };
   }
 
   // Build the prompt from template
@@ -778,13 +778,13 @@ export async function generateUnderlordPrompt(ideaId: string) {
     idea.idea_channels && idea.idea_channels.length > 0
       ? (idea.idea_channels as unknown as Array<{
           channel_id: string;
-          business_distribution_channels: {
+          project_channels: {
             platform: string;
             custom_label: string | null;
           } | null;
         }>)
           .map((ic) => {
-            const channel = ic.business_distribution_channels;
+            const channel = ic.project_channels;
             if (!channel) return null;
             return channel.custom_label || channel.platform;
           })
@@ -798,8 +798,8 @@ export async function generateUnderlordPrompt(ideaId: string) {
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
     .replace("{{script}}", idea.script)
-    .replace("{{businessName}}", business.name || "Unnamed Business")
-    .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.");
+    .replace("{{projectName}}", project.name || "Unnamed Project")
+    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.");
 
   let responseRaw = "";
 
@@ -834,7 +834,7 @@ export async function generateUnderlordPrompt(ideaId: string) {
       throw new Error(`Failed to save Underlord prompt: ${updateError.message}`);
     }
 
-    await revalidateBusinessPaths(idea.business_id);
+    await revalidateProjectPaths(idea.project_id);
 
     return { success: true, underlordPrompt };
   } catch (error) {

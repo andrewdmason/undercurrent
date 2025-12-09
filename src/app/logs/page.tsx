@@ -22,13 +22,13 @@ export default async function LogsPage({
     redirect("/login");
   }
 
-  // Fetch generation logs with business name
+  // Fetch generation logs with project name
   const { data: generationLogs, error: genError } = await supabase
     .from("generation_logs")
     .select(
       `
       *,
-      businesses (name)
+      projects (name)
     `
     )
     .order("created_at", { ascending: false })
@@ -44,7 +44,7 @@ export default async function LogsPage({
     .select(
       `
       *,
-      businesses (name),
+      projects (name),
       idea_chats (
         name,
         ideas (title)
@@ -59,11 +59,11 @@ export default async function LogsPage({
   }
 
   const typedGenerationLogs = (generationLogs || []) as (GenerationLog & {
-    businesses: { name: string } | null;
+    projects: { name: string } | null;
   })[];
 
   const typedChatLogs = (chatLogs || []) as (ChatLog & {
-    businesses: { name: string } | null;
+    projects: { name: string } | null;
     idea_chats: { name: string; ideas: { title: string } | null } | null;
   })[];
 
@@ -113,7 +113,7 @@ export default async function LogsPage({
                 <GenerationLogCard
                   key={log.id}
                   log={log}
-                  businessName={log.businesses?.name || "Unknown Business"}
+                  projectName={log.projects?.name || "Unknown Project"}
                 />
               ))}
             </div>

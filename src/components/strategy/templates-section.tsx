@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BusinessTemplateWithChannels, DistributionChannel } from "@/lib/types";
+import { ProjectTemplateWithChannels, DistributionChannel } from "@/lib/types";
 import { deleteTemplate } from "@/lib/actions/templates";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Video } from "lucide-react";
@@ -10,30 +10,30 @@ import { CreateTemplateModal } from "./create-template-modal";
 import { PlatformIcon, getPlatformLabel } from "./platform-icon";
 
 interface TemplatesSectionProps {
-  businessId: string;
-  templates: BusinessTemplateWithChannels[];
+  projectId: string;
+  templates: ProjectTemplateWithChannels[];
   channels: DistributionChannel[];
 }
 
 export function TemplatesSection({
-  businessId,
+  projectId,
   templates: initialTemplates,
   channels,
 }: TemplatesSectionProps) {
-  const [templates, setTemplates] = useState<BusinessTemplateWithChannels[]>(initialTemplates);
+  const [templates, setTemplates] = useState<ProjectTemplateWithChannels[]>(initialTemplates);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<BusinessTemplateWithChannels | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
 
   const handleDeleteTemplate = async (templateId: string) => {
     await deleteTemplate(templateId);
     setTemplates(templates.filter((t) => t.id !== templateId));
   };
 
-  const handleTemplateCreated = (template: BusinessTemplateWithChannels) => {
+  const handleTemplateCreated = (template: ProjectTemplateWithChannels) => {
     setTemplates([template, ...templates]);
   };
 
-  const handleTemplateUpdated = (template: BusinessTemplateWithChannels) => {
+  const handleTemplateUpdated = (template: ProjectTemplateWithChannels) => {
     setTemplates(templates.map((t) => (t.id === template.id ? template : t)));
   };
 
@@ -42,7 +42,7 @@ export function TemplatesSection({
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (template: BusinessTemplateWithChannels) => {
+  const handleOpenEdit = (template: ProjectTemplateWithChannels) => {
     setEditingTemplate(template);
     setIsModalOpen(true);
   };
@@ -100,7 +100,7 @@ export function TemplatesSection({
       <CreateTemplateModal
         open={isModalOpen}
         onOpenChange={handleModalClose}
-        businessId={businessId}
+        projectId={projectId}
         channels={channels}
         onTemplateCreated={handleTemplateCreated}
         onTemplateUpdated={handleTemplateUpdated}
@@ -111,7 +111,7 @@ export function TemplatesSection({
 }
 
 interface TemplateCardProps {
-  template: BusinessTemplateWithChannels;
+  template: ProjectTemplateWithChannels;
   onEdit: () => void;
   onDelete: () => void;
 }

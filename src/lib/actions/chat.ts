@@ -11,7 +11,7 @@ export async function createChat(ideaId: string, model: ChatModel = "gpt-5.1") {
   // Verify user has access to this idea
   const { data: idea } = await supabase
     .from("ideas")
-    .select("id, business_id")
+    .select("id, project_id")
     .eq("id", ideaId)
     .single();
 
@@ -175,7 +175,7 @@ export async function getChatTokenCount(chatId: string) {
 }
 
 // Update script from chat tool call
-export async function updateScriptFromChat(ideaId: string, script: string, businessSlug?: string) {
+export async function updateScriptFromChat(ideaId: string, script: string, projectSlug?: string) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -188,10 +188,9 @@ export async function updateScriptFromChat(ideaId: string, script: string, busin
     return { error: error.message };
   }
 
-  if (businessSlug) {
-    revalidatePath(`/${businessSlug}/ideas/${ideaId}`);
+  if (projectSlug) {
+    revalidatePath(`/${projectSlug}/ideas/${ideaId}`);
   }
 
   return { success: true };
 }
-

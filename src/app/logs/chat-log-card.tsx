@@ -22,7 +22,7 @@ import {
 
 interface ChatLogCardProps {
   log: ChatLog & {
-    businesses?: { name: string } | null;
+    projects?: { name: string } | null;
     idea_chats?: { name: string; ideas?: { title: string } | null } | null;
   };
 }
@@ -47,7 +47,7 @@ export function ChatLogCard({ log }: ChatLogCardProps) {
   });
 
   const hasError = !!log.error;
-  const businessName = log.businesses?.name || "Unknown Business";
+  const projectName = log.projects?.name || "Unknown Project";
   const chatName = log.idea_chats?.name || "Unknown Chat";
   const ideaTitle = log.idea_chats?.ideas?.title || "Unknown Idea";
 
@@ -86,7 +86,7 @@ export function ChatLogCard({ log }: ChatLogCardProps) {
                 <span className="text-[var(--grey-400)] font-normal">· {chatName}</span>
               </div>
               <div className="text-xs text-[var(--grey-400)]">
-                {businessName} · {formattedDate} at {formattedTime} · {log.model}
+                {projectName} · {formattedDate} at {formattedTime} · {log.model}
                 {hasError ? (
                   <span className="text-[var(--red-500)]"> · Failed</span>
                 ) : (

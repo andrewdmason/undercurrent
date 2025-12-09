@@ -25,8 +25,8 @@ import { ScriptDisplay } from "./script-display";
 
 interface IdeaDetailPanelProps {
   idea: IdeaWithChannels | null;
-  businessId: string;
-  businessSlug?: string;
+  projectId: string;
+  projectSlug?: string;
   open: boolean;
   onClose: () => void;
   viewType: ViewType;
@@ -36,8 +36,8 @@ interface IdeaDetailPanelProps {
 
 export function IdeaDetailPanel({
   idea,
-  businessId,
-  businessSlug,
+  projectId,
+  projectSlug,
   open,
   onClose,
   viewType,
@@ -62,7 +62,7 @@ export function IdeaDetailPanel({
 
     setIsGeneratingThumbnail(true);
     try {
-      const result = await generateThumbnail(idea.id, businessId);
+      const result = await generateThumbnail(idea.id, projectId);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -102,7 +102,7 @@ export function IdeaDetailPanel({
 
   const handleAccept = async (e?: React.MouseEvent) => {
     // Shift+click goes directly to create view
-    if (e?.shiftKey && businessSlug) {
+    if (e?.shiftKey && projectSlug) {
       setIsAccepting(true);
       try {
         const result = await acceptIdea(idea.id);
@@ -110,7 +110,7 @@ export function IdeaDetailPanel({
           toast.error(result.error);
         } else {
           onClose();
-          router.push(`/${businessSlug}/ideas/${idea.id}`);
+          router.push(`/${projectSlug}/ideas/${idea.id}`);
         }
       } catch (error) {
         toast.error("Failed to accept idea");
@@ -130,9 +130,9 @@ export function IdeaDetailPanel({
         toast.error(result.error);
       } else {
         toast.success("Idea accepted!", {
-          action: businessSlug ? {
+          action: projectSlug ? {
             label: "View",
-            onClick: () => router.push(`/${businessSlug}/ideas/${idea.id}`),
+            onClick: () => router.push(`/${projectSlug}/ideas/${idea.id}`),
           } : undefined,
         });
         onClose();

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-interface Business {
+interface Project {
   id: string;
   name: string;
   slug: string;
@@ -34,8 +34,8 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
   const params = useParams();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [currentBusiness, setCurrentBusiness] = useState<Business | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   const slug = params?.slug as string | undefined;
 
@@ -44,52 +44,52 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
   }, []);
 
   useEffect(() => {
-    async function loadBusinesses() {
+    async function loadProjects() {
       const supabase = createClient();
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: businessUsers } = await supabase
-        .from("business_users")
-        .select("business_id")
+      const { data: projectUsers } = await supabase
+        .from("project_users")
+        .select("project_id")
         .eq("user_id", user.id);
 
-      if (!businessUsers || businessUsers.length === 0) return;
+      if (!projectUsers || projectUsers.length === 0) return;
 
-      const businessIds = businessUsers.map((bu) => bu.business_id);
+      const projectIds = projectUsers.map((pu) => pu.project_id);
       
-      const { data: businessesData } = await supabase
-        .from("businesses")
+      const { data: projectsData } = await supabase
+        .from("projects")
         .select("id, name, slug")
-        .in("id", businessIds)
+        .in("id", projectIds)
         .order("name");
 
-      if (businessesData) {
-        setBusinesses(businessesData);
-        // If we have a slug, find that business; otherwise use first or last used
+      if (projectsData) {
+        setProjects(projectsData);
+        // If we have a slug, find that project; otherwise use first or last used
         if (slug) {
-          const current = businessesData.find((b) => b.slug === slug);
-          setCurrentBusiness(current || null);
+          const current = projectsData.find((p) => p.slug === slug);
+          setCurrentProject(current || null);
         } else {
-          // Try to get last used business from localStorage, otherwise use first
-          const lastSlug = localStorage.getItem("undercurrent:lastBusinessSlug");
-          const lastBusiness = businessesData.find((b) => b.slug === lastSlug);
-          setCurrentBusiness(lastBusiness || businessesData[0] || null);
+          // Try to get last used project from localStorage, otherwise use first
+          const lastSlug = localStorage.getItem("undercurrent:lastProjectSlug");
+          const lastProject = projectsData.find((p) => p.slug === lastSlug);
+          setCurrentProject(lastProject || projectsData[0] || null);
         }
       }
     }
 
-    loadBusinesses();
+    loadProjects();
   }, [slug]);
 
-  const handleSelectBusiness = (business: Business) => {
-    localStorage.setItem("undercurrent:lastBusinessSlug", business.slug);
-    router.push(`/${business.slug}`);
+  const handleSelectProject = (project: Project) => {
+    localStorage.setItem("undercurrent:lastProjectSlug", project.slug);
+    router.push(`/${project.slug}`);
   };
 
-  const handleCreateBusiness = () => {
-    router.push("/create-business");
+  const handleCreateProject = () => {
+    router.push("/create-project");
   };
 
   const handleSignOut = async () => {
@@ -99,8 +99,8 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
     router.refresh();
   };
 
-  // Navigation tabs - use currentBusiness slug so they work on all pages
-  const navSlug = currentBusiness?.slug;
+  // Navigation tabs - use currentProject slug so they work on all pages
+  const navSlug = currentProject?.slug;
   const tabs = navSlug ? [
     {
       name: "New",
@@ -187,21 +187,21 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
           </nav>
         )}
 
-        {/* Business Dropdown - Right aligned */}
+        {/* Project Dropdown - Right aligned */}
         <div className="ml-auto">
-          {mounted && currentBusiness ? (
+          {mounted && currentProject ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 text-sm font-medium">
                   <span className="max-w-[200px] truncate">
-                    {currentBusiness.name}
+                    {currentProject.name}
                   </span>
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
                 <DropdownMenuItem 
-                  onClick={() => router.push(`/${currentBusiness.slug}/settings`)}
+                  onClick={() => router.push(`/${currentProject.slug}/settings`)}
                   className="cursor-pointer"
                 >
                   <Settings className="mr-2 h-4 w-4" />
@@ -209,7 +209,7 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem 
-                  onClick={() => router.push(`/${currentBusiness.slug}/team`)}
+                  onClick={() => router.push(`/${currentProject.slug}/team`)}
                   className="cursor-pointer"
                 >
                   <Users className="mr-2 h-4 w-4" />
@@ -222,25 +222,25 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                     Switch Project
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-[200px]">
-                    {businesses.map((business) => (
+                    {projects.map((project) => (
                       <DropdownMenuItem
-                        key={business.id}
-                        onClick={() => handleSelectBusiness(business)}
+                        key={project.id}
+                        onClick={() => handleSelectProject(project)}
                         className="cursor-pointer"
                       >
-                        <span className="truncate flex-1">{business.name}</span>
-                        {business.slug === currentBusiness.slug && (
+                        <span className="truncate flex-1">{project.name}</span>
+                        {project.slug === currentProject.slug && (
                           <Check className="ml-2 h-4 w-4 text-[#007bc2]" />
                         )}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
-                      onClick={handleCreateBusiness}
+                      onClick={handleCreateProject}
                       className="cursor-pointer"
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Business
+                      Add Project
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

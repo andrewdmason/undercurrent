@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Business, BusinessCharacter, DistributionChannel, BusinessTopic, BusinessTemplateWithChannels } from "@/lib/types";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 
 interface SettingsPageProps {
@@ -19,22 +19,22 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     notFound();
   }
 
-  // Get business by slug
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project by slug
+  const { data: project } = await supabase
+    .from("projects")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  if (!business) {
+  if (!project) {
     notFound();
   }
 
-  // Verify user has access to this business
+  // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
 
@@ -42,55 +42,55 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     notFound();
   }
 
-  // Get characters for this business
+  // Get characters for this project
   const { data: characters } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("*")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .order("created_at", { ascending: true });
 
-  // Get distribution channels for this business
+  // Get distribution channels for this project
   const { data: distributionChannels } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .select("*")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .order("created_at", { ascending: true });
 
-  // Get topics for this business
+  // Get topics for this project
   const { data: topics } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .select("*")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .order("created_at", { ascending: true });
 
-  // Get templates for this business with their channel associations
+  // Get templates for this project with their channel associations
   const { data: templates } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .select(`
       *,
       template_channels (
         channel_id,
-        business_distribution_channels (
+        project_channels (
           id,
           platform,
           custom_label
         )
       )
     `)
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
-  const typedBusiness = business as Business;
-  const typedCharacters = (characters || []) as BusinessCharacter[];
+  const typedProject = project as Project;
+  const typedCharacters = (characters || []) as ProjectCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
-  const typedTopics = (topics || []) as BusinessTopic[];
+  const typedTopics = (topics || []) as ProjectTopic[];
   
   // Transform templates to flatten channel info
-  const typedTemplates: BusinessTemplateWithChannels[] = (templates || []).map((template) => ({
+  const typedTemplates: ProjectTemplateWithChannels[] = (templates || []).map((template) => ({
     ...template,
     channels: (template.template_channels || [])
-      .map((tc: { channel_id: string; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
-        const channel = tc.business_distribution_channels;
+      .map((tc: { channel_id: string; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
+        const channel = tc.project_channels;
         return channel ? {
           id: channel.id,
           platform: channel.platform,
@@ -119,7 +119,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
 
           {/* Tabs */}
           <SettingsTabs
-            business={typedBusiness}
+            project={typedProject}
             characters={typedCharacters}
             channels={typedChannels}
             topics={typedTopics}

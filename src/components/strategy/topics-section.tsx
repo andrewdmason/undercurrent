@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BusinessTopic } from "@/lib/types";
-import { addTopic, updateTopic, deleteTopic } from "@/lib/actions/business";
+import { ProjectTopic } from "@/lib/types";
+import { addTopic, updateTopic, deleteTopic } from "@/lib/actions/project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Ban, Sparkles } from "lucide-react";
@@ -10,17 +10,17 @@ import { cn } from "@/lib/utils";
 import { SuggestTopicsModal } from "./suggest-topics-modal";
 
 interface TopicsSectionProps {
-  businessId: string;
-  topics: BusinessTopic[];
+  projectId: string;
+  topics: ProjectTopic[];
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function TopicsSection({
-  businessId,
+  projectId,
   topics: initialTopics,
 }: TopicsSectionProps) {
-  const [topics, setTopics] = useState<BusinessTopic[]>(initialTopics);
+  const [topics, setTopics] = useState<ProjectTopic[]>(initialTopics);
   const [isAddingIncluded, setIsAddingIncluded] = useState(false);
   const [isAddingExcluded, setIsAddingExcluded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export function TopicsSection({
   const excludedTopics = topics.filter((t) => t.is_excluded);
 
   const handleAddTopic = async (data: { name: string; description?: string; is_excluded?: boolean }) => {
-    const result = await addTopic(businessId, data);
+    const result = await addTopic(projectId, data);
     if (result.success && result.topic) {
       setTopics([...topics, result.topic]);
     }
@@ -40,7 +40,7 @@ export function TopicsSection({
 
   const handleUpdateTopic = async (
     topicId: string,
-    data: Partial<BusinessTopic>
+    data: Partial<ProjectTopic>
   ) => {
     await updateTopic(topicId, data);
     setTopics(topics.map((t) => (t.id === topicId ? { ...t, ...data } : t)));
@@ -51,7 +51,7 @@ export function TopicsSection({
     setTopics(topics.filter((t) => t.id !== topicId));
   };
 
-  const handleTopicAddedFromModal = (topic: BusinessTopic) => {
+  const handleTopicAddedFromModal = (topic: ProjectTopic) => {
     setTopics([...topics, topic]);
   };
 
@@ -178,7 +178,7 @@ export function TopicsSection({
       <SuggestTopicsModal
         open={isSuggestModalOpen}
         onOpenChange={setIsSuggestModalOpen}
-        businessId={businessId}
+        projectId={projectId}
         onTopicAdded={handleTopicAddedFromModal}
       />
     </div>
@@ -186,11 +186,11 @@ export function TopicsSection({
 }
 
 interface TopicCardProps {
-  topic: BusinessTopic;
+  topic: ProjectTopic;
   isEditing: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
-  onUpdate: (data: Partial<BusinessTopic>) => void;
+  onUpdate: (data: Partial<ProjectTopic>) => void;
   onDelete: () => void;
   isExcluded?: boolean;
 }

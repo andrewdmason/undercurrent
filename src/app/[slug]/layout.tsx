@@ -2,26 +2,26 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/layout/app-header";
 
-interface BusinessLayoutProps {
+interface ProjectLayoutProps {
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }
 
-export default async function BusinessLayout({
+export default async function ProjectLayout({
   children,
   params,
-}: BusinessLayoutProps) {
+}: ProjectLayoutProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
-  // Get business by slug
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project by slug
+  const { data: project } = await supabase
+    .from("projects")
     .select("id")
     .eq("slug", slug)
     .single();
 
-  if (!business) {
+  if (!project) {
     notFound();
   }
 
@@ -30,12 +30,12 @@ export default async function BusinessLayout({
     supabase
       .from("ideas")
       .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id)
+      .eq("project_id", project.id)
       .eq("status", "new"),
     supabase
       .from("ideas")
       .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id)
+      .eq("project_id", project.id)
       .eq("status", "accepted"),
   ]);
 
@@ -49,4 +49,3 @@ export default async function BusinessLayout({
     </div>
   );
 }
-

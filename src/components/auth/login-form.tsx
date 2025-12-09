@@ -12,10 +12,10 @@ const isDev = process.env.NODE_ENV === "development";
 
 interface LoginFormProps {
   inviteToken?: string;
-  businessName?: string;
+  projectName?: string;
 }
 
-export function LoginForm({ inviteToken, businessName }: LoginFormProps) {
+export function LoginForm({ inviteToken, projectName }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,9 +56,9 @@ export function LoginForm({ inviteToken, businessName }: LoginFormProps) {
     signIn("andrew@test.com", "password123");
   };
 
-  // Preserve invite token and business name in the signup link
-  const signupHref = inviteToken 
-    ? `/signup?invite=${inviteToken}${businessName ? `&business=${encodeURIComponent(businessName)}` : ''}`
+  // Preserve invite token and project name in the signup link
+  const signupHref = inviteToken
+    ? `/signup?invite=${inviteToken}${projectName ? `&project=${encodeURIComponent(projectName)}` : ''}`
     : "/signup";
 
   return (

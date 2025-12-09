@@ -66,8 +66,8 @@ update public.profiles
 set full_name = 'Andrew Mason'
 where id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
--- Create the Tabletop Library business
-insert into public.businesses (
+-- Create the Tabletop Library project
+insert into public.projects (
   id,
   name,
   slug,
@@ -93,10 +93,10 @@ insert into public.businesses (
   now()
 );
 
--- Link user to business
-insert into public.business_users (
+-- Link user to project
+insert into public.project_users (
   id,
-  business_id,
+  project_id,
   user_id,
   created_at
 ) values (
@@ -110,9 +110,9 @@ insert into public.business_users (
 -- SAMPLE CHARACTERS FOR TESTING
 -- ============================================
 
-insert into public.business_characters (
+insert into public.project_characters (
   id,
-  business_id,
+  project_id,
   name,
   description,
   image_url,
@@ -151,9 +151,9 @@ insert into public.business_characters (
 -- SAMPLE DISTRIBUTION CHANNELS FOR TESTING
 -- ============================================
 
-insert into public.business_distribution_channels (
+insert into public.project_channels (
   id,
-  business_id,
+  project_id,
   platform,
   custom_label,
   goal_count,
@@ -215,7 +215,7 @@ insert into public.business_distribution_channels (
 
 insert into public.ideas (
   id,
-  business_id,
+  project_id,
   title,
   description,
   prompt,
@@ -431,12 +431,12 @@ insert into public.idea_channels (idea_id, channel_id, video_url) values
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null);
 
 -- ============================================
--- THE MASON FAMILY HIJINKS - Second Test Business
+-- THE MASON FAMILY HIJINKS - Second Test Project
 -- A family content channel for the Mason family
 -- ============================================
 
--- Create the Mason Family business
-insert into public.businesses (
+-- Create the Mason Family project
+insert into public.projects (
   id,
   name,
   slug,
@@ -462,10 +462,10 @@ insert into public.businesses (
   now()
 );
 
--- Link user to Mason Family business
-insert into public.business_users (
+-- Link user to Mason Family project
+insert into public.project_users (
   id,
-  business_id,
+  project_id,
   user_id,
   created_at
 ) values (
@@ -476,9 +476,9 @@ insert into public.business_users (
 );
 
 -- Mason Family Characters
-insert into public.business_characters (
+insert into public.project_characters (
   id,
-  business_id,
+  project_id,
   name,
   description,
   image_url,
@@ -523,9 +523,9 @@ insert into public.business_characters (
   );
 
 -- Mason Family Distribution Channels
-insert into public.business_distribution_channels (
+insert into public.project_channels (
   id,
-  business_id,
+  project_id,
   platform,
   custom_label,
   goal_count,
@@ -584,9 +584,9 @@ insert into public.business_distribution_channels (
 -- Topics to cover and topics to avoid for idea generation
 -- ============================================
 
-insert into public.business_topics (
+insert into public.project_topics (
   id,
-  business_id,
+  project_id,
   name,
   description,
   is_excluded,
@@ -735,12 +735,12 @@ insert into public.business_topics (
   );
 
 -- ============================================
--- BUSINESS_TEMPLATES FOR TABLETOP LIBRARY
+-- PROJECT_TEMPLATES FOR TABLETOP LIBRARY
 -- ============================================
 
-insert into public.business_templates (
+insert into public.project_templates (
   id,
-  business_id,
+  project_id,
   name,
   description,
   source_video_url,
@@ -790,12 +790,12 @@ insert into public.business_templates (
   );
 
 -- ============================================
--- BUSINESS_TEMPLATES FOR MASON FAMILY
+-- PROJECT_TEMPLATES FOR MASON FAMILY
 -- ============================================
 
-insert into public.business_templates (
+insert into public.project_templates (
   id,
-  business_id,
+  project_id,
   name,
   description,
   source_video_url,

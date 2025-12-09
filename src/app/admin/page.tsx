@@ -14,13 +14,13 @@ export default async function AdminPage() {
     redirect("/login");
   }
 
-  // Fetch recent generation logs with business name
+  // Fetch recent generation logs with project name
   const { data: logs, error } = await supabase
     .from("generation_logs")
     .select(
       `
       *,
-      businesses (name)
+      projects (name)
     `
     )
     .order("created_at", { ascending: false })
@@ -31,7 +31,7 @@ export default async function AdminPage() {
   }
 
   const typedLogs = (logs || []) as (GenerationLog & {
-    businesses: { name: string } | null;
+    projects: { name: string } | null;
   })[];
 
   return (
@@ -65,7 +65,7 @@ export default async function AdminPage() {
               <GenerationLogCard
                 key={log.id}
                 log={log}
-                businessName={log.businesses?.name || "Unknown Business"}
+                projectName={log.projects?.name || "Unknown Project"}
               />
             ))}
           </div>
@@ -74,7 +74,3 @@ export default async function AdminPage() {
     </div>
   );
 }
-
-
-
-

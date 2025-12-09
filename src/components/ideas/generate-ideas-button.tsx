@@ -8,10 +8,10 @@ import { generateIdeas } from "@/lib/actions/ideas";
 import { GenerateIdeasModal } from "./generate-ideas-modal";
 
 interface GenerateIdeasButtonProps {
-  businessId: string;
+  projectId: string;
 }
 
-export function GenerateIdeasButton({ businessId }: GenerateIdeasButtonProps) {
+export function GenerateIdeasButton({ projectId }: GenerateIdeasButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -20,7 +20,7 @@ export function GenerateIdeasButton({ businessId }: GenerateIdeasButtonProps) {
     setIsModalOpen(false);
 
     try {
-      const result = await generateIdeas(businessId, customInstructions);
+      const result = await generateIdeas(projectId, customInstructions);
 
       if (result.error) {
         toast.error("Failed to generate ideas", {

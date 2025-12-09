@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BusinessCharacter } from "@/lib/types";
+import { ProjectCharacter } from "@/lib/types";
 import {
   createCharacter,
   updateCharacter,
@@ -61,21 +61,21 @@ function renderSimpleMarkdown(text: string) {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface CharactersSectionProps {
-  businessId: string;
-  characters: BusinessCharacter[];
+  projectId: string;
+  characters: ProjectCharacter[];
 }
 
-export function CharactersSection({ businessId, characters }: CharactersSectionProps) {
-  const [characterList, setCharacterList] = useState<BusinessCharacter[]>(characters);
+export function CharactersSection({ projectId, characters }: CharactersSectionProps) {
+  const [characterList, setCharacterList] = useState<ProjectCharacter[]>(characters);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCharacter, setEditingCharacter] = useState<BusinessCharacter | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<ProjectCharacter | null>(null);
 
   const handleOpenNew = () => {
     setEditingCharacter(null);
     setIsDialogOpen(true);
   };
 
-  const handleOpenEdit = (character: BusinessCharacter) => {
+  const handleOpenEdit = (character: ProjectCharacter) => {
     setEditingCharacter(character);
     setIsDialogOpen(true);
   };
@@ -88,13 +88,13 @@ export function CharactersSection({ businessId, characters }: CharactersSectionP
   const handleSave = async (data: { name: string; description: string; pendingImage?: File }) => {
     if (editingCharacter) {
       // Update existing character
-      await updateCharacter(editingCharacter.id, businessId, data);
+      await updateCharacter(editingCharacter.id, projectId, data);
       
       // Upload image if there's a pending one
       if (data.pendingImage) {
         const formData = new FormData();
         formData.append("file", data.pendingImage);
-        const result = await uploadCharacterImage(businessId, editingCharacter.id, formData);
+        const result = await uploadCharacterImage(projectId, editingCharacter.id, formData);
         if (result.success && result.imageUrl) {
           setCharacterList(
             characterList.map((c) =>
@@ -117,7 +117,7 @@ export function CharactersSection({ businessId, characters }: CharactersSectionP
       }
     } else {
       // Create new character
-      const result = await createCharacter(businessId, data);
+      const result = await createCharacter(projectId, data);
       if (result.success && result.character) {
         let newCharacter = result.character;
         
@@ -125,7 +125,7 @@ export function CharactersSection({ businessId, characters }: CharactersSectionP
         if (data.pendingImage) {
           const formData = new FormData();
           formData.append("file", data.pendingImage);
-          const uploadResult = await uploadCharacterImage(businessId, newCharacter.id, formData);
+          const uploadResult = await uploadCharacterImage(projectId, newCharacter.id, formData);
           if (uploadResult.success && uploadResult.imageUrl) {
             newCharacter = { ...newCharacter, image_url: uploadResult.imageUrl };
           }
@@ -138,7 +138,7 @@ export function CharactersSection({ businessId, characters }: CharactersSectionP
   };
 
   const handleDelete = async (characterId: string) => {
-    await deleteCharacter(characterId, businessId);
+    await deleteCharacter(characterId, projectId);
     setCharacterList(characterList.filter((c) => c.id !== characterId));
   };
 
@@ -193,7 +193,7 @@ export function CharactersSection({ businessId, characters }: CharactersSectionP
 }
 
 interface CharacterCardProps {
-  character: BusinessCharacter;
+  character: ProjectCharacter;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -250,7 +250,7 @@ interface CharacterDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: { name: string; description: string; pendingImage?: File }) => Promise<void>;
-  character: BusinessCharacter | null;
+  character: ProjectCharacter | null;
   existingImageUrl?: string | null;
 }
 

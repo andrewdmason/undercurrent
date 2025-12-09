@@ -2,10 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { BusinessTemplateWithChannels } from "@/lib/types";
+import { ProjectTemplateWithChannels } from "@/lib/types";
 
 export async function addTemplate(
-  businessId: string,
+  projectId: string,
   data: {
     name: string;
     description?: string | null;
@@ -13,21 +13,21 @@ export async function addTemplate(
     image_url?: string | null;
     channelIds?: string[];
   }
-): Promise<{ success: true; template: BusinessTemplateWithChannels } | { success: false; error: string }> {
+): Promise<{ success: true; template: ProjectTemplateWithChannels } | { success: false; error: string }> {
   const supabase = await createClient();
 
-  // Get the business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get the project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   // Insert the template
   const { data: template, error } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .insert({
-      business_id: businessId,
+      project_id: projectId,
       name: data.name,
       description: data.description || null,
       source_video_url: data.source_video_url || null,
@@ -63,7 +63,7 @@ export async function addTemplate(
     .from("template_channels")
     .select(`
       channel_id,
-      business_distribution_channels (
+      project_channels (
         id,
         platform,
         custom_label
@@ -73,7 +73,7 @@ export async function addTemplate(
 
   const channels = (templateChannels || [])
     .map((tc) => {
-      const channel = tc.business_distribution_channels as unknown as {
+      const channel = tc.project_channels as unknown as {
         id: string;
         platform: string;
         custom_label: string | null;
@@ -86,8 +86,8 @@ export async function addTemplate(
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
 
   return {
@@ -108,13 +108,13 @@ export async function updateTemplate(
     image_url?: string | null;
     channelIds?: string[];
   }
-): Promise<{ success: true; template: BusinessTemplateWithChannels } | { success: false; error: string }> {
+): Promise<{ success: true; template: ProjectTemplateWithChannels } | { success: false; error: string }> {
   const supabase = await createClient();
 
-  // Get the template with business slug for revalidation
+  // Get the template with project slug for revalidation
   const { data: existingTemplate } = await supabase
-    .from("business_templates")
-    .select("business_id, businesses(slug)")
+    .from("project_templates")
+    .select("project_id, projects(slug)")
     .eq("id", templateId)
     .single();
 
@@ -123,7 +123,7 @@ export async function updateTemplate(
   
   if (Object.keys(templateData).length > 0) {
     const { error } = await supabase
-      .from("business_templates")
+      .from("project_templates")
       .update(templateData)
       .eq("id", templateId);
 
@@ -160,7 +160,7 @@ export async function updateTemplate(
 
   // Fetch the updated template
   const { data: updatedTemplate, error: fetchError } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .select("*")
     .eq("id", templateId)
     .single();
@@ -174,7 +174,7 @@ export async function updateTemplate(
     .from("template_channels")
     .select(`
       channel_id,
-      business_distribution_channels (
+      project_channels (
         id,
         platform,
         custom_label
@@ -184,7 +184,7 @@ export async function updateTemplate(
 
   const channels = (templateChannels || [])
     .map((tc) => {
-      const channel = tc.business_distribution_channels as unknown as {
+      const channel = tc.project_channels as unknown as {
         id: string;
         platform: string;
         custom_label: string | null;
@@ -197,9 +197,9 @@ export async function updateTemplate(
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
-  const businesses = existingTemplate?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = existingTemplate?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
 
   return {
@@ -214,16 +214,16 @@ export async function updateTemplate(
 export async function deleteTemplate(templateId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
-  // Get the template with business slug for revalidation
+  // Get the template with project slug for revalidation
   const { data: template } = await supabase
-    .from("business_templates")
-    .select("business_id, businesses(slug)")
+    .from("project_templates")
+    .select("project_id, projects(slug)")
     .eq("id", templateId)
     .single();
 
   // Delete the template (cascade will handle template_channels)
   const { error } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .delete()
     .eq("id", templateId);
 
@@ -232,36 +232,36 @@ export async function deleteTemplate(templateId: string): Promise<{ success: boo
     return { success: false, error: error.message };
   }
 
-  const businesses = template?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = template?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
 
   return { success: true };
 }
 
 /**
- * Fetch all templates for a business with their channel associations
+ * Fetch all templates for a project with their channel associations
  */
 export async function getTemplatesWithChannels(
-  businessId: string
-): Promise<BusinessTemplateWithChannels[]> {
+  projectId: string
+): Promise<ProjectTemplateWithChannels[]> {
   const supabase = await createClient();
 
   const { data: templates, error } = await supabase
-    .from("business_templates")
+    .from("project_templates")
     .select(`
       *,
       template_channels (
         channel_id,
-        business_distribution_channels (
+        project_channels (
           id,
           platform,
           custom_label
         )
       )
     `)
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -273,8 +273,8 @@ export async function getTemplatesWithChannels(
   return (templates || []).map((template) => ({
     ...template,
     channels: (template.template_channels || [])
-      .map((tc: { channel_id: string; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
-        const channel = tc.business_distribution_channels;
+      .map((tc: { channel_id: string; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
+        const channel = tc.project_channels;
         return channel ? {
           id: channel.id,
           platform: channel.platform,
@@ -285,4 +285,3 @@ export async function getTemplatesWithChannels(
     template_channels: undefined, // Remove the raw junction data
   }));
 }
-

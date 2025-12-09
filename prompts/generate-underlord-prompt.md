@@ -17,9 +17,9 @@ Create a comprehensive Underlord prompt that will help produce a polished short-
 **Script:**
 {{script}}
 
-## Business Context
+## Project Context
 
-**Business Name:** {{businessName}}
+**Project Name:** {{projectName}}
 
 **Video Marketing Strategy:**
 {{strategyPrompt}}
@@ -56,7 +56,7 @@ Tailor instructions for the target platform(s):
 - LinkedIn: Professional, clean aesthetic
 
 ### 4. Brand Consistency
-Reference the business style/strategy to ensure the edit matches their brand voice.
+Reference the project style/strategy to ensure the edit matches their brand voice.
 
 ## Guidelines
 

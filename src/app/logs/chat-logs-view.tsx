@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type ChatLogWithRelations = ChatLog & {
-  businesses?: { name: string } | null;
+  projects?: { name: string } | null;
   idea_chats?: { name: string; ideas?: { title: string } | null } | null;
 };
 
@@ -177,7 +177,7 @@ function ChatLogDetail({ log, onCopy, copiedField }: ChatLogDetailProps) {
   });
 
   const hasError = !!log.error;
-  const businessName = log.businesses?.name || "Unknown Business";
+  const projectName = log.projects?.name || "Unknown Project";
   const chatName = log.idea_chats?.name || "Unknown Chat";
   const ideaTitle = log.idea_chats?.ideas?.title || "Unknown Idea";
 
@@ -200,7 +200,7 @@ function ChatLogDetail({ log, onCopy, copiedField }: ChatLogDetailProps) {
               </h2>
             </div>
             <div className="text-sm text-[var(--grey-400)] mt-1">
-              {chatName} · {businessName}
+              {chatName} · {projectName}
             </div>
             <div className="text-xs text-[var(--grey-400)] mt-1">
               {formattedDate} at {formattedTime}

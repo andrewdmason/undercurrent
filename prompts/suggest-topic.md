@@ -2,15 +2,15 @@
 
 You are an expert video marketing strategist helping a small business brainstorm content topics. Your goal is to suggest ONE new topic that would make great video content for their brand.
 
-## Business Context
+## Project Context
 
-**Business Name:** {{businessName}}
+**Project Name:** {{projectName}}
 
-**Business Description:**
-{{businessDescription}}
+**Project Description:**
+{{projectDescription}}
 
-**Business Objectives:**
-{{businessObjectives}}
+**Project Objectives:**
+{{projectObjectives}}
 
 ## Existing Topics (Do Not Repeat)
 
@@ -37,7 +37,7 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
 
 Suggest ONE new topic that:
 1. Is distinct from all existing topics listed above
-2. Aligns with the business description and objectives
+2. Aligns with the project description and objectives
 3. Would inspire multiple video ideas
 4. Is specific enough to be actionable, not generic
 
@@ -60,7 +60,7 @@ Respond with a JSON object containing:
 
 2. **Be Specific**: "Customer Stories" is too vague. "Behind-the-Scenes Customer Transformations" is better.
 
-3. **Consider the Business**: A law firm and a coffee shop need very different topics. Match the tone and audience.
+3. **Consider the Project**: A law firm and a coffee shop need very different topics. Match the tone and audience.
 
 4. **Think Video-First**: The topic should lend itself to visual, engaging video content - not just blog posts or static content.
 

@@ -13,9 +13,9 @@ interface RefineRequest {
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ businessId: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
-  const { businessId } = await params;
+  const { projectId } = await params;
   const supabase = await createClient();
 
   // Parse optional refinement request
@@ -35,11 +35,11 @@ export async function POST(
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Verify user has access to this business
+  // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .eq("user_id", user.id)
     .single();
 
@@ -47,22 +47,22 @@ export async function POST(
     return new Response("Access denied", { status: 403 });
   }
 
-  // Fetch business context
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Fetch project context
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("name, description, business_objectives")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  if (businessError || !business) {
-    return new Response("Business not found", { status: 404 });
+  if (projectError || !project) {
+    return new Response("Project not found", { status: 404 });
   }
 
   // Fetch existing topics
   const { data: allTopics } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .select("name, description, is_excluded")
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
   const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
@@ -121,14 +121,14 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
 
   // Build the final prompt - remove the template conditional block and insert actual content
   const prompt = promptTemplate
-    .replace("{{businessName}}", business.name || "Unnamed Business")
+    .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace(
-      "{{businessDescription}}",
-      business.description || "No description provided."
+      "{{projectDescription}}",
+      project.description || "No description provided."
     )
     .replace(
-      "{{businessObjectives}}",
-      business.business_objectives || "No business objectives defined yet."
+      "{{projectObjectives}}",
+      project.business_objectives || "No business objectives defined yet."
     )
     .replace("{{existingTopics}}", existingTopicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)

@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 
-interface BusinessPageProps {
+interface ProjectPageProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function BusinessPage({ params }: BusinessPageProps) {
+export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
   redirect(`/${slug}/new`);
 }

@@ -33,8 +33,8 @@ import { ChatSidebar } from "./chat-sidebar";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
-  businessId: string;
-  businessSlug: string;
+  projectId: string;
+  projectSlug: string;
 }
 
 interface ChecklistTask {
@@ -76,7 +76,7 @@ const PLACEHOLDER_TASKS: ChecklistTask[] = [
   },
 ];
 
-export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -123,7 +123,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
 
     setIsGeneratingThumbnail(true);
     try {
-      const result = await generateThumbnail(idea.id, businessId);
+      const result = await generateThumbnail(idea.id, projectId);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -222,7 +222,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
         toast.error(result.error);
       } else {
         toast.success("Idea removed from Create");
-        router.push(`/${businessSlug}/create`);
+        router.push(`/${projectSlug}/create`);
         router.refresh();
       }
     } catch (error) {
@@ -239,7 +239,7 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
       <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
         <div className="px-6 py-3 flex items-center gap-4">
           <Link
-            href={`/${businessSlug}/create`}
+            href={`/${projectSlug}/create`}
             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[var(--grey-500)] hover:text-[var(--grey-800)] hover:bg-[var(--grey-50)] transition-colors flex-shrink-0"
             aria-label="Back to Create"
           >
@@ -596,9 +596,9 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
 
             {/* Right Column - Chat (full height) */}
             <div className="flex flex-col min-h-0 h-full">
-              <ChatSidebar 
-                ideaId={idea.id} 
-                businessSlug={businessSlug}
+              <ChatSidebar
+                ideaId={idea.id}
+                projectSlug={projectSlug}
                 onScriptUpdate={(script) => setCurrentScript(script)}
                 onIdeaRegenerate={() => router.refresh()}
                 onToolCallStart={(toolName) => {
