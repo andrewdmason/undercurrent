@@ -8,12 +8,12 @@ import { regenerateInviteLink } from "@/lib/actions/team";
 import { toast } from "sonner";
 
 interface InviteLinkSectionProps {
-  businessId: string;
+  projectId: string;
   initialInviteUrl: string;
 }
 
 export function InviteLinkSection({
-  businessId,
+  projectId,
   initialInviteUrl,
 }: InviteLinkSectionProps) {
   const [inviteUrl, setInviteUrl] = useState(initialInviteUrl);
@@ -43,7 +43,7 @@ export function InviteLinkSection({
     setIsRegenerating(true);
 
     try {
-      const result = await regenerateInviteLink(businessId);
+      const result = await regenerateInviteLink(projectId);
 
       if (result.error) {
         toast.error(result.error);

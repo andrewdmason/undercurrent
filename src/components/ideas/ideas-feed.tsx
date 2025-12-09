@@ -14,12 +14,12 @@ export type ViewType = "inbox" | "queue" | "published";
 
 interface IdeasFeedProps {
   ideas: IdeaWithChannels[];
-  businessId: string;
-  businessSlug?: string;
+  projectId: string;
+  projectSlug?: string;
   viewType: ViewType;
 }
 
-export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFeedProps) {
+export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeedProps) {
   const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -47,8 +47,8 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
 
   const handleCardClick = (idea: IdeaWithChannels) => {
     // For queue items, navigate to the detail page
-    if (viewType === "queue" && businessSlug) {
-      router.push(`/${businessSlug}/ideas/${idea.id}`);
+    if (viewType === "queue" && projectSlug) {
+      router.push(`/${projectSlug}/ideas/${idea.id}`);
       return;
     }
     // For inbox (New), don't do anything on card click
@@ -77,8 +77,8 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
           <IdeaCard
             key={idea.id}
             idea={idea}
-            businessId={businessId}
-            businessSlug={businessSlug}
+            projectId={projectId}
+            projectSlug={projectSlug}
             onClick={() => handleCardClick(idea)}
             isLoadingImage={!idea.image_url}
             viewType={viewType}
@@ -91,8 +91,8 @@ export function IdeasFeed({ ideas, businessId, businessSlug, viewType }: IdeasFe
       {/* Detail Panel */}
       <IdeaDetailPanel
         idea={selectedIdea}
-        businessId={businessId}
-        businessSlug={businessSlug}
+        projectId={projectId}
+        projectSlug={projectSlug}
         open={panelOpen}
         onClose={handleClosePanel}
         viewType={viewType}

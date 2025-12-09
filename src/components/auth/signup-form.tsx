@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 
 interface SignupFormProps {
   inviteToken?: string;
-  businessName?: string;
+  projectName?: string;
 }
 
-export function SignupForm({ inviteToken, businessName }: SignupFormProps) {
+export function SignupForm({ inviteToken, projectName }: SignupFormProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -52,9 +52,9 @@ export function SignupForm({ inviteToken, businessName }: SignupFormProps) {
     router.refresh();
   };
 
-  // Preserve invite token and business name in the login link
-  const loginHref = inviteToken 
-    ? `/login?invite=${inviteToken}${businessName ? `&business=${encodeURIComponent(businessName)}` : ''}`
+  // Preserve invite token and project name in the login link
+  const loginHref = inviteToken
+    ? `/login?invite=${inviteToken}${projectName ? `&project=${encodeURIComponent(projectName)}` : ''}`
     : "/login";
 
   return (

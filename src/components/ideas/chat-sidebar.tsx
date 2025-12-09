@@ -18,7 +18,7 @@ import { ChatModel, IdeaChat, IdeaChatMessage, CHAT_MODELS, MODEL_CONTEXT_LIMITS
 
 interface ChatSidebarProps {
   ideaId: string;
-  businessSlug: string;
+  projectSlug: string;
   onScriptUpdate?: (script: string) => void;
   onIdeaRegenerate?: () => void;
   onToolCallStart?: (toolName: string) => void;
@@ -42,7 +42,7 @@ interface StreamingMessage {
   toolCallStartTime?: number;
 }
 
-export function ChatSidebar({ ideaId, businessSlug, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
+export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);

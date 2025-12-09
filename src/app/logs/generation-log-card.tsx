@@ -21,12 +21,12 @@ import {
 
 interface GenerationLogCardProps {
   log: GenerationLog;
-  businessName: string;
+  projectName: string;
 }
 
 export function GenerationLogCard({
   log,
-  businessName,
+  projectName,
 }: GenerationLogCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [dialogContent, setDialogContent] = useState<{
@@ -75,7 +75,7 @@ export function GenerationLogCard({
             )}
             <div className="text-left">
               <div className="text-sm font-medium text-[var(--grey-800)]">
-                {businessName}
+                {projectName}
               </div>
               <div className="text-xs text-[var(--grey-400)]">
                 {formattedDate} at {formattedTime} · {log.model}

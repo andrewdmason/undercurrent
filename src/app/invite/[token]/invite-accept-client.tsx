@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 interface InviteAcceptClientProps {
   token: string;
-  business: {
+  project: {
     id: string;
     name: string;
     slug: string;
@@ -21,7 +21,7 @@ interface InviteAcceptClientProps {
 
 export function InviteAcceptClient({
   token,
-  business,
+  project,
   error,
   isLoggedIn,
 }: InviteAcceptClientProps) {
@@ -30,7 +30,7 @@ export function InviteAcceptClient({
   const [accepted, setAccepted] = useState(false);
 
   // Handle invalid invite
-  if (error || !business) {
+  if (error || !project) {
     return (
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
@@ -62,7 +62,7 @@ export function InviteAcceptClient({
           You&apos;re In!
         </h1>
         <p className="text-sm text-[var(--grey-400)] mb-6">
-          You&apos;ve joined {business.name}. Redirecting you now...
+          You&apos;ve joined {project.name}. Redirecting you now...
         </p>
       </div>
     );
@@ -76,17 +76,17 @@ export function InviteAcceptClient({
           <Building2 className="h-6 w-6 text-[var(--grey-600)]" />
         </div>
         <h1 className="text-2xl font-normal tracking-[-0.46px] text-[var(--grey-800)] mb-2">
-          Join {business.name}
+          Join {project.name}
         </h1>
         <p className="text-sm text-[var(--grey-400)] mb-6">
-          You&apos;ve been invited to join <strong>{business.name}</strong> on
+          You&apos;ve been invited to join <strong>{project.name}</strong> on
           Undercurrent. Create an account or sign in to accept.
         </p>
         <div className="space-y-3">
-          <Link href={`/signup?invite=${token}&business=${encodeURIComponent(business.name)}`}>
+          <Link href={`/signup?invite=${token}&project=${encodeURIComponent(project.name)}`}>
             <Button className="w-full">Create Account</Button>
           </Link>
-          <Link href={`/login?invite=${token}&business=${encodeURIComponent(business.name)}`}>
+          <Link href={`/login?invite=${token}&project=${encodeURIComponent(project.name)}`}>
             <Button variant="outline" className="w-full">
               Already have an account? Sign In
             </Button>
@@ -108,10 +108,10 @@ export function InviteAcceptClient({
         setIsAccepting(false);
       } else {
         setAccepted(true);
-        toast.success(`Joined ${business.name}!`);
+        toast.success(`Joined ${project.name}!`);
         // Redirect after a short delay
         setTimeout(() => {
-          router.push(`/${result.business_slug}`);
+          router.push(`/${result.project_slug}`);
         }, 1500);
       }
     } catch {
@@ -126,10 +126,10 @@ export function InviteAcceptClient({
         <Building2 className="h-6 w-6 text-[var(--grey-600)]" />
       </div>
       <h1 className="text-2xl font-normal tracking-[-0.46px] text-[var(--grey-800)] mb-2">
-        Join {business.name}
+        Join {project.name}
       </h1>
       <p className="text-sm text-[var(--grey-400)] mb-6">
-        You&apos;ve been invited to collaborate on <strong>{business.name}</strong>.
+        You&apos;ve been invited to collaborate on <strong>{project.name}</strong>.
         Click below to join the team.
       </p>
       <Button className="w-full" onClick={handleAccept} disabled={isAccepting}>

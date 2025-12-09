@@ -14,17 +14,17 @@ interface CharacterMatch {
  * Returns characters with their image URLs
  */
 async function detectCharactersInIdea(
-  businessId: string,
+  projectId: string,
   title: string,
   description: string | null
 ): Promise<CharacterMatch[]> {
   const supabase = await createClient();
 
-  // Fetch all characters for this business
+  // Fetch all characters for this project
   const { data: characters } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("name, image_url")
-    .eq("business_id", businessId);
+    .eq("project_id", projectId);
 
   if (!characters || characters.length === 0) {
     return [];
@@ -95,7 +95,7 @@ async function fetchImageAsBase64(
 /**
  * Generate a thumbnail for an idea using Gemini's image generation
  */
-export async function generateThumbnail(ideaId: string, businessId: string) {
+export async function generateThumbnail(ideaId: string, projectId: string) {
   const supabase = await createClient();
 
   // Fetch the idea
@@ -112,16 +112,16 @@ export async function generateThumbnail(ideaId: string, businessId: string) {
 
   // Detect characters mentioned in the idea
   const characterMatches = await detectCharactersInIdea(
-    businessId,
+    projectId,
     idea.title,
     idea.description
   );
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   // Build the generation prompt
@@ -187,7 +187,7 @@ Style guidelines:
     // Convert base64 to buffer for upload
     const imageBuffer = Buffer.from(imageData, "base64");
     const fileExt = imageMimeType === "image/png" ? "png" : "jpg";
-    const fileName = `${businessId}/${ideaId}-${Date.now()}.${fileExt}`;
+    const fileName = `${projectId}/${ideaId}-${Date.now()}.${fileExt}`;
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
@@ -220,9 +220,9 @@ Style guidelines:
     }
 
     // Revalidate paths
-    if (business?.slug) {
-      revalidatePath(`/${business.slug}`);
-      revalidatePath(`/${business.slug}/saved`);
+    if (project?.slug) {
+      revalidatePath(`/${project.slug}`);
+      revalidatePath(`/${project.slug}/saved`);
     }
 
     return { success: true, imageUrl: publicUrl };
@@ -233,4 +233,3 @@ Style guidelines:
     return { error: errorMessage };
   }
 }
-

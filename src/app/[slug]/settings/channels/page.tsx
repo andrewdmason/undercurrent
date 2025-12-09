@@ -4,7 +4,7 @@ import { DistributionChannelsSection } from "@/components/strategy/distribution-
 import { useSettings } from "@/components/settings/settings-context";
 
 export default function SettingsChannelsPage() {
-  const { business, channels } = useSettings();
+  const { project, channels } = useSettings();
 
-  return <DistributionChannelsSection businessId={business.id} channels={channels} />;
+  return <DistributionChannelsSection projectId={project.id} channels={channels} />;
 }

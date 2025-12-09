@@ -97,7 +97,7 @@ export async function POST(
     return new Response("Missing chatId or message", { status: 400 });
   }
 
-  // Fetch the idea with business context
+  // Fetch the idea with project context
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
     .select(`
@@ -105,10 +105,10 @@ export async function POST(
       title,
       description,
       script,
-      business_id,
+      project_id,
       idea_channels (
         channel_id,
-        business_distribution_channels (
+        project_channels (
           platform,
           custom_label
         )
@@ -121,11 +121,11 @@ export async function POST(
     return new Response("Idea not found", { status: 404 });
   }
 
-  // Verify user has access to this business
+  // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", idea.business_id)
+    .eq("project_id", idea.project_id)
     .eq("user_id", user.id)
     .single();
 
@@ -133,22 +133,22 @@ export async function POST(
     return new Response("Access denied", { status: 403 });
   }
 
-  // Fetch business context
-  const { data: business } = await supabase
-    .from("businesses")
+  // Fetch project context
+  const { data: project } = await supabase
+    .from("projects")
     .select("name, slug, description, strategy_prompt")
-    .eq("id", idea.business_id)
+    .eq("id", idea.project_id)
     .single();
 
-  if (!business) {
-    return new Response("Business not found", { status: 404 });
+  if (!project) {
+    return new Response("Project not found", { status: 404 });
   }
 
   // Fetch characters
   const { data: characters } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("name, description")
-    .eq("business_id", idea.business_id);
+    .eq("project_id", idea.project_id);
 
   // Fetch existing chat messages
   const { data: existingMessages } = await supabase
@@ -176,13 +176,13 @@ export async function POST(
     idea.idea_channels && idea.idea_channels.length > 0
       ? (idea.idea_channels as unknown as Array<{
           channel_id: string;
-          business_distribution_channels: {
+          project_channels: {
             platform: string;
             custom_label: string | null;
           } | null;
         }>)
           .map((ic) => {
-            const channel = ic.business_distribution_channels;
+            const channel = ic.project_channels;
             if (!channel) return null;
             return channel.custom_label || channel.platform;
           })
@@ -191,12 +191,12 @@ export async function POST(
       : "No specific channels";
 
   const systemPrompt = promptTemplate
-    .replace(/\{\{businessName\}\}/g, business.name || "Unnamed Business")
+    .replace(/\{\{projectName\}\}/g, project.name || "Unnamed Project")
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
-    .replace("{{businessDescription}}", business.description || "No description provided.")
-    .replace("{{strategyPrompt}}", business.strategy_prompt || "No video marketing strategy defined yet.")
+    .replace("{{projectDescription}}", project.description || "No description provided.")
+    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.")
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", idea.script || "*No script generated yet*");
 
@@ -257,7 +257,7 @@ export async function POST(
         return JSON.stringify({ success: false, error: error.message });
       }
 
-      revalidatePath(`/${business.slug}/ideas/${ideaId}`);
+      revalidatePath(`/${project.slug}/ideas/${ideaId}`);
       return JSON.stringify({ success: true, message: "Script updated successfully" });
     }
 
@@ -275,13 +275,13 @@ export async function POST(
       // Generate new thumbnail in background
       after(async () => {
         try {
-          await generateThumbnail(ideaId, idea.business_id);
+          await generateThumbnail(ideaId, idea.project_id);
         } catch (err) {
           console.error("Failed to regenerate thumbnail:", err);
         }
       });
 
-      revalidatePath(`/${business.slug}/ideas/${ideaId}`);
+      revalidatePath(`/${project.slug}/ideas/${ideaId}`);
       return JSON.stringify({ success: true, message: "Idea regenerated. New thumbnail is being generated." });
     }
 
@@ -429,7 +429,7 @@ export async function POST(
           // Log the chat interaction
           await supabase.from("chat_logs").insert({
             chat_id: chatId,
-            business_id: idea.business_id,
+            project_id: idea.project_id,
             model: DEFAULT_MODEL,
             messages_sent: apiMessages,
             response_raw: fullResponse,
@@ -446,7 +446,7 @@ export async function POST(
           // Log the error
           await supabase.from("chat_logs").insert({
             chat_id: chatId,
-            business_id: idea.business_id,
+            project_id: idea.project_id,
             model: DEFAULT_MODEL,
             messages_sent: apiMessages,
             error: errorMessage,
@@ -622,7 +622,7 @@ export async function POST(
           // Log the chat interaction
           await supabase.from("chat_logs").insert({
             chat_id: chatId,
-            business_id: idea.business_id,
+            project_id: idea.project_id,
             model: TEXT_MODEL,
             messages_sent: apiMessages,
             response_raw: fullResponse,
@@ -636,7 +636,7 @@ export async function POST(
 
           await supabase.from("chat_logs").insert({
             chat_id: chatId,
-            business_id: idea.business_id,
+            project_id: idea.project_id,
             model: TEXT_MODEL,
             messages_sent: apiMessages,
             error: errorMessage,
@@ -660,4 +660,3 @@ export async function POST(
     });
   }
 }
-

@@ -16,13 +16,13 @@ import {
 
 interface TeamMembersListProps {
   members: TeamMember[];
-  businessId: string;
+  projectId: string;
   currentUserId: string;
 }
 
 export function TeamMembersList({
   members,
-  businessId,
+  projectId,
   currentUserId,
 }: TeamMembersListProps) {
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function TeamMembersList({
     setConfirmRemove(null);
 
     try {
-      const result = await removeTeamMember(businessId, member.user_id);
+      const result = await removeTeamMember(projectId, member.user_id);
 
       if (result.error) {
         toast.error(result.error);
@@ -121,8 +121,8 @@ export function TeamMembersList({
             </DialogTitle>
             <DialogDescription>
               {confirmRemove?.user_id === currentUserId
-                ? "Are you sure you want to leave this team? You'll lose access to this business and all its content."
-                : `Are you sure you want to remove ${confirmRemove?.full_name || "this member"} from the team? They'll lose access to this business.`}
+                ? "Are you sure you want to leave this team? You'll lose access to this project and all its content."
+                : `Are you sure you want to remove ${confirmRemove?.full_name || "this member"} from the team? They'll lose access to this project.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

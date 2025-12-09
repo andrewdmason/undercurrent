@@ -4,7 +4,7 @@ import { CharactersSection } from "@/components/strategy/characters-section";
 import { useSettings } from "@/components/settings/settings-context";
 
 export default function SettingsCharactersPage() {
-  const { business, characters } = useSettings();
+  const { project, characters } = useSettings();
 
-  return <CharactersSection businessId={business.id} characters={characters} />;
+  return <CharactersSection projectId={project.id} characters={characters} />;
 }

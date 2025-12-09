@@ -3,8 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function updateBusinessInfo(
-  businessId: string,
+export async function updateProjectInfo(
+  projectId: string,
   data: {
     name?: string;
     slug?: string;
@@ -15,35 +15,35 @@ export async function updateBusinessInfo(
 ) {
   const supabase = await createClient();
 
-  // Get the current business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get the current project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  const oldSlug = business?.slug;
+  const oldSlug = project?.slug;
 
   // If slug is being changed, validate it's unique
   if (data.slug && data.slug !== oldSlug) {
-    const { data: existingBusiness } = await supabase
-      .from("businesses")
+    const { data: existingProject } = await supabase
+      .from("projects")
       .select("id")
       .eq("slug", data.slug)
       .single();
 
-    if (existingBusiness) {
+    if (existingProject) {
       return { error: "This permalink is already taken" };
     }
   }
 
   const { error } = await supabase
-    .from("businesses")
+    .from("projects")
     .update(data)
-    .eq("id", businessId);
+    .eq("id", projectId);
 
   if (error) {
-    console.error("Error updating business info:", error);
+    console.error("Error updating project info:", error);
     return { error: error.message };
   }
 
@@ -62,30 +62,30 @@ export async function updateBusinessInfo(
 }
 
 export async function updateStrategyPrompt(
-  businessId: string,
+  projectId: string,
   strategyPrompt: string | null
 ) {
   const supabase = await createClient();
 
-  // Get the business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get the project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { error } = await supabase
-    .from("businesses")
+    .from("projects")
     .update({ strategy_prompt: strategyPrompt })
-    .eq("id", businessId);
+    .eq("id", projectId);
 
   if (error) {
     console.error("Error updating strategy prompt:", error);
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true };
 }
@@ -95,14 +95,14 @@ export async function updateStrategyPrompt(
  */
 export async function checkSlugAvailability(
   slug: string,
-  excludeBusinessId?: string
+  excludeProjectId?: string
 ): Promise<{ available: boolean }> {
   const supabase = await createClient();
 
-  let query = supabase.from("businesses").select("id").eq("slug", slug);
+  let query = supabase.from("projects").select("id").eq("slug", slug);
 
-  if (excludeBusinessId) {
-    query = query.neq("id", excludeBusinessId);
+  if (excludeProjectId) {
+    query = query.neq("id", excludeProjectId);
   }
 
   const { data } = await query.single();
@@ -115,7 +115,7 @@ export async function checkSlugAvailability(
 // ============================================
 
 export async function addDistributionChannel(
-  businessId: string,
+  projectId: string,
   data: {
     platform: string;
     custom_label?: string | null;
@@ -126,17 +126,17 @@ export async function addDistributionChannel(
 ) {
   const supabase = await createClient();
 
-  // Get the business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get the project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { data: channel, error } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .insert({
-      business_id: businessId,
+      project_id: projectId,
       platform: data.platform,
       custom_label: data.custom_label || null,
       goal_count: data.goal_count || null,
@@ -151,8 +151,8 @@ export async function addDistributionChannel(
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true, channel };
 }
@@ -168,15 +168,15 @@ export async function updateDistributionChannel(
 ) {
   const supabase = await createClient();
 
-  // Get the channel with business slug for revalidation
+  // Get the channel with project slug for revalidation
   const { data: channel } = await supabase
-    .from("business_distribution_channels")
-    .select("business_id, businesses(slug)")
+    .from("project_channels")
+    .select("project_id, projects(slug)")
     .eq("id", channelId)
     .single();
 
   const { error } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .update(data)
     .eq("id", channelId);
 
@@ -185,9 +185,9 @@ export async function updateDistributionChannel(
     return { error: error.message };
   }
 
-  const businesses = channel?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = channel?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
   return { success: true };
 }
@@ -195,15 +195,15 @@ export async function updateDistributionChannel(
 export async function deleteDistributionChannel(channelId: string) {
   const supabase = await createClient();
 
-  // Get the channel with business slug for revalidation
+  // Get the channel with project slug for revalidation
   const { data: channel } = await supabase
-    .from("business_distribution_channels")
-    .select("business_id, businesses(slug)")
+    .from("project_channels")
+    .select("project_id, projects(slug)")
     .eq("id", channelId)
     .single();
 
   const { error } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .delete()
     .eq("id", channelId);
 
@@ -212,9 +212,9 @@ export async function deleteDistributionChannel(channelId: string) {
     return { error: error.message };
   }
 
-  const businesses = channel?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = channel?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
   return { success: true };
 }
@@ -224,7 +224,7 @@ export async function deleteDistributionChannel(channelId: string) {
 // ============================================
 
 export async function addTopic(
-  businessId: string,
+  projectId: string,
   data: {
     name: string;
     description?: string | null;
@@ -233,17 +233,17 @@ export async function addTopic(
 ) {
   const supabase = await createClient();
 
-  // Get the business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get the project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { data: topic, error } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .insert({
-      business_id: businessId,
+      project_id: projectId,
       name: data.name,
       description: data.description || null,
       is_excluded: data.is_excluded ?? false,
@@ -256,8 +256,8 @@ export async function addTopic(
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true, topic };
 }
@@ -272,15 +272,15 @@ export async function updateTopic(
 ) {
   const supabase = await createClient();
 
-  // Get the topic with business slug for revalidation
+  // Get the topic with project slug for revalidation
   const { data: topic } = await supabase
-    .from("business_topics")
-    .select("business_id, businesses(slug)")
+    .from("project_topics")
+    .select("project_id, projects(slug)")
     .eq("id", topicId)
     .single();
 
   const { error } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .update(data)
     .eq("id", topicId);
 
@@ -289,9 +289,9 @@ export async function updateTopic(
     return { error: error.message };
   }
 
-  const businesses = topic?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = topic?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
   return { success: true };
 }
@@ -299,15 +299,15 @@ export async function updateTopic(
 export async function deleteTopic(topicId: string) {
   const supabase = await createClient();
 
-  // Get the topic with business slug for revalidation
+  // Get the topic with project slug for revalidation
   const { data: topic } = await supabase
-    .from("business_topics")
-    .select("business_id, businesses(slug)")
+    .from("project_topics")
+    .select("project_id, projects(slug)")
     .eq("id", topicId)
     .single();
 
   const { error } = await supabase
-    .from("business_topics")
+    .from("project_topics")
     .delete()
     .eq("id", topicId);
 
@@ -316,9 +316,9 @@ export async function deleteTopic(topicId: string) {
     return { error: error.message };
   }
 
-  const businesses = topic?.businesses as unknown as { slug: string } | null;
-  if (businesses?.slug) {
-    revalidatePath(`/${businesses.slug}/settings`);
+  const projects = topic?.projects as unknown as { slug: string } | null;
+  if (projects?.slug) {
+    revalidatePath(`/${projects.slug}/settings`);
   }
   return { success: true };
 }

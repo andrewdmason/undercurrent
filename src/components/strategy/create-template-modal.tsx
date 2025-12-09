@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DistributionChannel, BusinessTemplateWithChannels } from "@/lib/types";
+import { DistributionChannel, ProjectTemplateWithChannels } from "@/lib/types";
 import { analyzeVideoStyle, getVideoPreview } from "@/lib/actions/video-analysis";
 import { addTemplate, updateTemplate } from "@/lib/actions/templates";
 import { PlatformIcon, getPlatformLabel } from "./platform-icon";
@@ -21,11 +21,11 @@ import { cn } from "@/lib/utils";
 interface CreateTemplateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  businessId: string;
+  projectId: string;
   channels: DistributionChannel[];
-  onTemplateCreated: (template: BusinessTemplateWithChannels) => void;
-  onTemplateUpdated?: (template: BusinessTemplateWithChannels) => void;
-  editingTemplate?: BusinessTemplateWithChannels | null;
+  onTemplateCreated: (template: ProjectTemplateWithChannels) => void;
+  onTemplateUpdated?: (template: ProjectTemplateWithChannels) => void;
+  editingTemplate?: ProjectTemplateWithChannels | null;
 }
 
 type Step = "youtube" | "analyzing" | "manual" | "review";
@@ -41,7 +41,7 @@ const ANALYSIS_STAGES = [
 export function CreateTemplateModal({
   open,
   onOpenChange,
-  businessId,
+  projectId,
   channels,
   onTemplateCreated,
   onTemplateUpdated,
@@ -233,7 +233,7 @@ export function CreateTemplateModal({
       }
     } else {
       // Create new template
-      const result = await addTemplate(businessId, {
+      const result = await addTemplate(projectId, {
         name: name.trim(),
         description: description.trim() || null,
         source_video_url: sourceVideoUrl,

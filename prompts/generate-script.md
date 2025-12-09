@@ -14,12 +14,12 @@ Write a complete script for the video idea below. The script should be detailed 
 
 **Target Channels:** {{channels}}
 
-## Business Context
+## Project Context
 
-**Business Name:** {{businessName}}
+**Project Name:** {{projectName}}
 
-**Business Description:**
-{{businessDescription}}
+**Project Description:**
+{{projectDescription}}
 
 **Video Marketing Strategy:**
 {{strategyPrompt}}
@@ -132,7 +132,7 @@ When using `[unscripted]`, provide enough direction that the person knows what t
    - Specific details and examples (not generic fluff)
    - Clear scene transitions
 
-3. **Call-to-Action**: End with a clear CTA appropriate for the platform and business goals
+3. **Call-to-Action**: End with a clear CTA appropriate for the platform and project goals
 
 4. **Platform Optimization**: Tailor the script to the target channels:
    - TikTok/Reels/Shorts: Fast-paced, punchy, trend-aware

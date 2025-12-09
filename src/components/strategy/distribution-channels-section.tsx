@@ -6,7 +6,7 @@ import {
   addDistributionChannel,
   updateDistributionChannel,
   deleteDistributionChannel,
-} from "@/lib/actions/business";
+} from "@/lib/actions/project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -69,14 +69,14 @@ function PlatformIcon({ platform, className }: { platform: string; className?: s
 }
 
 interface DistributionChannelsSectionProps {
-  businessId: string;
+  projectId: string;
   channels: DistributionChannel[];
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function DistributionChannelsSection({
-  businessId,
+  projectId,
   channels: initialChannels,
 }: DistributionChannelsSectionProps) {
   const [channels, setChannels] = useState<DistributionChannel[]>(initialChannels);
@@ -90,7 +90,7 @@ export function DistributionChannelsSection({
     goal_cadence?: "weekly" | "monthly";
     notes?: string;
   }) => {
-    const result = await addDistributionChannel(businessId, data);
+    const result = await addDistributionChannel(projectId, data);
     if (result.success && result.channel) {
       setChannels([...channels, result.channel]);
     }

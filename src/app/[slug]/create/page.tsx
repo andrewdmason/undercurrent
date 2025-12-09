@@ -26,22 +26,22 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
     notFound();
   }
 
-  // Get business by slug
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project by slug
+  const { data: project } = await supabase
+    .from("projects")
     .select("id, name, slug")
     .eq("slug", slug)
     .single();
 
-  if (!business) {
+  if (!project) {
     notFound();
   }
 
-  // Verify user has access to this business
+  // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
 
@@ -49,14 +49,14 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
     notFound();
   }
 
-  // Fetch available distribution channels for this business (for the filter)
+  // Fetch available distribution channels for this project (for the filter)
   const { data: distributionChannels } = await supabase
-    .from("business_distribution_channels")
+    .from("project_channels")
     .select("id, platform, custom_label")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .order("created_at", { ascending: true });
 
-  // Fetch ACCEPTED ideas for this business (production queue), newest first
+  // Fetch ACCEPTED ideas for this project (production queue), newest first
   const { data: ideas } = await supabase
     .from("ideas")
     .select(`
@@ -64,7 +64,7 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
       idea_channels (
         channel_id,
         video_url,
-        business_distribution_channels (
+        project_channels (
           id,
           platform,
           custom_label
@@ -72,7 +72,7 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
       ),
       idea_characters (
         character_id,
-        business_characters (
+        project_characters (
           id,
           name,
           image_url
@@ -80,18 +80,18 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
       ),
       idea_topics (
         topic_id,
-        business_topics (
+        project_topics (
           id,
           name
         )
       ),
-      business_templates (
+      project_templates (
         id,
         name,
         description
       )
     `)
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .eq("status", "accepted")
     .order("created_at", { ascending: false });
 
@@ -99,22 +99,22 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
   const allIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
     ...idea,
     channels: (idea.idea_channels || [])
-      .map((ic: { video_url: string | null; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
-        ic.business_distribution_channels ? {
-          ...ic.business_distribution_channels,
+      .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
+        ic.project_channels ? {
+          ...ic.project_channels,
           video_url: ic.video_url,
         } : null
       )
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
-    template: idea.business_templates || null,
+    template: idea.project_templates || null,
     characters: (idea.idea_characters || [])
-      .map((ic: { business_characters: { id: string; name: string; image_url: string | null } | null }) => 
-        ic.business_characters
+      .map((ic: { project_characters: { id: string; name: string; image_url: string | null } | null }) => 
+        ic.project_characters
       )
       .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
     topics: (idea.idea_topics || [])
-      .map((it: { business_topics: { id: string; name: string } | null }) => 
-        it.business_topics
+      .map((it: { project_topics: { id: string; name: string } | null }) => 
+        it.project_topics
       )
       .filter(Boolean) as Array<{ id: string; name: string }>,
   }));
@@ -152,7 +152,7 @@ export default async function CreatePage({ params, searchParams }: CreatePagePro
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} businessId={business.id} businessSlug={business.slug} viewType="queue" />
+            <IdeasFeed ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} viewType="queue" />
           ) : (
             <CreateEmptyState />
           )}
@@ -192,4 +192,3 @@ function CreateEmptyState() {
     </div>
   );
 }
-

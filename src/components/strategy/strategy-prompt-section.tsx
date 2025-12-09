@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { updateStrategyPrompt } from "@/lib/actions/business";
+import { updateStrategyPrompt } from "@/lib/actions/project";
 import { cn } from "@/lib/utils";
 
 interface StrategyPromptSectionProps {
-  businessId: string;
+  projectId: string;
   strategyPrompt: string;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function StrategyPromptSection({
-  businessId,
+  projectId,
   strategyPrompt: initialPrompt,
 }: StrategyPromptSectionProps) {
   const [prompt, setPrompt] = useState(initialPrompt);
@@ -22,7 +22,7 @@ export function StrategyPromptSection({
   const saveChanges = useCallback(
     async (value: string) => {
       setSaveStatus("saving");
-      const result = await updateStrategyPrompt(businessId, value || null);
+      const result = await updateStrategyPrompt(projectId, value || null);
 
       if (result.error) {
         setSaveStatus("error");
@@ -32,7 +32,7 @@ export function StrategyPromptSection({
         setTimeout(() => setSaveStatus("idle"), 2000);
       }
     },
-    [businessId]
+    [projectId]
   );
 
   // Debounced auto-save

@@ -29,7 +29,19 @@ A video marketing idea generator for small businesses, powered by AI.
 - Feature branches prefixed with `andrew/`
 - Don't commit to main directly
 
-## Database Migrations (CRITICAL)
+## Database Changes (CRITICAL)
+
+### ⚠️ NEVER Directly Modify Production Database
+
+**Do NOT use Supabase MCP tools (`apply_migration`, `execute_sql`) to make changes to the production database.** 
+
+All database changes must go through the migration workflow:
+1. Create a migration file in `supabase/migrations/`
+2. Test locally or on a branch
+3. Deploy via the normal CI/CD pipeline
+
+
+### Migration File Rules
 
 **⚠️ NEVER modify migration files from previous branches or that have been merged to main.**
 

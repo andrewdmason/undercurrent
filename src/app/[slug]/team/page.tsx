@@ -22,22 +22,22 @@ export default async function TeamPage({ params }: TeamPageProps) {
     notFound();
   }
 
-  // Get business by slug
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project by slug
+  const { data: project } = await supabase
+    .from("projects")
     .select("*")
     .eq("slug", slug)
     .single();
 
-  if (!business) {
+  if (!project) {
     notFound();
   }
 
-  // Verify user has access to this business
+  // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
 
@@ -47,8 +47,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
   // Get team members and invite link
   const [membersResult, inviteLinkResult] = await Promise.all([
-    getTeamMembers(business.id),
-    getInviteLink(business.id),
+    getTeamMembers(project.id),
+    getInviteLink(project.id),
   ]);
 
   const members = membersResult.members || [];
@@ -63,7 +63,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
             Manage Team
           </h1>
           <p className="text-sm text-[var(--grey-400)] mt-0.5">
-            Invite team members to collaborate on {business.name}
+            Invite team members to collaborate on {project.name}
           </p>
         </div>
       </div>
@@ -72,7 +72,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
       <div>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
           {/* Invite Link Section */}
-          <InviteLinkSection businessId={business.id} initialInviteUrl={inviteUrl} />
+          <InviteLinkSection projectId={project.id} initialInviteUrl={inviteUrl} />
 
           {/* Team Members Section */}
           <div className="rounded-lg border border-[var(--border)] bg-white">
@@ -86,7 +86,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
             </div>
             <TeamMembersList
               members={members}
-              businessId={business.id}
+              projectId={project.id}
               currentUserId={user.id}
             />
           </div>

@@ -3,12 +3,12 @@ import { SignupForm } from "@/components/auth/signup-form";
 interface SignupPageProps {
   searchParams: Promise<{
     invite?: string;
-    business?: string;
+    project?: string;
   }>;
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const { invite, business } = await searchParams;
+  const { invite, project } = await searchParams;
 
   return (
     <main className="flex min-h-screen">
@@ -40,11 +40,11 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             </div>
           </div>
           <h2 className="text-2xl font-normal tracking-[-0.46px] text-[var(--grey-800)] mb-3">
-            {invite && business ? `Join ${business}` : invite ? "Join your team" : "Start creating in minutes"}
+            {invite && project ? `Join ${project}` : invite ? "Join your team" : "Start creating in minutes"}
           </h2>
           <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px] leading-relaxed">
             {invite
-              ? `Create an account to join ${business ? business : "the team"} and start collaborating on video content.`
+              ? `Create an account to join ${project ? project : "the team"} and start collaborating on video content.`
               : "Join thousands of creators using Undercurrent to plan, generate, and execute their video content strategy."}
           </p>
         </div>
@@ -58,14 +58,14 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               Create your account
             </h1>
             <p className="text-sm text-[var(--grey-400)] tracking-[-0.08px]">
-              {invite && business
-                ? `Sign up to join ${business}`
+              {invite && project
+                ? `Sign up to join ${project}`
                 : invite
                 ? "Sign up to join your team"
                 : "Get started with Undercurrent today"}
             </p>
           </div>
-          <SignupForm inviteToken={invite} businessName={business} />
+          <SignupForm inviteToken={invite} projectName={project} />
         </div>
       </div>
     </main>

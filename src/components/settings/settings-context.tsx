@@ -1,37 +1,37 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { Business, BusinessCharacter, DistributionChannel, BusinessTopic, BusinessTemplateWithChannels } from "@/lib/types";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
 
 interface SettingsContextValue {
-  business: Business;
-  characters: BusinessCharacter[];
+  project: Project;
+  characters: ProjectCharacter[];
   channels: DistributionChannel[];
-  topics: BusinessTopic[];
-  templates: BusinessTemplateWithChannels[];
+  topics: ProjectTopic[];
+  templates: ProjectTemplateWithChannels[];
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 interface SettingsProviderProps {
   children: React.ReactNode;
-  business: Business;
-  characters: BusinessCharacter[];
+  project: Project;
+  characters: ProjectCharacter[];
   channels: DistributionChannel[];
-  topics: BusinessTopic[];
-  templates: BusinessTemplateWithChannels[];
+  topics: ProjectTopic[];
+  templates: ProjectTemplateWithChannels[];
 }
 
 export function SettingsProvider({
   children,
-  business,
+  project,
   characters,
   channels,
   topics,
   templates,
 }: SettingsProviderProps) {
   return (
-    <SettingsContext.Provider value={{ business, characters, channels, topics, templates }}>
+    <SettingsContext.Provider value={{ project, characters, channels, topics, templates }}>
       {children}
     </SettingsContext.Provider>
   );

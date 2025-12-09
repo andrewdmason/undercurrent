@@ -12,17 +12,17 @@ export interface TeamMember {
 }
 
 /**
- * Get all team members for a business
+ * Get all team members for a project
  * Uses RPC function to bypass profiles RLS
  */
-export async function getTeamMembers(businessId: string): Promise<{
+export async function getTeamMembers(projectId: string): Promise<{
   members?: TeamMember[];
   error?: string;
 }> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .rpc("get_team_members", { business_id_param: businessId });
+    .rpc("get_team_members", { project_id_param: projectId });
 
   if (error) {
     console.error("Error fetching team members:", error);
@@ -34,69 +34,69 @@ export async function getTeamMembers(businessId: string): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  const members: TeamMember[] = (data || []).map((bu: { id: string; user_id: string; full_name: string | null; created_at: string }) => ({
-    id: bu.id,
-    user_id: bu.user_id,
-    full_name: bu.full_name,
-    email: bu.user_id === user?.id ? user?.email || "" : "",
-    created_at: bu.created_at,
+  const members: TeamMember[] = (data || []).map((pu: { id: string; user_id: string; full_name: string | null; created_at: string }) => ({
+    id: pu.id,
+    user_id: pu.user_id,
+    full_name: pu.full_name,
+    email: pu.user_id === user?.id ? user?.email || "" : "",
+    created_at: pu.created_at,
   }));
 
   return { members };
 }
 
 /**
- * Get the invite link for a business
+ * Get the invite link for a project
  */
-export async function getInviteLink(businessId: string): Promise<{
+export async function getInviteLink(projectId: string): Promise<{
   inviteUrl?: string;
   error?: string;
 }> {
   const supabase = await createClient();
 
-  const { data: business, error } = await supabase
-    .from("businesses")
+  const { data: project, error } = await supabase
+    .from("projects")
     .select("invite_token")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  if (error || !business) {
+  if (error || !project) {
     console.error("Error fetching invite token:", error);
-    return { error: error?.message || "Business not found" };
+    return { error: error?.message || "Project not found" };
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const inviteUrl = `${baseUrl}/invite/${business.invite_token}`;
+  const inviteUrl = `${baseUrl}/invite/${project.invite_token}`;
 
   return { inviteUrl };
 }
 
 /**
- * Regenerate the invite link for a business (invalidates the old link)
+ * Regenerate the invite link for a project (invalidates the old link)
  */
-export async function regenerateInviteLink(businessId: string): Promise<{
+export async function regenerateInviteLink(projectId: string): Promise<{
   inviteUrl?: string;
   error?: string;
 }> {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
-  if (businessError || !business) {
-    console.error("Error fetching business:", businessError);
-    return { error: businessError?.message || "Business not found" };
+  if (projectError || !project) {
+    console.error("Error fetching project:", projectError);
+    return { error: projectError?.message || "Project not found" };
   }
 
   // Generate new token using crypto.randomUUID()
   const { data: updated, error } = await supabase
-    .from("businesses")
+    .from("projects")
     .update({ invite_token: crypto.randomUUID() })
-    .eq("id", businessId)
+    .eq("id", projectId)
     .select("invite_token")
     .single();
 
@@ -108,19 +108,19 @@ export async function regenerateInviteLink(businessId: string): Promise<{
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const inviteUrl = `${baseUrl}/invite/${updated.invite_token}`;
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/team`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/team`);
   }
 
   return { inviteUrl };
 }
 
 /**
- * Get business info by invite token (for the invite landing page)
+ * Get project info by invite token (for the invite landing page)
  * Uses RPC function to securely bypass RLS
  */
-export async function getBusinessByInviteToken(token: string): Promise<{
-  business?: {
+export async function getProjectByInviteToken(token: string): Promise<{
+  project?: {
     id: string;
     name: string;
     slug: string;
@@ -130,27 +130,27 @@ export async function getBusinessByInviteToken(token: string): Promise<{
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .rpc("get_business_by_invite_token", { invite_token_param: token });
+    .rpc("get_project_by_invite_token", { invite_token_param: token });
 
   if (error) {
     console.error("Error looking up invite token:", error);
     return { error: "Invalid invite link" };
   }
 
-  const business = data?.[0];
-  if (!business) {
+  const project = data?.[0];
+  if (!project) {
     return { error: "Invalid invite link" };
   }
 
-  return { business };
+  return { project };
 }
 
 /**
- * Accept an invite (adds user to business)
+ * Accept an invite (adds user to project)
  */
 export async function acceptInvite(token: string): Promise<{
   success?: boolean;
-  business_slug?: string;
+  project_slug?: string;
   error?: string;
 }> {
   const supabase = await createClient();
@@ -164,64 +164,64 @@ export async function acceptInvite(token: string): Promise<{
     return { error: "You must be logged in to accept an invite" };
   }
 
-  // Get business by invite token
-  const { data: business, error: businessError } = await supabase
-    .from("businesses")
+  // Get project by invite token
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("id, slug")
     .eq("invite_token", token)
     .single();
 
-  if (businessError || !business) {
+  if (projectError || !project) {
     return { error: "Invalid invite link" };
   }
 
   // Check if already a member
   const { data: existingMember } = await supabase
-    .from("business_users")
+    .from("project_users")
     .select("id")
-    .eq("business_id", business.id)
+    .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
 
   if (existingMember) {
     // Already a member, just redirect
-    return { success: true, business_slug: business.slug };
+    return { success: true, project_slug: project.slug };
   }
 
-  // Add user to business
-  const { error: addError } = await supabase.from("business_users").insert({
-    business_id: business.id,
+  // Add user to project
+  const { error: addError } = await supabase.from("project_users").insert({
+    project_id: project.id,
     user_id: user.id,
   });
 
   if (addError) {
-    console.error("Error adding user to business:", addError);
+    console.error("Error adding user to project:", addError);
     return { error: addError.message };
   }
 
-  return { success: true, business_slug: business.slug };
+  return { success: true, project_slug: project.slug };
 }
 
 /**
- * Remove a team member from a business
+ * Remove a team member from a project
  */
 export async function removeTeamMember(
-  businessId: string,
+  projectId: string,
   userId: string
 ): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient();
 
-  // Get business for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { error } = await supabase
-    .from("business_users")
+    .from("project_users")
     .delete()
-    .eq("business_id", businessId)
+    .eq("project_id", projectId)
     .eq("user_id", userId);
 
   if (error) {
@@ -229,8 +229,8 @@ export async function removeTeamMember(
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/team`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/team`);
   }
   return { success: true };
 }

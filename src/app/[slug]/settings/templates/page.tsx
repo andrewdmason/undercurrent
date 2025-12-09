@@ -4,11 +4,11 @@ import { TemplatesSection } from "@/components/strategy/templates-section";
 import { useSettings } from "@/components/settings/settings-context";
 
 export default function SettingsTemplatesPage() {
-  const { business, templates, channels } = useSettings();
+  const { project, templates, channels } = useSettings();
 
   return (
     <TemplatesSection
-      businessId={business.id}
+      projectId={project.id}
       templates={templates}
       channels={channels}
     />

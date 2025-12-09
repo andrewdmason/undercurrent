@@ -18,8 +18,8 @@ import { ViewType } from "./ideas-feed";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
-  businessId: string;
-  businessSlug?: string;
+  projectId: string;
+  projectSlug?: string;
   onClick: () => void;
   isLoadingImage?: boolean;
   viewType: ViewType;
@@ -92,12 +92,12 @@ export function getChannelLabel(platform: string, customLabel?: string | null): 
   return DISTRIBUTION_PLATFORMS.find((p) => p.value === platform)?.label || platform;
 }
 
-export function IdeaCard({ 
-  idea, 
-  businessId,
-  businessSlug,
-  onClick, 
-  isLoadingImage = false, 
+export function IdeaCard({
+  idea,
+  projectId,
+  projectSlug,
+  onClick,
+  isLoadingImage = false,
   viewType,
   onReject,
   onPublish,
@@ -130,7 +130,7 @@ export function IdeaCard({
 
     setIsGenerating(true);
     try {
-      const result = await generateThumbnail(idea.id, businessId);
+      const result = await generateThumbnail(idea.id, projectId);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -148,14 +148,14 @@ export function IdeaCard({
     e.stopPropagation();
     
     // Shift+click goes directly to create view
-    if (e.shiftKey && businessSlug) {
+    if (e.shiftKey && projectSlug) {
       setIsAccepting(true);
       try {
         const result = await acceptIdea(idea.id);
         if (result.error) {
           toast.error(result.error);
         } else {
-          router.push(`/${businessSlug}/ideas/${idea.id}`);
+          router.push(`/${projectSlug}/ideas/${idea.id}`);
         }
       } catch (error) {
         toast.error("Failed to accept idea");
@@ -175,9 +175,9 @@ export function IdeaCard({
         toast.error(result.error);
       } else {
         toast.success("Idea accepted!", {
-          action: businessSlug ? {
+          action: projectSlug ? {
             label: "View",
-            onClick: () => router.push(`/${businessSlug}/ideas/${idea.id}`),
+            onClick: () => router.push(`/${projectSlug}/ideas/${idea.id}`),
           } : undefined,
         });
         router.refresh();

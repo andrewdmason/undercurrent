@@ -4,7 +4,7 @@ export type IdeaStatus = "new" | "rejected" | "accepted" | "published" | "cancel
 
 export interface Idea {
   id: string;
-  business_id: string;
+  project_id: string;
   title: string;
   description: string | null;
   script: string | null;
@@ -18,7 +18,7 @@ export interface Idea {
   updated_at: string;
 }
 
-export interface Business {
+export interface Project {
   id: string;
   name: string;
   slug: string;
@@ -32,9 +32,9 @@ export interface Business {
   created_by: string | null;
 }
 
-export interface BusinessCharacter {
+export interface ProjectCharacter {
   id: string;
-  business_id: string;
+  project_id: string;
   name: string;
   description: string | null;
   image_url: string | null;
@@ -51,7 +51,7 @@ export interface Profile {
 
 export interface GenerationLog {
   id: string;
-  business_id: string;
+  project_id: string;
   prompt_sent: string;
   response_raw: string | null;
   ideas_created: string[] | null;
@@ -62,7 +62,7 @@ export interface GenerationLog {
 
 export interface DistributionChannel {
   id: string;
-  business_id: string;
+  project_id: string;
   platform: string;
   custom_label: string | null;
   goal_count: number | null;
@@ -94,9 +94,9 @@ export interface IdeaTopic {
   created_at: string;
 }
 
-export interface BusinessTopic {
+export interface ProjectTopic {
   id: string;
-  business_id: string;
+  project_id: string;
   name: string;
   description: string | null;
   is_excluded: boolean;
@@ -104,9 +104,9 @@ export interface BusinessTopic {
   updated_at: string;
 }
 
-export interface BusinessTemplate {
+export interface ProjectTemplate {
   id: string;
-  business_id: string;
+  project_id: string;
   name: string;
   description: string | null;
   source_video_url: string | null;
@@ -123,7 +123,7 @@ export interface TemplateChannel {
 }
 
 // Extended template type with channel information for display
-export interface BusinessTemplateWithChannels extends BusinessTemplate {
+export interface ProjectTemplateWithChannels extends ProjectTemplate {
   channels: Array<{
     id: string;
     platform: string;
@@ -209,7 +209,7 @@ export interface ToolCall {
 export interface ChatLog {
   id: string;
   chat_id: string;
-  business_id: string;
+  project_id: string;
   model: string;
   messages_sent: unknown;
   response_raw: string | null;
@@ -231,4 +231,3 @@ export const MODEL_CONTEXT_LIMITS: Record<ChatModel, { max: number; warning: num
   "gpt-5.1": { max: 128_000, warning: 100_000 },
   "gemini-3-pro-preview": { max: 1_000_000, warning: 800_000 },
 };
-

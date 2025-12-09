@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getBusinessByInviteToken } from "@/lib/actions/team";
+import { getProjectByInviteToken } from "@/lib/actions/team";
 import { InviteAcceptClient } from "./invite-accept-client";
 
 interface InvitePageProps {
@@ -17,8 +17,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get business details by invite token
-  const { business, error } = await getBusinessByInviteToken(token);
+  // Get project details by invite token
+  const { project, error } = await getProjectByInviteToken(token);
 
   return (
     <main className="flex min-h-screen">
@@ -73,7 +73,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <div className="w-full max-w-sm">
           <InviteAcceptClient
             token={token}
-            business={business || null}
+            project={project || null}
             error={error || null}
             isLoggedIn={!!user}
           />

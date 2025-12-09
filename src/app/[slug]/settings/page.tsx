@@ -1,10 +1,10 @@
 "use client";
 
-import { BusinessInfoForm } from "@/components/strategy/business-info-form";
+import { ProjectInfoForm } from "@/components/strategy/project-info-form";
 import { useSettings } from "@/components/settings/settings-context";
 
 export default function SettingsGeneralPage() {
-  const { business } = useSettings();
+  const { project } = useSettings();
 
-  return <BusinessInfoForm business={business} />;
+  return <ProjectInfoForm project={project} />;
 }

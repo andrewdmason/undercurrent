@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function createCharacter(
-  businessId: string,
+  projectId: string,
   data: {
     name: string;
     description?: string | null;
@@ -13,17 +13,17 @@ export async function createCharacter(
 ) {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { data: character, error } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .insert({
-      business_id: businessId,
+      project_id: projectId,
       name: data.name,
       description: data.description || null,
       image_url: data.image_url || null,
@@ -36,15 +36,15 @@ export async function createCharacter(
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true, character };
 }
 
 export async function updateCharacter(
   characterId: string,
-  businessId: string,
+  projectId: string,
   data: {
     name?: string;
     description?: string | null;
@@ -53,15 +53,15 @@ export async function updateCharacter(
 ) {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const { error } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .update(data)
     .eq("id", characterId);
 
@@ -70,25 +70,25 @@ export async function updateCharacter(
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true };
 }
 
-export async function deleteCharacter(characterId: string, businessId: string) {
+export async function deleteCharacter(characterId: string, projectId: string) {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   // First get the character to check if there's an image to delete
   const { data: character } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .select("image_url")
     .eq("id", characterId)
     .single();
@@ -104,7 +104,7 @@ export async function deleteCharacter(characterId: string, businessId: string) {
   }
 
   const { error } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .delete()
     .eq("id", characterId);
 
@@ -113,8 +113,8 @@ export async function deleteCharacter(characterId: string, businessId: string) {
     return { error: error.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true };
 }
@@ -122,17 +122,17 @@ export async function deleteCharacter(characterId: string, businessId: string) {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function uploadCharacterImage(
-  businessId: string,
+  projectId: string,
   characterId: string,
   formData: FormData
 ) {
   const supabase = await createClient();
 
-  // Get business slug for revalidation
-  const { data: business } = await supabase
-    .from("businesses")
+  // Get project slug for revalidation
+  const { data: project } = await supabase
+    .from("projects")
     .select("slug")
-    .eq("id", businessId)
+    .eq("id", projectId)
     .single();
 
   const file = formData.get("file") as File;
@@ -162,7 +162,7 @@ export async function uploadCharacterImage(
     fileExt = mimeToExt[file.type] || "jpg"; // Default to jpg if unknown
   }
   
-  const fileName = `${businessId}/${characterId}-${Date.now()}.${fileExt}`;
+  const fileName = `${projectId}/${characterId}-${Date.now()}.${fileExt}`;
 
   // Upload the file
   const { error: uploadError } = await supabase.storage
@@ -184,7 +184,7 @@ export async function uploadCharacterImage(
 
   // Update the character record with the image URL
   const { error: updateError } = await supabase
-    .from("business_characters")
+    .from("project_characters")
     .update({ image_url: publicUrl })
     .eq("id", characterId);
 
@@ -193,8 +193,8 @@ export async function uploadCharacterImage(
     return { error: updateError.message };
   }
 
-  if (business?.slug) {
-    revalidatePath(`/${business.slug}/settings`);
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/settings`);
   }
   return { success: true, imageUrl: publicUrl };
 }

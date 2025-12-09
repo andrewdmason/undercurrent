@@ -21,7 +21,7 @@ export function generateSlug(name: string): string {
 
 /**
  * Generates a unique slug by appending a number suffix if needed
- * @param baseName - The business name to generate slug from
+ * @param baseName - The project name to generate slug from
  * @param existingSlugs - Array of existing slugs to check against
  * @param excludeSlug - Optional slug to exclude from collision check (for updates)
  */
@@ -53,7 +53,7 @@ export function generateUniqueSlug(
 ): string {
   const baseSlug = generateSlug(baseName);
   
-  // Filter out the excluded slug (used when updating a business)
+  // Filter out the excluded slug (used when updating a project)
   const slugsToCheck = excludeSlug 
     ? existingSlugs.filter(s => s !== excludeSlug)
     : existingSlugs;
