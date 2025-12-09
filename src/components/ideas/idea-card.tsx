@@ -333,7 +333,7 @@ export function IdeaCard({
         {/* Template badge */}
         {idea.template && (
           <div className="flex items-center gap-1 mb-2">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--purple-100)] text-[var(--purple-700)]">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]">
               <LayoutTemplate className="h-3 w-3" />
               {idea.template.name}
             </span>
