@@ -5,8 +5,9 @@ import { BusinessTopic } from "@/lib/types";
 import { addTopic, updateTopic, deleteTopic } from "@/lib/actions/business";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Ban } from "lucide-react";
+import { Plus, Trash2, Ban, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SuggestTopicsModal } from "./suggest-topics-modal";
 
 interface TopicsSectionProps {
   businessId: string;
@@ -23,6 +24,7 @@ export function TopicsSection({
   const [isAddingIncluded, setIsAddingIncluded] = useState(false);
   const [isAddingExcluded, setIsAddingExcluded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
 
   const includedTopics = topics.filter((t) => !t.is_excluded);
   const excludedTopics = topics.filter((t) => t.is_excluded);
@@ -49,6 +51,10 @@ export function TopicsSection({
     setTopics(topics.filter((t) => t.id !== topicId));
   };
 
+  const handleTopicAddedFromModal = (topic: BusinessTopic) => {
+    setTopics([...topics, topic]);
+  };
+
   return (
     <div className="space-y-6">
       {/* Topics to Cover */}
@@ -62,17 +68,27 @@ export function TopicsSection({
               Content topics to inspire idea generation
             </p>
           </div>
-          {!isAddingIncluded && (
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => setIsAddingIncluded(true)}
-              className="h-8 text-xs"
+              onClick={() => setIsSuggestModalOpen(true)}
+              className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white"
             >
-              <Plus size={14} className="mr-1" />
-              Add Topic
+              <Sparkles size={14} className="mr-1" />
+              Suggest Topics
             </Button>
-          )}
+            {!isAddingIncluded && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddingIncluded(true)}
+                className="h-8 text-xs"
+              >
+                <Plus size={14} className="mr-1" />
+                Add Topic
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -157,6 +173,14 @@ export function TopicsSection({
           )}
         </div>
       </div>
+
+      {/* Suggest Topics Modal */}
+      <SuggestTopicsModal
+        open={isSuggestModalOpen}
+        onOpenChange={setIsSuggestModalOpen}
+        businessId={businessId}
+        onTopicAdded={handleTopicAddedFromModal}
+      />
     </div>
   );
 }

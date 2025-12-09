@@ -1,0 +1,210 @@
+import { createClient } from "@/lib/supabase/server";
+import { openai, DEFAULT_MODEL } from "@/lib/openai";
+import { readFile } from "fs/promises";
+import path from "path";
+
+interface RefineRequest {
+  currentTopic?: {
+    name: string;
+    description: string;
+  };
+  feedback?: string;
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ businessId: string }> }
+) {
+  const { businessId } = await params;
+  const supabase = await createClient();
+
+  // Parse optional refinement request
+  let refineData: RefineRequest = {};
+  try {
+    const body = await request.json();
+    refineData = body || {};
+  } catch {
+    // No body or invalid JSON - that's fine for new suggestions
+  }
+
+  // Verify user is authenticated
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Verify user has access to this business
+  const { data: membership } = await supabase
+    .from("business_users")
+    .select("id")
+    .eq("business_id", businessId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) {
+    return new Response("Access denied", { status: 403 });
+  }
+
+  // Fetch business context
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("name, description, business_objectives")
+    .eq("id", businessId)
+    .single();
+
+  if (businessError || !business) {
+    return new Response("Business not found", { status: 404 });
+  }
+
+  // Fetch existing topics
+  const { data: allTopics } = await supabase
+    .from("business_topics")
+    .select("name, description, is_excluded")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: true });
+
+  const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
+  const excludedTopics = allTopics?.filter((t) => t.is_excluded) || [];
+
+  // Build the prompt from template
+  const promptTemplate = await readFile(
+    path.join(process.cwd(), "prompts", "suggest-topic.md"),
+    "utf-8"
+  );
+
+  // Format existing topics section
+  const existingTopicsSection =
+    includedTopics.length > 0
+      ? includedTopics
+          .map((t) => {
+            let line = `- **${t.name}**`;
+            if (t.description) {
+              line += `: ${t.description}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No topics configured yet.";
+
+  // Format excluded topics section
+  const excludedTopicsSection =
+    excludedTopics.length > 0
+      ? excludedTopics
+          .map((t) => {
+            let line = `- **${t.name}**`;
+            if (t.description) {
+              line += `: ${t.description}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No excluded topics.";
+
+  // Build refinement section if provided
+  let refinementSection = "";
+  if (refineData.currentTopic && refineData.feedback) {
+    refinementSection = `
+## Current Topic Being Refined
+
+The user is iterating on an existing suggestion. Here's the current topic:
+
+**Name:** ${refineData.currentTopic.name}
+**Description:** ${refineData.currentTopic.description}
+
+**User's Feedback:** ${refineData.feedback}
+
+Please refine the topic based on this feedback. You may adjust the name, description, or both to address the user's input while maintaining the topic's core value.
+`;
+  }
+
+  // Build the final prompt - remove the template conditional block and insert actual content
+  const prompt = promptTemplate
+    .replace("{{businessName}}", business.name || "Unnamed Business")
+    .replace(
+      "{{businessDescription}}",
+      business.description || "No description provided."
+    )
+    .replace(
+      "{{businessObjectives}}",
+      business.business_objectives || "No business objectives defined yet."
+    )
+    .replace("{{existingTopics}}", existingTopicsSection)
+    .replace("{{excludedTopics}}", excludedTopicsSection)
+    .replace(/\{\{#if currentTopic\}\}[\s\S]*?\{\{\/if\}\}/g, refinementSection);
+
+  // Create streaming response
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: DEFAULT_MODEL,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          response_format: { type: "json_object" },
+          stream: true,
+        });
+
+        let fullResponse = "";
+
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            fullResponse += content;
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "text", content })}\n\n`
+              )
+            );
+          }
+        }
+
+        // Parse the final JSON to validate it
+        try {
+          const parsed = JSON.parse(fullResponse);
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "complete", topic: parsed })}\n\n`
+            )
+          );
+        } catch {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "error", error: "Failed to parse topic suggestion" })}\n\n`
+            )
+          );
+        }
+
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Topic suggestion error:", error);
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "error", error: errorMessage })}\n\n`
+          )
+        );
+      }
+
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
