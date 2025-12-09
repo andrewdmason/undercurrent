@@ -43,44 +43,88 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
     notFound();
   }
 
-  // Fetch NEW ideas for this project, newest first
-  const { data: ideas } = await supabase
-    .from("ideas")
-    .select(`
-      *,
-      idea_channels (
-        channel_id,
-        video_url,
-        project_channels (
-          id,
-          platform,
-          custom_label
-        )
-      ),
-      idea_characters (
-        character_id,
-        project_characters (
+  // Fetch project options for the generate modal (in parallel with ideas)
+  const [
+    ideasResult,
+    charactersResult,
+    channelsResult,
+    templatesResult,
+    topicsResult,
+  ] = await Promise.all([
+    // Fetch NEW ideas for this project, newest first
+    supabase
+      .from("ideas")
+      .select(`
+        *,
+        idea_channels (
+          channel_id,
+          video_url,
+          project_channels (
+            id,
+            platform,
+            custom_label
+          )
+        ),
+        idea_characters (
+          character_id,
+          project_characters (
+            id,
+            name,
+            image_url
+          )
+        ),
+        idea_topics (
+          topic_id,
+          project_topics (
+            id,
+            name
+          )
+        ),
+        project_templates (
           id,
           name,
-          image_url
+          description
         )
-      ),
-      idea_topics (
-        topic_id,
-        project_topics (
-          id,
-          name
-        )
-      ),
-      project_templates (
-        id,
-        name,
-        description
-      )
-    `)
-    .eq("project_id", project.id)
-    .eq("status", "new")
-    .order("created_at", { ascending: false });
+      `)
+      .eq("project_id", project.id)
+      .eq("status", "new")
+      .order("created_at", { ascending: false }),
+    
+    // Fetch characters for the generate modal
+    supabase
+      .from("project_characters")
+      .select("id, name, image_url")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: true }),
+    
+    // Fetch channels for the generate modal
+    supabase
+      .from("project_channels")
+      .select("id, platform, custom_label")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: true }),
+    
+    // Fetch templates for the generate modal
+    supabase
+      .from("project_templates")
+      .select("id, name")
+      .eq("project_id", project.id)
+      .order("created_at", { ascending: false }),
+    
+    // Fetch included topics for the generate modal
+    supabase
+      .from("project_topics")
+      .select("id, name")
+      .eq("project_id", project.id)
+      .eq("is_excluded", false)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const ideas = ideasResult.data;
+  const characters = charactersResult.data || [];
+  const channels = channelsResult.data || [];
+  const templates = templatesResult.data || [];
+  const topics = topicsResult.data || [];
 
   // Transform the data to flatten related info
   const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
@@ -121,7 +165,13 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
                 Review and accept ideas to start creating
               </p>
             </div>
-            <GenerateIdeasButton projectId={project.id} />
+            <GenerateIdeasButton 
+              projectId={project.id}
+              characters={characters}
+              channels={channels}
+              templates={templates}
+              topics={topics}
+            />
           </div>
 
           {/* Feed */}

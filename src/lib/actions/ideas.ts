@@ -174,8 +174,27 @@ export async function publishIdea(
   return { success: true };
 }
 
-export async function generateIdeas(projectId: string, customInstructions?: string) {
+// Options for filtering idea generation
+export interface GenerateIdeasOptions {
+  count?: number;           // default 5
+  characterIds?: string[];  // filter to these, or undefined for all
+  channelIds?: string[];    // filter to these, or undefined for all
+  templateId?: string;      // filter to this, or undefined for all
+  topicId?: string;         // filter to this, or undefined for all
+  customInstructions?: string;
+}
+
+export async function generateIdeas(projectId: string, options: GenerateIdeasOptions = {}) {
   const supabase = await createClient();
+  
+  const {
+    count = 5,
+    characterIds,
+    channelIds,
+    templateId,
+    topicId,
+    customInstructions,
+  } = options;
 
   // Fetch project profile
   const { data: project, error: projectError } = await supabase
@@ -190,30 +209,51 @@ export async function generateIdeas(projectId: string, customInstructions?: stri
   }
 
   // Fetch project characters (with IDs for AI to reference)
-  const { data: characters } = await supabase
+  // If characterIds filter provided, only fetch those specific characters
+  let charactersQuery = supabase
     .from("project_characters")
     .select("id, name, description")
     .eq("project_id", projectId);
+  
+  if (characterIds && characterIds.length > 0) {
+    charactersQuery = charactersQuery.in("id", characterIds);
+  }
+  
+  const { data: characters } = await charactersQuery;
 
   // Fetch distribution channels
-  const { data: channels } = await supabase
+  // If channelIds filter provided, only fetch those specific channels
+  let channelsQuery = supabase
     .from("project_channels")
     .select("id, platform, custom_label, goal_count, goal_cadence, notes")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
+  
+  if (channelIds && channelIds.length > 0) {
+    channelsQuery = channelsQuery.in("id", channelIds);
+  }
+  
+  const { data: channels } = await channelsQuery;
 
   // Fetch topics (both included and excluded, with IDs for AI to reference)
+  // If topicId filter provided, only fetch that specific topic (for included)
   const { data: allTopics } = await supabase
     .from("project_topics")
     .select("id, name, description, is_excluded")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
-  const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
+  let includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
   const excludedTopics = allTopics?.filter((t) => t.is_excluded) || [];
+  
+  // Filter to specific topic if provided
+  if (topicId) {
+    includedTopics = includedTopics.filter((t) => t.id === topicId);
+  }
 
   // Fetch templates with their channel associations
-  const { data: templates } = await supabase
+  // If templateId filter provided, only fetch that specific template
+  let templatesQuery = supabase
     .from("project_templates")
     .select(`
       id,
@@ -228,6 +268,12 @@ export async function generateIdeas(projectId: string, customInstructions?: stri
     `)
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
+  
+  if (templateId) {
+    templatesQuery = templatesQuery.eq("id", templateId);
+  }
+  
+  const { data: templates } = await templatesQuery;
 
   // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
@@ -344,6 +390,7 @@ export async function generateIdeas(projectId: string, customInstructions?: stri
 
   // Build the final prompt
   let prompt = promptTemplate
+    .replace(/\{\{ideaCount\}\}/g, count.toString())
     .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace(
       "{{projectDescription}}",
@@ -363,6 +410,35 @@ export async function generateIdeas(projectId: string, customInstructions?: stri
     .replace("{{distributionChannels}}", channelsSection)
     .replace("{{templates}}", templatesSection)
     .replace("{{pastIdeas}}", pastIdeasSection);
+
+  // Append filtering context - tell the AI whether to use ALL items or pick freely
+  const filteringInstructions: string[] = [];
+  
+  if (characterIds && characterIds.length > 0) {
+    filteringInstructions.push(`**Characters:** The user specifically selected ${characters?.length === 1 ? 'this character' : 'these characters'}. Every idea MUST feature ALL of them together.`);
+  } else {
+    filteringInstructions.push(`**Characters:** Pick freely from the available characters. Vary which characters appear across ideas for diversity.`);
+  }
+  
+  if (channelIds && channelIds.length > 0) {
+    filteringInstructions.push(`**Channels:** The user specifically selected ${channels?.length === 1 ? 'this channel' : 'these channels'}. Every idea MUST target ALL of them.`);
+  } else {
+    filteringInstructions.push(`**Channels:** Pick appropriate channels for each idea. Vary channel assignments across ideas.`);
+  }
+  
+  if (templateId) {
+    filteringInstructions.push(`**Template:** The user specifically selected this template. Every idea MUST use it.`);
+  } else {
+    filteringInstructions.push(`**Template:** Pick the best-fitting template for each idea. Vary templates across ideas for production diversity.`);
+  }
+  
+  if (topicId) {
+    filteringInstructions.push(`**Topic:** The user specifically selected this topic. Every idea MUST cover it.`);
+  } else {
+    filteringInstructions.push(`**Topics:** Pick relevant topics for each idea. An idea can cover multiple topics or none if it doesn't fit.`);
+  }
+  
+  prompt += `\n\n## Selection Mode\n\n${filteringInstructions.join('\n\n')}`;
 
   // Append custom instructions if provided
   if (customInstructions) {
@@ -593,7 +669,7 @@ export async function generateIdeas(projectId: string, customInstructions?: stri
 export async function generateScript(ideaId: string) {
   const supabase = await createClient();
 
-  // Fetch the idea with its channels
+  // Fetch the idea with its channels, characters, topics, and template
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
     .select(`
@@ -607,6 +683,22 @@ export async function generateScript(ideaId: string) {
           platform,
           custom_label
         )
+      ),
+      idea_characters (
+        project_characters (
+          name,
+          description
+        )
+      ),
+      idea_topics (
+        project_topics (
+          name,
+          description
+        )
+      ),
+      project_templates (
+        name,
+        description
       )
     `)
     .eq("id", ideaId)
@@ -629,11 +721,22 @@ export async function generateScript(ideaId: string) {
     return { error: "Project not found" };
   }
 
-  // Fetch characters
-  const { data: characters } = await supabase
-    .from("project_characters")
-    .select("name, description")
-    .eq("project_id", idea.project_id);
+  // Extract idea's specific characters (not all project characters)
+  const characters = (idea.idea_characters as unknown as Array<{
+    project_characters: { name: string; description: string | null } | null;
+  }> || [])
+    .map(ic => ic.project_characters)
+    .filter(Boolean) as Array<{ name: string; description: string | null }>;
+
+  // Extract idea's topics
+  const topics = (idea.idea_topics as unknown as Array<{
+    project_topics: { name: string; description: string | null } | null;
+  }> || [])
+    .map(it => it.project_topics)
+    .filter(Boolean) as Array<{ name: string; description: string | null }>;
+
+  // Extract idea's template (foreign key returns single object or null)
+  const template = idea.project_templates as unknown as { name: string; description: string | null } | null;
 
   // Build the prompt from template
   const promptTemplate = await readFile(
@@ -641,13 +744,13 @@ export async function generateScript(ideaId: string) {
     "utf-8"
   );
 
-  // Format characters section
+  // Format characters section (idea-specific characters)
   const charactersSection =
-    characters && characters.length > 0
+    characters.length > 0
       ? characters
           .map((c) => `- **${c.name}**: ${c.description || "No description"}`)
           .join("\n")
-      : "No character profiles configured.";
+      : "No specific characters assigned to this idea.";
 
   // Format channels section  
   const channelsSection =
@@ -668,11 +771,24 @@ export async function generateScript(ideaId: string) {
           .join(", ")
       : "No specific channels";
 
+  // Format template section
+  const templateSection = template
+    ? `**Template:** ${template.name}${template.description ? ` - ${template.description}` : ""}`
+    : "No specific template assigned.";
+
+  // Format topics section
+  const topicsSection =
+    topics.length > 0
+      ? topics.map((t) => t.name).join(", ")
+      : "No specific topics";
+
   // Build the final prompt
   const prompt = promptTemplate
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
+    .replace("{{template}}", templateSection)
+    .replace("{{topics}}", topicsSection)
     .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace("{{projectDescription}}", project.description || "No description provided.")
     .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.")

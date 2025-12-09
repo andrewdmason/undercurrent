@@ -5,22 +5,46 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { generateIdeas } from "@/lib/actions/ideas";
-import { GenerateIdeasModal } from "./generate-ideas-modal";
+import { 
+  GenerateIdeasModal, 
+  GenerationOptions,
+  CharacterOption,
+  ChannelOption,
+  TemplateOption,
+  TopicOption,
+} from "./generate-ideas-modal";
 
 interface GenerateIdeasButtonProps {
   projectId: string;
+  characters?: CharacterOption[];
+  channels?: ChannelOption[];
+  templates?: TemplateOption[];
+  topics?: TopicOption[];
 }
 
-export function GenerateIdeasButton({ projectId }: GenerateIdeasButtonProps) {
+export function GenerateIdeasButton({ 
+  projectId,
+  characters = [],
+  channels = [],
+  templates = [],
+  topics = [],
+}: GenerateIdeasButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleGenerate = async (customInstructions?: string) => {
+  const handleGenerate = async (options: GenerationOptions) => {
     setIsGenerating(true);
     setIsModalOpen(false);
 
     try {
-      const result = await generateIdeas(projectId, customInstructions);
+      const result = await generateIdeas(projectId, {
+        count: options.count,
+        characterIds: options.characterIds === "random" ? undefined : options.characterIds,
+        channelIds: options.channelIds === "random" ? undefined : options.channelIds,
+        templateId: options.templateId === "random" ? undefined : options.templateId,
+        topicId: options.topicId === "random" ? undefined : options.topicId,
+        customInstructions: options.customInstructions,
+      });
 
       if (result.error) {
         toast.error("Failed to generate ideas", {
@@ -66,6 +90,10 @@ export function GenerateIdeasButton({ projectId }: GenerateIdeasButtonProps) {
         onOpenChange={setIsModalOpen}
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
+        characters={characters}
+        channels={channels}
+        templates={templates}
+        topics={topics}
       />
     </>
   );
