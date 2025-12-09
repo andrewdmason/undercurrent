@@ -2,12 +2,12 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Business, BusinessCharacter, DistributionChannel, BusinessTopic } from "@/lib/types";
+import { Business, BusinessCharacter, DistributionChannel, BusinessTopic, BusinessTemplateWithChannels } from "@/lib/types";
 import { BusinessInfoForm } from "@/components/strategy/business-info-form";
 import { CharactersSection } from "@/components/strategy/characters-section";
 import { TopicsSection } from "@/components/strategy/topics-section";
 import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
-import { StrategyPromptSection } from "@/components/strategy/strategy-prompt-section";
+import { TemplatesSection } from "@/components/strategy/templates-section";
 
 const VALID_TABS = ["general", "topics", "channels", "characters", "templates"] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -17,6 +17,7 @@ interface SettingsTabsProps {
   characters: BusinessCharacter[];
   channels: DistributionChannel[];
   topics: BusinessTopic[];
+  templates: BusinessTemplateWithChannels[];
 }
 
 export function SettingsTabs({
@@ -24,6 +25,7 @@ export function SettingsTabs({
   characters,
   channels,
   topics,
+  templates,
 }: SettingsTabsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -77,7 +79,7 @@ export function SettingsTabs({
             value="templates"
             className="rounded-md px-3 text-sm font-medium text-[var(--grey-400)] data-[state=active]:bg-white data-[state=active]:text-[var(--grey-800)] data-[state=active]:shadow-sm"
           >
-            Templates
+            Style Templates
           </TabsTrigger>
         </TabsList>
       </div>
@@ -100,9 +102,10 @@ export function SettingsTabs({
         </TabsContent>
 
         <TabsContent value="templates" className="mt-0">
-          <StrategyPromptSection
+          <TemplatesSection
             businessId={business.id}
-            strategyPrompt={business.strategy_prompt || ""}
+            templates={templates}
+            channels={channels}
           />
         </TabsContent>
       </div>

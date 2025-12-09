@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Business, BusinessCharacter, DistributionChannel, BusinessTopic } from "@/lib/types";
+import { Business, BusinessCharacter, DistributionChannel, BusinessTopic, BusinessTemplateWithChannels } from "@/lib/types";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 
 interface SettingsPageProps {
@@ -63,10 +63,43 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     .eq("business_id", business.id)
     .order("created_at", { ascending: true });
 
+  // Get templates for this business with their channel associations
+  const { data: templates } = await supabase
+    .from("business_templates")
+    .select(`
+      *,
+      template_channels (
+        channel_id,
+        business_distribution_channels (
+          id,
+          platform,
+          custom_label
+        )
+      )
+    `)
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: false });
+
   const typedBusiness = business as Business;
   const typedCharacters = (characters || []) as BusinessCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
   const typedTopics = (topics || []) as BusinessTopic[];
+  
+  // Transform templates to flatten channel info
+  const typedTemplates: BusinessTemplateWithChannels[] = (templates || []).map((template) => ({
+    ...template,
+    channels: (template.template_channels || [])
+      .map((tc: { channel_id: string; business_distribution_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
+        const channel = tc.business_distribution_channels;
+        return channel ? {
+          id: channel.id,
+          platform: channel.platform,
+          custom_label: channel.custom_label,
+        } : null;
+      })
+      .filter((c: unknown): c is { id: string; platform: string; custom_label: string | null } => c !== null),
+    template_channels: undefined,
+  }));
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
@@ -90,6 +123,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
             characters={typedCharacters}
             channels={typedChannels}
             topics={typedTopics}
+            templates={typedTemplates}
           />
         </div>
       </div>

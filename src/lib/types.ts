@@ -13,6 +13,7 @@ export interface Idea {
   status: IdeaStatus;
   reject_reason: string | null;
   generation_batch_id: string | null;
+  template_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +90,33 @@ export interface BusinessTopic {
   updated_at: string;
 }
 
+export interface BusinessTemplate {
+  id: string;
+  business_id: string;
+  name: string;
+  description: string | null;
+  source_video_url: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TemplateChannel {
+  id: string;
+  template_id: string;
+  channel_id: string;
+  created_at: string;
+}
+
+// Extended template type with channel information for display
+export interface BusinessTemplateWithChannels extends BusinessTemplate {
+  channels: Array<{
+    id: string;
+    platform: string;
+    custom_label: string | null;
+  }>;
+}
+
 // Extended Idea type with channel information for display
 export interface IdeaWithChannels extends Idea {
   channels: Array<{
@@ -97,6 +125,11 @@ export interface IdeaWithChannels extends Idea {
     custom_label: string | null;
     video_url: string | null;
   }>;
+  template?: {
+    id: string;
+    name: string;
+    description: string | null;
+  } | null;
 }
 
 // Platform options for distribution channels

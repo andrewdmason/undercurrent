@@ -13,6 +13,7 @@ interface GeneratedIdea {
   title: string;
   description: string;
   channels?: string[];
+  templateId?: string;
 }
 
 // Helper to get business slug and revalidate paths
@@ -209,6 +210,23 @@ export async function generateIdeas(businessId: string, customInstructions?: str
   const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
   const excludedTopics = allTopics?.filter((t) => t.is_excluded) || [];
 
+  // Fetch templates with their channel associations
+  const { data: templates } = await supabase
+    .from("business_templates")
+    .select(`
+      id,
+      name,
+      description,
+      template_channels (
+        business_distribution_channels (
+          platform,
+          custom_label
+        )
+      )
+    `)
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false });
+
   // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
     .from("ideas")
@@ -296,6 +314,32 @@ export async function generateIdeas(businessId: string, customInstructions?: str
           .join("\n")
       : "No previous ideas generated yet.";
 
+  // Format templates section
+  const templatesSection =
+    templates && templates.length > 0
+      ? templates
+          .map((t) => {
+            // template_channels is an array of junction records, each with a nested channel object
+            const templateChannels = (t.template_channels || [])
+              .map((tc: unknown) => {
+                const tcRecord = tc as { business_distribution_channels: { platform: string; custom_label: string | null } | null };
+                const channel = tcRecord.business_distribution_channels;
+                return channel ? (channel.custom_label || channel.platform) : null;
+              })
+              .filter(Boolean);
+            
+            let line = `- **${t.name}** (id: "${t.id}")`;
+            if (t.description) {
+              line += `\n  Style: ${t.description}`;
+            }
+            if (templateChannels.length > 0) {
+              line += `\n  Best for: ${templateChannels.join(", ")}`;
+            }
+            return line;
+          })
+          .join("\n")
+      : "No video templates configured.";
+
   // Build the final prompt
   let prompt = promptTemplate
     .replace("{{businessName}}", business.name || "Unnamed Business")
@@ -315,6 +359,7 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace("{{characters}}", charactersSection)
     .replace("{{distributionChannels}}", channelsSection)
+    .replace("{{templates}}", templatesSection)
     .replace("{{pastIdeas}}", pastIdeasSection);
 
   // Append custom instructions if provided
@@ -385,11 +430,16 @@ export async function generateIdeas(businessId: string, customInstructions?: str
 
     // Insert the generated ideas (status defaults to 'new')
     // Note: script and prompt are generated separately on-demand
+    // Build a set of valid template IDs for validation
+    const validTemplateIds = new Set(templates?.map((t) => t.id) || []);
+    
     const ideasToInsert = generatedIdeas.map((idea) => ({
       business_id: businessId,
       title: idea.title,
       description: idea.description,
       generation_batch_id: batchId,
+      // Only set template_id if it's a valid template for this business
+      template_id: idea.templateId && validTemplateIds.has(idea.templateId) ? idea.templateId : null,
     }));
 
     const { data: insertedIdeas, error: insertError } = await supabase

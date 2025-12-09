@@ -33,6 +33,9 @@ Generate unique video ideas based on the context below. By default, generate exa
 **Distribution Channels:**
 {{distributionChannels}}
 
+**Video Templates:**
+{{templates}}
+
 ## Past Ideas (Avoid Similar Concepts)
 
 {{pastIdeas}}
@@ -44,13 +47,15 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
 - `title`: A catchy, specific title for the video (max 80 characters)
 - `description`: A 2-3 sentence description of the video concept, including the hook, main content, and call-to-action
 - `channels`: An array of channel platform identifiers this idea is intended for. Use the exact platform values from the distribution channels provided (e.g., "tiktok", "youtube_shorts", "linkedin"). If an idea works well across multiple platforms, include all applicable channels. If the idea is platform-specific, include only that platform.
+- `templateId`: The ID of the video template that best matches this idea's production style. If templates are provided, you MUST select one for each idea. Choose the template whose style and target channels align best with the idea concept.
 
 ```json
 [
   {
     "title": "...",
     "description": "...",
-    "channels": ["tiktok", "instagram_reels"]
+    "channels": ["tiktok", "instagram_reels"],
+    "templateId": "uuid-of-selected-template"
   }
 ]
 ```
@@ -90,4 +95,11 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
    - Some ideas are platform-specific (e.g., duets on TikTok, professional insights for LinkedIn) - assign only that channel
    - Consider the channel notes/strategy when provided
 
-10. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.
+10. **Match Templates to Ideas**: If video templates are provided:
+    - Each idea MUST have a templateId from the available templates
+    - Choose the template whose production style best fits the idea concept
+    - Consider which channels each template is appropriate for when matching
+    - Vary template usage across ideas when possible to provide production diversity
+    - If no templates are provided, omit the templateId field
+
+11. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.

@@ -43,9 +43,35 @@ Semi-transparent variants (`grey-50-a`, `grey-100-a`) are used for hover states 
 |---------|-------|-------------|
 | **Primary** | Black gradient, white text | Main actions (Save, Create, Publish) |
 | **Success** | Green (`#00975a`), white text | Positive actions (Accept) |
-| **Secondary** | White, grey border | Secondary actions |
-| **Ghost** | Transparent | Tertiary/subtle actions |
+| **Outline** | White bg, grey border | Secondary actions, Back buttons, Cancel |
+| **Ghost** | Transparent, no border | Icon buttons, inline actions within content |
 | **Destructive** | Red (`#f72736`), white text | Dangerous actions (Delete, Reject) |
+
+### Button Patterns in Dialogs
+
+- **Dialog footers**: Use `outline` for secondary actions (Back, Cancel, Skip), `primary` for main action
+- **Never use ghost buttons** in dialog footers — they lack visual boundaries and look unfinished
+- **Layout**: Right-align buttons with `justify-end`. Let buttons be their natural width.
+
+```tsx
+// ✅ Correct dialog footer pattern - right-aligned, natural width
+<div className="flex justify-end gap-2">
+  <Button variant="outline" onClick={onCancel}>Cancel</Button>
+  <Button onClick={onSave}>Save</Button>
+</div>
+
+// ❌ Wrong - stretched primary button looks unbalanced
+<div className="flex gap-2">
+  <Button variant="outline">Cancel</Button>
+  <Button className="flex-1">Save</Button>
+</div>
+
+// ❌ Wrong - ghost button looks weird without borders
+<div className="flex gap-2">
+  <Button variant="ghost">Cancel</Button>
+  <Button>Save</Button>
+</div>
+```
 
 ---
 
