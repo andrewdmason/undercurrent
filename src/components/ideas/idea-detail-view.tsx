@@ -404,15 +404,15 @@ export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewP
                     {/* Character Avatars */}
                     {idea.characters?.map((character) => (
                       character.image_url ? (
-                        <Image
-                          key={character.id}
-                          src={character.image_url}
-                          alt={character.name}
-                          width={20}
-                          height={20}
-                          className="rounded-full object-cover"
-                          title={character.name}
-                        />
+                        <div key={character.id} className="w-5 h-5 rounded-full overflow-hidden" title={character.name}>
+                          <Image
+                            src={character.image_url}
+                            alt={character.name}
+                            width={20}
+                            height={20}
+                            className="w-full h-full object-cover scale-125"
+                          />
+                        </div>
                       ) : (
                         <span
                           key={character.id}

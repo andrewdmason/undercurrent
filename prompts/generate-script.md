@@ -14,6 +14,10 @@ Write a complete script for the video idea below. The script should be detailed 
 
 **Target Channels:** {{channels}}
 
+{{template}}
+
+**Topics:** {{topics}}
+
 ## Project Context
 
 **Project Name:** {{projectName}}
@@ -139,7 +143,9 @@ When using `[unscripted]`, provide enough direction that the person knows what t
    - YouTube (long-form): More depth, can breathe more
    - LinkedIn: Professional tone, thought leadership angle
 
-5. **Character Consideration**: If character info is provided, write in their voice and play to their strengths
+5. **Character Consideration**: The characters listed are specifically assigned to this video. Write dialogue for ALL of them - they should all appear in the script. Write in their voice and play to their strengths.
+
+6. **Template Style**: If a template is specified, match its production style (e.g., quick tips should be punchy, tutorials should be thorough, behind-the-scenes should feel authentic)
 
 ## Guidelines
 
