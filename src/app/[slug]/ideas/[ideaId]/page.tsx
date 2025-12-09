@@ -43,7 +43,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
-  // Fetch the idea with its channels
+  // Fetch the idea with all its related data
   const { data: idea } = await supabase
     .from("ideas")
     .select(`
@@ -56,6 +56,26 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
           platform,
           custom_label
         )
+      ),
+      idea_characters (
+        character_id,
+        business_characters (
+          id,
+          name,
+          image_url
+        )
+      ),
+      idea_topics (
+        topic_id,
+        business_topics (
+          id,
+          name
+        )
+      ),
+      business_templates (
+        id,
+        name,
+        description
       )
     `)
     .eq("id", ideaId)
@@ -71,7 +91,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     redirect(`/${slug}/create`);
   }
 
-  // Transform the data to flatten channel info
+  // Transform the data to flatten related info
   const typedIdea: IdeaWithChannels = {
     ...idea,
     channels: (idea.idea_channels || [])
@@ -82,6 +102,17 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         } : null
       )
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
+    template: idea.business_templates || null,
+    characters: (idea.idea_characters || [])
+      .map((ic: { business_characters: { id: string; name: string; image_url: string | null } | null }) => 
+        ic.business_characters
+      )
+      .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
+    topics: (idea.idea_topics || [])
+      .map((it: { business_topics: { id: string; name: string } | null }) => 
+        it.business_topics
+      )
+      .filter(Boolean) as Array<{ id: string; name: string }>,
   };
 
   return (

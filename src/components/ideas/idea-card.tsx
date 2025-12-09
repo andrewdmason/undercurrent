@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban } from "lucide-react";
+import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
@@ -329,6 +329,16 @@ export function IdeaCard({
         <h3 className="text-base font-medium text-[var(--grey-800)] tracking-[-0.08px] line-clamp-2 mb-1.5">
           {idea.title}
         </h3>
+
+        {/* Template badge */}
+        {idea.template && (
+          <div className="flex items-center gap-1 mb-2">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]">
+              <LayoutTemplate className="h-3 w-3" />
+              {idea.template.name}
+            </span>
+          </div>
+        )}
 
         {/* Description */}
         {idea.description && (

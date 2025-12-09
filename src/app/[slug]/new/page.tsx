@@ -56,13 +56,33 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
           platform,
           custom_label
         )
+      ),
+      idea_characters (
+        character_id,
+        business_characters (
+          id,
+          name,
+          image_url
+        )
+      ),
+      idea_topics (
+        topic_id,
+        business_topics (
+          id,
+          name
+        )
+      ),
+      business_templates (
+        id,
+        name,
+        description
       )
     `)
     .eq("business_id", business.id)
     .eq("status", "new")
     .order("created_at", { ascending: false });
 
-  // Transform the data to flatten channel info
+  // Transform the data to flatten related info
   const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
     ...idea,
     channels: (idea.idea_channels || [])
@@ -73,6 +93,17 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
         } : null
       )
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
+    template: idea.business_templates || null,
+    characters: (idea.idea_characters || [])
+      .map((ic: { business_characters: { id: string; name: string; image_url: string | null } | null }) => 
+        ic.business_characters
+      )
+      .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
+    topics: (idea.idea_topics || [])
+      .map((it: { business_topics: { id: string; name: string } | null }) => 
+        it.business_topics
+      )
+      .filter(Boolean) as Array<{ id: string; name: string }>,
   }));
 
   return (

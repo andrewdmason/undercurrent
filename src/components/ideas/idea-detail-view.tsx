@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2 } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -358,35 +358,74 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                 />
               )}
 
-              {/* Channel Tags */}
-              {idea.channels && idea.channels.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {idea.channels.map((channel) => (
-                    <span
-                      key={channel.id}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium",
-                        "bg-[var(--grey-50)] text-[var(--grey-600)]"
-                      )}
-                    >
-                      <PlatformIcon platform={channel.platform} />
-                      {getChannelLabel(channel.platform, channel.custom_label)}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Description */}
-              {idea.description && (
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-4">
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
-                    Description
-                  </h4>
-                  <p className="text-sm text-[var(--grey-800)] leading-relaxed">
-                    {idea.description}
-                  </p>
-                </div>
-              )}
+              {/* Description Card with all metadata */}
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-4">
+                {idea.description && (
+                  <>
+                    <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
+                      Description
+                    </h4>
+                    <p className="text-sm text-[var(--grey-800)] leading-relaxed">
+                      {idea.description}
+                    </p>
+                  </>
+                )}
+                
+                {/* All Pills - Channels, Template, Characters, Topics */}
+                {((idea.channels?.length ?? 0) > 0 || idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
+                  <div className={cn("flex items-center gap-1.5 flex-wrap", idea.description && "mt-4 pt-4 border-t border-[var(--border)]")}>
+                    {/* Channel Pills */}
+                    {idea.channels?.map((channel) => (
+                      <span
+                        key={channel.id}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]"
+                      >
+                        <PlatformIcon platform={channel.platform} />
+                        {getChannelLabel(channel.platform, channel.custom_label)}
+                      </span>
+                    ))}
+                    {/* Template Pill */}
+                    {idea.template && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]">
+                        <LayoutTemplate className="h-3 w-3" />
+                        {idea.template.name}
+                      </span>
+                    )}
+                    {/* Topic Pills */}
+                    {idea.topics?.map((topic) => (
+                      <span
+                        key={topic.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]"
+                      >
+                        <Tag className="h-3 w-3" />
+                        {topic.name}
+                      </span>
+                    ))}
+                    {/* Character Avatars */}
+                    {idea.characters?.map((character) => (
+                      character.image_url ? (
+                        <Image
+                          key={character.id}
+                          src={character.image_url}
+                          alt={character.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full object-cover"
+                          title={character.name}
+                        />
+                      ) : (
+                        <span
+                          key={character.id}
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--grey-100)] text-[var(--grey-500)]"
+                          title={character.name}
+                        >
+                          <User className="h-3 w-3" />
+                        </span>
+                      )
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Production Checklist */}
               <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
