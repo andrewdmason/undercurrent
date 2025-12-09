@@ -27,8 +27,27 @@ A video marketing idea generator for small businesses, powered by AI.
 ## Git Workflow
 
 - Feature branches prefixed with `andrew/`
-- One migration file per branch
 - Don't commit to main directly
+
+## Database Migrations (CRITICAL)
+
+**⚠️ NEVER modify migration files from previous branches or that have been merged to main.**
+
+Once a migration has been merged to main and potentially run on production, it is **immutable**. Modifying it will cause the changes to never run on production (since Supabase tracks which migrations have already been applied by filename).
+
+### Migration Rules
+
+1. **One new migration per branch maximum** - If you need schema changes, create ONE new migration file
+2. **Never edit existing migrations** - If a migration file existed before your branch, DO NOT TOUCH IT
+3. **Use the next timestamp** - Check existing migrations and use the next logical timestamp (e.g., if latest is `20241209000000`, use `20241210000000`)
+4. **If you already created a migration in this branch** - Add new changes to that same file, don't create another one
+5. **Use IF NOT EXISTS** - When possible, use `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `DROP POLICY IF EXISTS` before `CREATE POLICY` for safer migrations
+
+### Before Creating/Editing Migrations
+
+Ask yourself: "Did this migration file exist before I started this branch?"
+- **Yes** → DO NOT EDIT IT. Create a new migration file instead.
+- **No** → Safe to edit (it's your branch's migration)
 
 ## Domain Concepts
 
