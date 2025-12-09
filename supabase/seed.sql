@@ -733,3 +733,206 @@ insert into public.business_topics (
     now(),
     now()
   );
+
+-- ============================================
+-- BUSINESS_TEMPLATES FOR TABLETOP LIBRARY
+-- ============================================
+
+insert into public.business_templates (
+  id,
+  business_id,
+  name,
+  description,
+  source_video_url,
+  image_url,
+  created_at,
+  updated_at
+) values
+  (
+    'a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Quick Game Tip',
+    'Fast-paced 15-30 second tip about a game mechanic, rule clarification, or strategy. Hook-heavy format perfect for TikTok/Reels.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'a1000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'POV Trend',
+    'Trending POV format adapted for board game context. Relatable, shareable content that rides platform trends.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Full Tutorial',
+    'Comprehensive 5-15 minute game tutorial. Educational, SEO-friendly long-form content for YouTube.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'a1000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Behind the Scenes',
+    'Authentic peek into club life, game curation, or staff moments. Cozy vibes, relationship building content.',
+    null,
+    null,
+    now(),
+    now()
+  );
+
+-- ============================================
+-- BUSINESS_TEMPLATES FOR MASON FAMILY
+-- ============================================
+
+insert into public.business_templates (
+  id,
+  business_id,
+  name,
+  description,
+  source_video_url,
+  image_url,
+  created_at,
+  updated_at
+) values
+  (
+    'b2000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Family Project Build',
+    'Longer format showing the family building or creating something together. Good for YouTube main channel.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'b2000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Adventure Vlog',
+    'Family travel and exploration content. Mix of planned activities and spontaneous moments.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'b2000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Kid Reaction',
+    'Short-form content featuring kids'' genuine reactions to surprises, games, or experiences. High engagement format.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'b2000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6',
+    'f1a2b3c4-d5e6-7890-abcd-000000000001',
+    'Quick Moment',
+    'Spontaneous 15-30 second family moments. Authentic, unpolished charm for TikTok/Reels.',
+    null,
+    null,
+    now(),
+    now()
+  );
+
+-- ============================================
+-- TEMPLATE_CHANNELS - Link templates to channels
+-- ============================================
+
+insert into public.template_channels (template_id, channel_id) values
+  -- Tabletop Library: Quick Game Tip -> TikTok, Reels, Shorts
+  ('a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  -- Tabletop Library: POV Trend -> TikTok, Reels
+  ('a1000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  ('a1000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  -- Tabletop Library: Full Tutorial -> YouTube
+  ('a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  -- Tabletop Library: Behind the Scenes -> Reels, TikTok
+  ('a1000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('a1000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  
+  -- Mason Family: Family Project Build -> YouTube
+  ('b2000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3', 'fc1a2b3c-d4e5-6789-abcd-000000000010'),
+  -- Mason Family: Adventure Vlog -> YouTube, Reels
+  ('b2000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4', 'fc1a2b3c-d4e5-6789-abcd-000000000010'),
+  ('b2000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4', 'fc2b3c4d-e5f6-7890-bcde-000000000011'),
+  -- Mason Family: Kid Reaction -> TikTok, Reels, Shorts
+  ('b2000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5', 'fc3c4d5e-f6a7-8901-cdef-000000000012'),
+  ('b2000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5', 'fc2b3c4d-e5f6-7890-bcde-000000000011'),
+  ('b2000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5', 'fc4d5e6f-a7b8-9012-def1-000000000013'),
+  -- Mason Family: Quick Moment -> TikTok, Reels
+  ('b2000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6', 'fc3c4d5e-f6a7-8901-cdef-000000000012'),
+  ('b2000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6', 'fc2b3c4d-e5f6-7890-bcde-000000000011');
+
+-- ============================================
+-- UPDATE IDEAS WITH TEMPLATE_IDs
+-- ============================================
+
+update public.ideas set template_id = 'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5' where id = 'd1e2f3a4-b5c6-7890-def1-234567890abc'; -- Wingspan Tutorial -> Full Tutorial
+update public.ideas set template_id = 'a1000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4' where id = 'd3e4f5a6-b7c8-9012-f123-456789012cde'; -- POV Game Recommendation -> POV Trend
+update public.ideas set template_id = 'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5' where id = 'd2e3f4a5-b6c7-8901-ef12-345678901bcd'; -- Board Game Cafe Revolution -> Full Tutorial
+update public.ideas set template_id = 'a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3' where id = 'd5e6f7a8-b9c0-1234-b345-678901234ef0'; -- Games That Will End Friendships -> Quick Game Tip
+update public.ideas set template_id = 'a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3' where id = 'd4e5f6a7-b8c9-0123-a234-567890123def'; -- Unboxing BGG Hotness -> Quick Game Tip
+update public.ideas set template_id = 'a1000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6' where id = 'd6e7f8a9-b0c1-2345-c456-789012345f01'; -- Day in the Life -> Behind the Scenes
+update public.ideas set template_id = 'a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3' where id = 'd7e8f9a0-b1c2-3456-d567-890123456102'; -- Rating Games by Teaching Difficulty -> Quick Game Tip
+update public.ideas set template_id = 'a1000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3' where id = 'dab1c2d3-e4f5-6789-a890-123456789435'; -- Rare Game Spotlight -> Quick Game Tip
+update public.ideas set template_id = 'a1000002-c3d4-4e5f-a7b8-c9d0e1f2a3b4' where id = 'd9a0b1c2-d3e4-5678-f789-012345678324'; -- AI Concierge Demo -> POV Trend
+update public.ideas set template_id = 'a1000004-e5f6-4a7b-c9d0-e1f2a3b4c5d6' where id = 'd8f9a0b1-c2d3-4567-e678-901234567213'; -- Saturday Night Recap -> Behind the Scenes
+
+-- ============================================
+-- IDEA_CHARACTERS - Link ideas to characters
+-- ============================================
+
+insert into public.idea_characters (idea_id, character_id) values
+  -- Wingspan Tutorial (Vera)
+  ('d1e2f3a4-b5c6-7890-def1-234567890abc', 'e3c4d5e6-f7a8-9012-cdef-123456789012'),
+  -- POV Game Recommendation (Vera)
+  ('d3e4f5a6-b7c8-9012-f123-456789012cde', 'e3c4d5e6-f7a8-9012-cdef-123456789012'),
+  -- Board Game Cafe Revolution (Andrew & Nabeel)
+  ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890'),
+  ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', 'e2b3c4d5-e6f7-8901-bcde-f12345678901'),
+  -- Games That Will End Friendships (Nabeel)
+  ('d5e6f7a8-b9c0-1234-b345-678901234ef0', 'e2b3c4d5-e6f7-8901-bcde-f12345678901'),
+  -- Unboxing BGG Hotness (Andrew)
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890'),
+  -- Day in the Life (Vera)
+  ('d6e7f8a9-b0c1-2345-c456-789012345f01', 'e3c4d5e6-f7a8-9012-cdef-123456789012'),
+  -- Rating Games by Teaching Difficulty (Andrew)
+  ('d7e8f9a0-b1c2-3456-d567-890123456102', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890'),
+  -- Rare Game Spotlight (Nabeel)
+  ('dab1c2d3-e4f5-6789-a890-123456789435', 'e2b3c4d5-e6f7-8901-bcde-f12345678901'),
+  -- AI Concierge Demo (Andrew)
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890');
+
+-- ============================================
+-- IDEA_TOPICS - Link ideas to topics
+-- ============================================
+
+insert into public.idea_topics (idea_id, topic_id) values
+  -- Wingspan Tutorial -> Game Teaching
+  ('d1e2f3a4-b5c6-7890-def1-234567890abc', '04d5e6f7-a7b8-9012-def1-234567890123'),
+  -- POV Game Recommendation -> Game Teaching
+  ('d3e4f5a6-b7c8-9012-f123-456789012cde', '04d5e6f7-a7b8-9012-def1-234567890123'),
+  -- Board Game Cafe Revolution -> Membership Benefits
+  ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', '03c4d5e6-f6a7-8901-cdef-123456789012'),
+  -- Unboxing BGG Hotness -> New Game Arrivals
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', '02b3c4d5-e5f6-7890-bcde-f12345678901'),
+  -- Day in the Life -> Membership Benefits
+  ('d6e7f8a9-b0c1-2345-c456-789012345f01', '03c4d5e6-f6a7-8901-cdef-123456789012'),
+  -- Rating Games by Teaching Difficulty -> Game Teaching
+  ('d7e8f9a0-b1c2-3456-d567-890123456102', '04d5e6f7-a7b8-9012-def1-234567890123'),
+  -- Rare Game Spotlight -> New Game Arrivals
+  ('dab1c2d3-e4f5-6789-a890-123456789435', '02b3c4d5-e5f6-7890-bcde-f12345678901'),
+  -- AI Concierge Demo -> Membership Benefits
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', '03c4d5e6-f6a7-8901-cdef-123456789012');

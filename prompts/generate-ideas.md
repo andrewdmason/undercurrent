@@ -48,6 +48,8 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
 - `description`: A 2-3 sentence description of the video concept, including the hook, main content, and call-to-action
 - `channels`: An array of channel platform identifiers this idea is intended for. Use the exact platform values from the distribution channels provided (e.g., "tiktok", "youtube_shorts", "linkedin"). If an idea works well across multiple platforms, include all applicable channels. If the idea is platform-specific, include only that platform.
 - `templateId`: The ID of the video template that best matches this idea's production style. If templates are provided, you MUST select one for each idea. Choose the template whose style and target channels align best with the idea concept.
+- `characterIds`: An array of character IDs featured in this idea. Include the IDs of characters who would appear on-screen or be the primary talent for this video. Use the exact IDs from the characters provided. If no specific character is needed, use an empty array.
+- `topicIds`: An array of topic IDs this idea covers. Include the IDs of topics from the "Topics" list that this idea addresses. Use the exact IDs from the topics provided. Only include topics marked as included (not excluded). If the idea doesn't match any specific topic, use an empty array.
 
 ```json
 [
@@ -55,7 +57,9 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
     "title": "...",
     "description": "...",
     "channels": ["tiktok", "instagram_reels"],
-    "templateId": "uuid-of-selected-template"
+    "templateId": "uuid-of-selected-template",
+    "characterIds": ["uuid-of-character-1"],
+    "topicIds": ["uuid-of-topic-1", "uuid-of-topic-2"]
   }
 ]
 ```
@@ -70,7 +74,7 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
 
 4. **Match the Voice**: Use the business's tone and style. A law firm and a skateboard shop need very different approaches.
 
-5. **Consider the Characters**: If character information is provided, tailor ideas to their strengths and personality.
+5. **Consider the Characters**: If character information is provided, tailor ideas to their strengths and personality. Include their IDs in `characterIds` when they would appear on-screen.
 
 6. **Learn from Ratings**: 
    - Ideas marked with 👍 indicate preferred styles/topics - generate more like these
@@ -102,4 +106,10 @@ Respond with a JSON array of idea objects (default: 5 ideas, unless additional i
     - Vary template usage across ideas when possible to provide production diversity
     - If no templates are provided, omit the templateId field
 
-11. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.
+11. **Link to Topics**: When an idea relates to topics from the "Topics" list:
+    - Include the topic IDs in `topicIds` for ideas that cover those subjects
+    - Only reference topics from the included list (not excluded topics)
+    - An idea can cover multiple topics, or none if it doesn't fit any specific topic
+    - This helps track which topics are being covered in the content calendar
+
+12. **Always Generate Ideas**: Never return an error or ask for clarification. If instructions seem conflicting, use your best judgment to interpret the user's intent and generate ideas accordingly.

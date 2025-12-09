@@ -14,6 +14,8 @@ interface GeneratedIdea {
   description: string;
   channels?: string[];
   templateId?: string;
+  characterIds?: string[];
+  topicIds?: string[];
 }
 
 // Helper to get business slug and revalidate paths
@@ -187,10 +189,10 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     return { error: "Business not found" };
   }
 
-  // Fetch business characters
+  // Fetch business characters (with IDs for AI to reference)
   const { data: characters } = await supabase
     .from("business_characters")
-    .select("name, description")
+    .select("id, name, description")
     .eq("business_id", businessId);
 
   // Fetch distribution channels
@@ -200,10 +202,10 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     .eq("business_id", businessId)
     .order("created_at", { ascending: true });
 
-  // Fetch topics (both included and excluded)
+  // Fetch topics (both included and excluded, with IDs for AI to reference)
   const { data: allTopics } = await supabase
     .from("business_topics")
-    .select("name, description, is_excluded")
+    .select("id, name, description, is_excluded")
     .eq("business_id", businessId)
     .order("created_at", { ascending: true });
 
@@ -241,20 +243,20 @@ export async function generateIdeas(businessId: string, customInstructions?: str
     "utf-8"
   );
 
-  // Format characters section
+  // Format characters section (with IDs for AI to reference)
   const charactersSection =
     characters && characters.length > 0
       ? characters
-          .map((c) => `- **${c.name}**: ${c.description || "No description"}`)
+          .map((c) => `- **${c.name}** (id: "${c.id}"): ${c.description || "No description"}`)
           .join("\n")
       : "No character profiles configured.";
 
-  // Format topics section (included topics)
+  // Format topics section (included topics, with IDs for AI to reference)
   const topicsSection =
     includedTopics.length > 0
       ? includedTopics
           .map((t) => {
-            let line = `- **${t.name}**`;
+            let line = `- **${t.name}** (id: "${t.id}")`;
             if (t.description) {
               line += `: ${t.description}`;
             }
@@ -476,6 +478,68 @@ export async function generateIdeas(businessId: string, customInstructions?: str
 
         if (channelLinkError) {
           console.error("Error linking ideas to channels:", channelLinkError);
+          // Don't fail the whole operation, just log it
+        }
+      }
+    }
+
+    // Insert idea-character relationships
+    const validCharacterIds = new Set(characters?.map((c) => c.id) || []);
+    const ideaCharacterLinks: Array<{ idea_id: string; character_id: string }> = [];
+    if (insertedIdeas && characters && characters.length > 0) {
+      insertedIdeas.forEach((insertedIdea, index) => {
+        const generatedIdea = generatedIdeas[index];
+        if (generatedIdea.characterIds && Array.isArray(generatedIdea.characterIds)) {
+          for (const characterId of generatedIdea.characterIds) {
+            // Only link if it's a valid character for this business
+            if (validCharacterIds.has(characterId)) {
+              ideaCharacterLinks.push({
+                idea_id: insertedIdea.id,
+                character_id: characterId,
+              });
+            }
+          }
+        }
+      });
+
+      if (ideaCharacterLinks.length > 0) {
+        const { error: characterLinkError } = await supabase
+          .from("idea_characters")
+          .insert(ideaCharacterLinks);
+
+        if (characterLinkError) {
+          console.error("Error linking ideas to characters:", characterLinkError);
+          // Don't fail the whole operation, just log it
+        }
+      }
+    }
+
+    // Insert idea-topic relationships
+    const validTopicIds = new Set(includedTopics?.map((t) => t.id) || []);
+    const ideaTopicLinks: Array<{ idea_id: string; topic_id: string }> = [];
+    if (insertedIdeas && includedTopics && includedTopics.length > 0) {
+      insertedIdeas.forEach((insertedIdea, index) => {
+        const generatedIdea = generatedIdeas[index];
+        if (generatedIdea.topicIds && Array.isArray(generatedIdea.topicIds)) {
+          for (const topicId of generatedIdea.topicIds) {
+            // Only link if it's a valid included topic for this business
+            if (validTopicIds.has(topicId)) {
+              ideaTopicLinks.push({
+                idea_id: insertedIdea.id,
+                topic_id: topicId,
+              });
+            }
+          }
+        }
+      });
+
+      if (ideaTopicLinks.length > 0) {
+        const { error: topicLinkError } = await supabase
+          .from("idea_topics")
+          .insert(ideaTopicLinks);
+
+        if (topicLinkError) {
+          console.error("Error linking ideas to topics:", topicLinkError);
           // Don't fail the whole operation, just log it
         }
       }

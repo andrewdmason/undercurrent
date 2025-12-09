@@ -80,6 +80,20 @@ export interface IdeaChannel {
   created_at: string;
 }
 
+export interface IdeaCharacter {
+  id: string;
+  idea_id: string;
+  character_id: string;
+  created_at: string;
+}
+
+export interface IdeaTopic {
+  id: string;
+  idea_id: string;
+  topic_id: string;
+  created_at: string;
+}
+
 export interface BusinessTopic {
   id: string;
   business_id: string;
@@ -117,7 +131,7 @@ export interface BusinessTemplateWithChannels extends BusinessTemplate {
   }>;
 }
 
-// Extended Idea type with channel information for display
+// Extended Idea type with all related data for display
 export interface IdeaWithChannels extends Idea {
   channels: Array<{
     id: string;
@@ -130,6 +144,15 @@ export interface IdeaWithChannels extends Idea {
     name: string;
     description: string | null;
   } | null;
+  characters?: Array<{
+    id: string;
+    name: string;
+    image_url: string | null;
+  }>;
+  topics?: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 // Platform options for distribution channels

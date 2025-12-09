@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2 } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -373,6 +373,75 @@ export function IdeaDetailView({ idea, businessId, businessSlug }: IdeaDetailVie
                       {getChannelLabel(channel.platform, channel.custom_label)}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* References Section */}
+              {(idea.template || (idea.characters && idea.characters.length > 0) || (idea.topics && idea.topics.length > 0)) && (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-4 space-y-3">
+                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                    References
+                  </h4>
+                  
+                  {/* Template */}
+                  {idea.template && (
+                    <div className="flex items-start gap-2">
+                      <LayoutTemplate className="h-4 w-4 text-[var(--purple-500)] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-sm font-medium text-[var(--grey-800)]">
+                          {idea.template.name}
+                        </span>
+                        {idea.template.description && (
+                          <p className="text-xs text-[var(--grey-500)] mt-0.5">
+                            {idea.template.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Characters */}
+                  {idea.characters && idea.characters.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <User className="h-4 w-4 text-[var(--blue-500)] mt-0.5 flex-shrink-0" />
+                      <div className="flex flex-wrap gap-1.5">
+                        {idea.characters.map((character) => (
+                          <span
+                            key={character.id}
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-[var(--blue-50)] text-[var(--blue-700)]"
+                          >
+                            {character.image_url && (
+                              <Image
+                                src={character.image_url}
+                                alt=""
+                                width={14}
+                                height={14}
+                                className="rounded-full object-cover"
+                              />
+                            )}
+                            {character.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Topics */}
+                  {idea.topics && idea.topics.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <Tag className="h-4 w-4 text-[var(--green-500)] mt-0.5 flex-shrink-0" />
+                      <div className="flex flex-wrap gap-1.5">
+                        {idea.topics.map((topic) => (
+                          <span
+                            key={topic.id}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--green-50)] text-[var(--green-700)]"
+                          >
+                            {topic.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
