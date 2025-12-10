@@ -1,17 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { RedirectToProject } from "@/components/redirect-to-project";
+import { LandingHeader } from "@/components/marketing/landing-header";
+import { LandingHero } from "@/components/marketing/landing-hero";
+import { HowItWorks } from "@/components/marketing/how-it-works";
+import { Features } from "@/components/marketing/features";
+import { DescriptCallout } from "@/components/marketing/descript-callout";
+import { FinalCta } from "@/components/marketing/final-cta";
+import { LandingFooter } from "@/components/marketing/landing-footer";
 
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // If not logged in, show the marketing landing page
   if (!user) {
-    redirect("/login");
+    return (
+      <div className="min-h-screen bg-white">
+        <LandingHeader />
+        <main>
+          <LandingHero />
+          <HowItWorks />
+          <Features />
+          <DescriptCallout />
+          <FinalCta />
+        </main>
+        <LandingFooter />
+      </div>
+    );
   }
 
-  // Get user's projects with their slugs
+  // Logged in users: redirect to their project
   const { data: projectUsers } = await supabase
     .from("project_users")
     .select("project_id")
@@ -24,7 +46,7 @@ export default async function HomePage() {
 
   // Get the project slugs
   const projectIds = projectUsers.map((pu) => pu.project_id);
-  
+
   const { data: projects } = await supabase
     .from("projects")
     .select("slug")

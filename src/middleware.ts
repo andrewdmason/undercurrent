@@ -38,10 +38,11 @@ export async function middleware(request: NextRequest) {
   // Public routes that don't require auth
   const publicRoutes = ["/login", "/signup", "/forgot-password", "/invite"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const isHomePage = pathname === "/";
   const isAuthCallback = pathname.startsWith("/auth/callback");
 
   // If user is not logged in and trying to access a protected route
-  if (!user && !isPublicRoute && !isAuthCallback) {
+  if (!user && !isPublicRoute && !isAuthCallback && !isHomePage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
