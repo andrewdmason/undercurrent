@@ -39,6 +39,7 @@ export default async function ProjectLayout({
       .eq("status", "accepted"),
   ]);
 
+  // AppHeader handles its own visibility (hides on onboarding routes)
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader 

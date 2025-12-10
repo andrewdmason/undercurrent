@@ -56,6 +56,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Set pathname header for layout conditional rendering
+  supabaseResponse.headers.set("x-pathname", pathname);
+
   return supabaseResponse;
 }
 
