@@ -9,6 +9,8 @@ export async function createCharacter(
     name: string;
     description?: string | null;
     image_url?: string | null;
+    is_ai_generated?: boolean;
+    ai_style?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -27,6 +29,8 @@ export async function createCharacter(
       name: data.name,
       description: data.description || null,
       image_url: data.image_url || null,
+      is_ai_generated: data.is_ai_generated || false,
+      ai_style: data.ai_style || null,
     })
     .select()
     .single();
@@ -49,6 +53,8 @@ export async function updateCharacter(
     name?: string;
     description?: string | null;
     image_url?: string | null;
+    is_ai_generated?: boolean;
+    ai_style?: string | null;
   }
 ) {
   const supabase = await createClient();

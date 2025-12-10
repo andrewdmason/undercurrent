@@ -38,6 +38,8 @@ export interface ProjectCharacter {
   name: string;
   description: string | null;
   image_url: string | null;
+  is_ai_generated: boolean;
+  ai_style: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,9 +51,12 @@ export interface Profile {
   updated_at: string;
 }
 
+export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "other";
+
 export interface GenerationLog {
   id: string;
   project_id: string;
+  type: GenerationLogType;
   prompt_sent: string;
   response_raw: string | null;
   ideas_created: string[] | null;

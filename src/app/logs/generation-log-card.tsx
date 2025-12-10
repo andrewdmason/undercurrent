@@ -48,6 +48,14 @@ export function GenerationLogCard({
 
   const ideasCount = log.ideas_created?.length || 0;
   const hasError = !!log.error;
+  
+  const typeLabels: Record<string, { label: string; color: string }> = {
+    idea_generation: { label: "Ideas", color: "bg-blue-100 text-blue-700" },
+    ai_character: { label: "AI Character", color: "bg-violet-100 text-violet-700" },
+    thumbnail: { label: "Thumbnail", color: "bg-amber-100 text-amber-700" },
+    other: { label: "Other", color: "bg-gray-100 text-gray-600" },
+  };
+  const typeInfo = typeLabels[log.type] || typeLabels.other;
 
   const handleCopy = async (content: string, fieldName: string) => {
     await navigator.clipboard.writeText(content);
@@ -74,16 +82,21 @@ export function GenerationLogCard({
               <CheckCircle2 size={18} className="text-[var(--green-500)]" />
             )}
             <div className="text-left">
-              <div className="text-sm font-medium text-[var(--grey-800)]">
-                {projectName}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-[var(--grey-800)]">
+                  {projectName}
+                </span>
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${typeInfo.color}`}>
+                  {typeInfo.label}
+                </span>
               </div>
               <div className="text-xs text-[var(--grey-400)]">
                 {formattedDate} at {formattedTime} · {log.model}
                 {hasError ? (
                   <span className="text-[var(--red-500)]"> · Failed</span>
-                ) : (
+                ) : log.type === "idea_generation" ? (
                   <span> · {ideasCount} ideas created</span>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
