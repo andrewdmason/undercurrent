@@ -47,9 +47,12 @@ export interface ProjectCharacter {
 export interface Profile {
   id: string;
   full_name: string | null;
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
 }
+
+export type ProjectRole = "admin" | "member";
 
 export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "other";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
 
 interface SettingsContextValue {
   project: Project;
@@ -9,6 +9,7 @@ interface SettingsContextValue {
   channels: DistributionChannel[];
   topics: ProjectTopic[];
   templates: ProjectTemplateWithChannels[];
+  userRole: ProjectRole;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -20,6 +21,7 @@ interface SettingsProviderProps {
   channels: DistributionChannel[];
   topics: ProjectTopic[];
   templates: ProjectTemplateWithChannels[];
+  userRole: ProjectRole;
 }
 
 export function SettingsProvider({
@@ -29,9 +31,10 @@ export function SettingsProvider({
   channels,
   topics,
   templates,
+  userRole,
 }: SettingsProviderProps) {
   return (
-    <SettingsContext.Provider value={{ project, characters, channels, topics, templates }}>
+    <SettingsContext.Provider value={{ project, characters, channels, topics, templates, userRole }}>
       {children}
     </SettingsContext.Provider>
   );

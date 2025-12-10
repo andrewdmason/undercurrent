@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { User, Trash2 } from "lucide-react";
+import { User, Trash2, Shield, ShieldOff, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { removeTeamMember, TeamMember } from "@/lib/actions/team";
+import { removeTeamMember, updateTeamMemberRole, TeamMember } from "@/lib/actions/team";
+import { ProjectRole } from "@/lib/types";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -13,23 +14,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TeamMembersListProps {
   members: TeamMember[];
   projectId: string;
   currentUserId: string;
+  currentUserRole: ProjectRole;
 }
 
 export function TeamMembersList({
   members,
   projectId,
   currentUserId,
+  currentUserRole,
 }: TeamMembersListProps) {
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const isAdmin = currentUserRole === "admin";
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<TeamMember | null>(null);
 
   const handleRemove = async (member: TeamMember) => {
-    setRemovingId(member.user_id);
+    setUpdatingId(member.user_id);
     setConfirmRemove(null);
 
     try {
@@ -47,7 +58,29 @@ export function TeamMembersList({
     } catch {
       toast.error("Failed to remove team member");
     } finally {
-      setRemovingId(null);
+      setUpdatingId(null);
+    }
+  };
+
+  const handleRoleChange = async (member: TeamMember, newRole: ProjectRole) => {
+    setUpdatingId(member.user_id);
+
+    try {
+      const result = await updateTeamMemberRole(projectId, member.user_id, newRole);
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(
+          newRole === "admin"
+            ? `${member.full_name || "Member"} is now an admin`
+            : `${member.full_name || "Member"} is no longer an admin`
+        );
+      }
+    } catch {
+      toast.error("Failed to update role");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -71,40 +104,97 @@ export function TeamMembersList({
   return (
     <>
       <div className="divide-y divide-[var(--border)]">
-        {members.map((member) => (
-          <div
-            key={member.id}
-            className="px-4 py-3 flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded bg-[var(--grey-50)] flex items-center justify-center flex-shrink-0">
-                <User className="h-4 w-4 text-[var(--grey-400)]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-[var(--grey-800)] truncate">
-                  {member.full_name || "Unnamed User"}
-                  {member.user_id === currentUserId && (
-                    <span className="text-[var(--grey-400)] font-normal ml-1">
-                      (you)
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-[var(--grey-400)] truncate">
-                  {member.email || `Joined ${formatDate(member.created_at)}`}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setConfirmRemove(member)}
-              disabled={removingId === member.user_id}
-              className="text-[var(--grey-400)] hover:text-red-600 flex-shrink-0"
+        {members.map((member) => {
+          const isSelf = member.user_id === currentUserId;
+          const canManage = isAdmin && !isSelf;
+          const canLeave = isSelf;
+
+          return (
+            <div
+              key={member.id}
+              className="px-4 py-3 flex items-center justify-between gap-4"
             >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded bg-[var(--grey-50)] flex items-center justify-center flex-shrink-0">
+                  <User className="h-4 w-4 text-[var(--grey-400)]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--grey-800)] truncate flex items-center gap-1.5">
+                    {member.full_name || "Unnamed User"}
+                    {isSelf && (
+                      <span className="text-[var(--grey-400)] font-normal">
+                        (you)
+                      </span>
+                    )}
+                    {member.role === "admin" && (
+                      <span className="inline-flex items-center gap-0.5 text-xs text-[var(--grey-500)] font-normal">
+                        <Shield className="h-3 w-3" />
+                        Admin
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-[var(--grey-400)] truncate">
+                    {member.email || `Joined ${formatDate(member.created_at)}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {(canManage || canLeave) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updatingId === member.user_id}
+                      className="text-[var(--grey-400)] hover:text-[var(--grey-600)] flex-shrink-0"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {canManage && (
+                      <>
+                        {member.role === "member" ? (
+                          <DropdownMenuItem
+                            onClick={() => handleRoleChange(member, "admin")}
+                          >
+                            <Shield className="h-4 w-4 mr-2" />
+                            Make admin
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => handleRoleChange(member, "member")}
+                          >
+                            <ShieldOff className="h-4 w-4 mr-2" />
+                            Remove admin
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setConfirmRemove(member)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove from team
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {canLeave && (
+                      <DropdownMenuItem
+                        onClick={() => setConfirmRemove(member)}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Leave team
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Remove Confirmation Dialog */}
@@ -141,5 +231,3 @@ export function TeamMembersList({
     </>
   );
 }
-
-
