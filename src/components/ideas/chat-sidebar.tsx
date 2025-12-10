@@ -191,6 +191,7 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
       const decoder = new TextDecoder();
       let streamContent = "";
       let toolCallStartTime = 0;
+      let buffer = ""; // Buffer for incomplete lines across chunks
       const toolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = [];
       const toolResults: Array<{ name: string; result: { success: boolean; message?: string; error?: string } }> = [];
 
@@ -198,10 +199,20 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n").filter((line) => line.startsWith("data: "));
+        // Prepend any buffered incomplete line from previous chunk
+        const chunk = buffer + decoder.decode(value);
+        const lines = chunk.split("\n");
+        
+        // If chunk doesn't end with newline, last element is incomplete - save for next iteration
+        if (!chunk.endsWith("\n")) {
+          buffer = lines.pop() || "";
+        } else {
+          buffer = "";
+        }
+        
+        const dataLines = lines.filter((line) => line.startsWith("data: "));
 
-        for (const line of lines) {
+        for (const line of dataLines) {
           const jsonStr = line.slice(6);
           if (!jsonStr) continue;
 

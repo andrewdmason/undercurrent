@@ -47,13 +47,22 @@ export function ObjectivesStep() {
 
       const decoder = new TextDecoder();
       let fullText = "";
+      let buffer = ""; // Buffer for incomplete lines across chunks
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
+        // Prepend any buffered incomplete line from previous chunk
+        const chunk = buffer + decoder.decode(value);
         const lines = chunk.split("\n");
+        
+        // If chunk doesn't end with newline, last element is incomplete - save for next iteration
+        if (!chunk.endsWith("\n")) {
+          buffer = lines.pop() || "";
+        } else {
+          buffer = "";
+        }
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
@@ -64,7 +73,7 @@ export function ObjectivesStep() {
                 setObjectives(fullText);
               }
             } catch {
-              // Ignore JSON parse errors
+              // Ignore JSON parse errors (incomplete JSON will be handled on next chunk)
             }
           }
         }
