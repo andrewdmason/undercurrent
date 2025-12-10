@@ -625,6 +625,7 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
     const ideaIds = insertedIdeas?.map((i) => i.id) || [];
     await supabase.from("generation_logs").insert({
       project_id: projectId,
+      type: "idea_generation",
       prompt_sent: prompt,
       response_raw: responseRaw,
       ideas_created: ideaIds,
@@ -654,6 +655,7 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
     // Log the failed generation
     await supabase.from("generation_logs").insert({
       project_id: projectId,
+      type: "idea_generation",
       prompt_sent: prompt,
       response_raw: responseRaw || null,
       ideas_created: null,

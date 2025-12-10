@@ -16,8 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Upload, User, X } from "lucide-react";
+import { Plus, Trash2, Upload, User, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CreateAICharacterModal } from "./create-ai-character-modal";
 
 // Simple markdown renderer for bullet points
 function renderSimpleMarkdown(text: string) {
@@ -65,27 +66,46 @@ interface CharactersSectionProps {
   characters: ProjectCharacter[];
 }
 
+interface AICharacterData {
+  name: string;
+  description: string;
+  imageUrl: string;
+  isAiGenerated: boolean;
+  aiStyle: string;
+}
+
 export function CharactersSection({ projectId, characters }: CharactersSectionProps) {
   const [characterList, setCharacterList] = useState<ProjectCharacter[]>(characters);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<ProjectCharacter | null>(null);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [aiCharacterData, setAiCharacterData] = useState<AICharacterData | null>(null);
 
   const handleOpenNew = () => {
+    setEditingCharacter(null);
+    setAiCharacterData(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleAICharacterReady = (data: AICharacterData) => {
+    setAiCharacterData(data);
     setEditingCharacter(null);
     setIsDialogOpen(true);
   };
 
   const handleOpenEdit = (character: ProjectCharacter) => {
     setEditingCharacter(character);
+    setAiCharacterData(null);
     setIsDialogOpen(true);
   };
 
   const handleClose = () => {
     setIsDialogOpen(false);
     setEditingCharacter(null);
+    setAiCharacterData(null);
   };
 
-  const handleSave = async (data: { name: string; description: string; pendingImage?: File }) => {
+  const handleSave = async (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string }) => {
     if (editingCharacter) {
       // Update existing character
       await updateCharacter(editingCharacter.id, projectId, data);
@@ -117,12 +137,18 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
       }
     } else {
       // Create new character
-      const result = await createCharacter(projectId, data);
+      const result = await createCharacter(projectId, {
+        name: data.name,
+        description: data.description,
+        image_url: data.imageUrl || null,
+        is_ai_generated: data.isAiGenerated || false,
+        ai_style: data.aiStyle || null,
+      });
       if (result.success && result.character) {
         let newCharacter = result.character;
         
-        // Upload image if there's a pending one
-        if (data.pendingImage) {
+        // Upload image if there's a pending one (for non-AI characters)
+        if (data.pendingImage && !data.imageUrl) {
           const formData = new FormData();
           formData.append("file", data.pendingImage);
           const uploadResult = await uploadCharacterImage(projectId, newCharacter.id, formData);
@@ -153,15 +179,25 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
             People (or AI avatars) that appear in your videos
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleOpenNew}
-          className="h-8 text-xs"
-        >
-          <Plus size={14} className="mr-1" />
-          Add Character
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setIsAIModalOpen(true)}
+            className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white"
+          >
+            <Sparkles size={14} className="mr-1" />
+            Create AI Character
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenNew}
+            className="h-8 text-xs"
+          >
+            <Plus size={14} className="mr-1" />
+            Add Character
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -186,7 +222,15 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
         onClose={handleClose}
         onSave={handleSave}
         character={editingCharacter}
-        existingImageUrl={editingCharacter?.image_url}
+        existingImageUrl={editingCharacter?.image_url || aiCharacterData?.imageUrl}
+        initialData={aiCharacterData}
+      />
+
+      <CreateAICharacterModal
+        projectId={projectId}
+        open={isAIModalOpen}
+        onOpenChange={setIsAIModalOpen}
+        onCharacterReady={handleAICharacterReady}
       />
     </div>
   );
@@ -249,12 +293,13 @@ function CharacterCard({ character, onEdit, onDelete }: CharacterCardProps) {
 interface CharacterDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; description: string; pendingImage?: File }) => Promise<void>;
+  onSave: (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string }) => Promise<void>;
   character: ProjectCharacter | null;
   existingImageUrl?: string | null;
+  initialData?: AICharacterData | null;
 }
 
-function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl }: CharacterDialogProps) {
+function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl, initialData }: CharacterDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pendingImage, setPendingImage] = useState<File | null>(null);
@@ -266,13 +311,19 @@ function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl 
   // Reset form when dialog opens/closes or character changes
   useEffect(() => {
     if (isOpen) {
-      setName(character?.name || "");
-      setDescription(character?.description || "");
+      // Use initial data from AI flow if available
+      if (initialData) {
+        setName(initialData.name || "");
+        setDescription(initialData.description || "");
+      } else {
+        setName(character?.name || "");
+        setDescription(character?.description || "");
+      }
       setPendingImage(null);
       setImagePreview(null);
       setImageError(null);
     }
-  }, [isOpen, character]);
+  }, [isOpen, character, initialData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -316,19 +367,23 @@ function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl 
       name: name.trim(),
       description: description.trim(),
       pendingImage: pendingImage || undefined,
+      isAiGenerated: initialData?.isAiGenerated,
+      aiStyle: initialData?.aiStyle,
+      imageUrl: initialData?.imageUrl,
     });
     setIsSaving(false);
   };
 
   const displayImage = imagePreview || existingImageUrl;
   const isEditing = !!character;
+  const isFromAI = !!initialData;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[520px] rounded-lg">
         <DialogHeader className="px-4 min-h-8">
           <DialogTitle className="text-xs font-semibold text-[var(--grey-800)]">
-            {isEditing ? "Edit Character" : "Add Character"}
+            {isEditing ? "Edit Character" : isFromAI ? "Save AI Character" : "Add Character"}
           </DialogTitle>
         </DialogHeader>
 
