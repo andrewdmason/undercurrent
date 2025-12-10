@@ -67,15 +67,17 @@ export function OnboardingWizard() {
       )}
 
       {/* Step content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div
-          className={cn(
-            "w-full transition-all duration-500 ease-out",
-            // Typeform-style max widths based on content type
-            currentStep === "generating" ? "max-w-xl" : "max-w-2xl"
-          )}
-        >
-          {renderStep()}
+      <div className="flex-1 overflow-y-auto">
+        <div className="min-h-full flex items-center justify-center px-4 py-12">
+          <div
+            className={cn(
+              "w-full transition-all duration-500 ease-out",
+              // Typeform-style max widths based on content type
+              currentStep === "generating" ? "max-w-xl" : "max-w-2xl"
+            )}
+          >
+            {renderStep()}
+          </div>
         </div>
       </div>
 
@@ -100,4 +102,5 @@ export function OnboardingWizard() {
     </div>
   );
 }
+
 
