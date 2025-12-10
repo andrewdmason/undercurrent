@@ -1,28 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOnboarding } from "./onboarding-context";
 import { addTopic } from "@/lib/actions/project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, Loader2, SkipForward } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectTopic } from "@/lib/types";
 import { SuggestTopicsModal } from "@/components/strategy/suggest-topics-modal";
 
 export function TopicsStep() {
   const { project, topics, setTopics, goNext, goBack, addTopic: addTopicToContext } = useOnboarding();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newTopicName, setNewTopicName] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
 
   const includedTopics = topics.filter((t) => !t.is_excluded);
 
-  const handleAddTopic = async () => {
-    if (!newTopicName.trim()) return;
-
+  const handleSaveTopic = async (data: { name: string; description: string }) => {
     const result = await addTopic(project.id, {
-      name: newTopicName.trim(),
+      name: data.name,
+      description: data.description || null,
       is_excluded: false,
     });
 
@@ -30,8 +34,7 @@ export function TopicsStep() {
       addTopicToContext(result.topic);
     }
 
-    setNewTopicName("");
-    setIsAdding(false);
+    setIsDialogOpen(false);
   };
 
   const handleTopicAddedFromModal = (topic: ProjectTopic) => {
@@ -81,59 +84,27 @@ export function TopicsStep() {
           </div>
         ))}
 
-        {/* Add topic form */}
-        {isAdding ? (
-          <div className="flex gap-2">
-            <Input
-              value={newTopicName}
-              onChange={(e) => setNewTopicName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddTopic();
-                if (e.key === "Escape") {
-                  setIsAdding(false);
-                  setNewTopicName("");
-                }
-              }}
-              placeholder="Topic name..."
-              autoFocus
-              className="flex-1 h-11"
-            />
-            <Button onClick={handleAddTopic} disabled={!newTopicName.trim()} className="h-11">
-              Add
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAdding(false);
-                setNewTopicName("");
-              }}
-              className="h-11"
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsAdding(true)}
-              className="h-11"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add topic manually
-            </Button>
-            <Button
-              onClick={() => setIsSuggestModalOpen(true)}
-              className="bg-violet-600 hover:bg-violet-700 text-white h-11"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Suggest with AI
-            </Button>
-          </div>
-        )}
+        {/* Add topic buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsDialogOpen(true)}
+            className="h-11"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add topic manually
+          </Button>
+          <Button
+            onClick={() => setIsSuggestModalOpen(true)}
+            className="bg-violet-600 hover:bg-violet-700 text-white h-11"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Suggest with AI
+          </Button>
+        </div>
 
         {/* Empty state */}
-        {includedTopics.length === 0 && !isAdding && (
+        {includedTopics.length === 0 && (
           <div className="text-center py-8 text-slate-400">
             No topics added yet. Add some topics or let AI suggest them for you.
           </div>
@@ -161,6 +132,13 @@ export function TopicsStep() {
         </Button>
       </div>
 
+      {/* Add Topic Dialog */}
+      <AddTopicDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSaveTopic}
+      />
+
       {/* Suggest Topics Modal */}
       <SuggestTopicsModal
         open={isSuggestModalOpen}
@@ -169,6 +147,99 @@ export function TopicsStep() {
         onTopicAdded={handleTopicAddedFromModal}
       />
     </div>
+  );
+}
+
+interface AddTopicDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: { name: string; description: string }) => Promise<void>;
+}
+
+function AddTopicDialog({ isOpen, onClose, onSave }: AddTopicDialogProps) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setDescription("");
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+
+    setIsSaving(true);
+    await onSave({
+      name: name.trim(),
+      description: description.trim(),
+    });
+    setIsSaving(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px] rounded-xl">
+        <DialogHeader className="px-4 min-h-8">
+          <DialogTitle className="text-base font-semibold text-slate-800">
+            Add Topic
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 px-4 pb-4">
+          {/* Name input */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-600">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Behind the scenes, Product tutorials, Customer stories..."
+              autoFocus
+              className="h-10"
+            />
+          </div>
+
+          {/* Description input */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-600">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe what this topic covers and what kind of videos it includes..."
+              rows={4}
+              className={cn(
+                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
+                "text-sm text-slate-800 placeholder:text-slate-400",
+                "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
+                "resize-none"
+              )}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              disabled={isSaving}
+              className="h-10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!name.trim() || isSaving}
+              className="h-10"
+            >
+              {isSaving ? "Saving..." : "Add Topic"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
