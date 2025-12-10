@@ -2,22 +2,27 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Project } from "@/lib/types";
+import { Project, ProjectRole } from "@/lib/types";
 import { updateProjectInfo, checkSlugAvailability } from "@/lib/actions/project";
 import { generateSlug } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, normalizeUrl } from "@/lib/utils";
+import { useSettings } from "@/components/settings/settings-context";
 
 interface ProjectInfoFormProps {
   project: Project;
+  userRole?: ProjectRole; // Optional - will use context if not provided
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type SlugStatus = "idle" | "checking" | "available" | "taken";
 
-export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
+export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfoFormProps) {
   const router = useRouter();
+  const settings = useSettings();
+  const userRole = propUserRole ?? settings.userRole;
+  const isAdmin = userRole === "admin";
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
   const [url, setUrl] = useState(project.url || "");
@@ -176,19 +181,25 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
         <div className="space-y-2">
           <Label htmlFor="name" className="text-xs text-[var(--grey-600)]">
             Name
+            {!isAdmin && <span className="ml-1 text-[var(--grey-400)]">(admin only)</span>}
           </Label>
           <Input
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter project name"
-            className="h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+            disabled={!isAdmin}
+            className={cn(
+              "h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]",
+              !isAdmin && "opacity-60 cursor-not-allowed"
+            )}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="slug" className="text-xs text-[var(--grey-600)]">
             Permalink
+            {!isAdmin && <span className="ml-1 text-[var(--grey-400)]">(admin only)</span>}
           </Label>
           <div className="relative">
             <Input
@@ -196,30 +207,34 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
               value={slug}
               onChange={(e) => handleSlugChange(e.target.value)}
               placeholder="my-project"
+              disabled={!isAdmin}
               className={cn(
                 "h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2] pr-8",
-                slugError && "ring-2 ring-[#f72736] focus-visible:ring-[#f72736]"
+                slugError && "ring-2 ring-[#f72736] focus-visible:ring-[#f72736]",
+                !isAdmin && "opacity-60 cursor-not-allowed"
               )}
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2">
-              {slugStatus === "checking" && (
-                <svg className="h-4 w-4 animate-spin text-[var(--grey-400)]" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              )}
-              {slugStatus === "available" && (
-                <svg className="h-4 w-4 text-[#00975a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-              {slugStatus === "taken" && (
-                <svg className="h-4 w-4 text-[#f72736]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              )}
-            </div>
+            {isAdmin && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                {slugStatus === "checking" && (
+                  <svg className="h-4 w-4 animate-spin text-[var(--grey-400)]" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+                {slugStatus === "available" && (
+                  <svg className="h-4 w-4 text-[#00975a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+                {slugStatus === "taken" && (
+                  <svg className="h-4 w-4 text-[#f72736]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                )}
+              </div>
+            )}
           </div>
           {slugError ? (
             <p className="text-xs text-[#f72736]">{slugError}</p>
@@ -233,6 +248,7 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
         <div className="space-y-2">
           <Label htmlFor="url" className="text-xs text-[var(--grey-600)]">
             Website URL
+            {!isAdmin && <span className="ml-1 text-[var(--grey-400)]">(admin only)</span>}
           </Label>
           <Input
             id="url"
@@ -240,7 +256,11 @@ export function ProjectInfoForm({ project }: ProjectInfoFormProps) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="example.com"
-            className="h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+            disabled={!isAdmin}
+            className={cn(
+              "h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]",
+              !isAdmin && "opacity-60 cursor-not-allowed"
+            )}
           />
         </div>
 

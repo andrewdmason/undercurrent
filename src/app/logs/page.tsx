@@ -22,6 +22,17 @@ export default async function LogsPage({
     redirect("/login");
   }
 
+  // Verify user is an app admin
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) {
+    redirect("/");
+  }
+
   // Fetch generation logs with project name
   const { data: generationLogs, error: genError } = await supabase
     .from("generation_logs")

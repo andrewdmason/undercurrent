@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { getTeamMembers, getInviteLink } from "@/lib/actions/team";
+import { getTeamMembers, getInviteLink, getCurrentUserRole } from "@/lib/actions/team";
 import { TeamMembersList } from "@/components/team/team-members-list";
 import { InviteLinkSection } from "@/components/team/invite-link-section";
 
@@ -45,14 +45,16 @@ export default async function TeamPage({ params }: TeamPageProps) {
     notFound();
   }
 
-  // Get team members and invite link
-  const [membersResult, inviteLinkResult] = await Promise.all([
+  // Get team members, invite link, and current user's role
+  const [membersResult, inviteLinkResult, roleResult] = await Promise.all([
     getTeamMembers(project.id),
     getInviteLink(project.id),
+    getCurrentUserRole(project.id),
   ]);
 
   const members = membersResult.members || [];
   const inviteUrl = inviteLinkResult.inviteUrl || "";
+  const currentUserRole = roleResult.role || "member";
 
   return (
     <div className="pb-12">
@@ -88,6 +90,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
               members={members}
               projectId={project.id}
               currentUserId={user.id}
+              currentUserRole={currentUserRole}
             />
           </div>
         </div>

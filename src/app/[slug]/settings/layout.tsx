@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { SettingsProvider } from "@/components/settings/settings-context";
 
@@ -32,10 +32,10 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
     notFound();
   }
 
-  // Verify user has access to this project
+  // Verify user has access to this project and get their role
   const { data: membership } = await supabase
     .from("project_users")
-    .select("id")
+    .select("id, role")
     .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
@@ -43,6 +43,8 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
   if (!membership) {
     notFound();
   }
+
+  const userRole = (membership.role as ProjectRole) || "member";
 
   // Get characters for this project
   const { data: characters } = await supabase
@@ -130,6 +132,7 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
               channels={typedChannels}
               topics={typedTopics}
               templates={typedTemplates}
+              userRole={userRole}
             >
               {children}
             </SettingsProvider>

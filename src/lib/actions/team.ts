@@ -3,11 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+import { ProjectRole } from "@/lib/types";
+
 export interface TeamMember {
   id: string;
   user_id: string;
   full_name: string | null;
   email: string;
+  role: ProjectRole;
   created_at: string;
 }
 
@@ -34,11 +37,12 @@ export async function getTeamMembers(projectId: string): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  const members: TeamMember[] = (data || []).map((pu: { id: string; user_id: string; full_name: string | null; created_at: string }) => ({
+  const members: TeamMember[] = (data || []).map((pu: { id: string; user_id: string; full_name: string | null; role: ProjectRole; created_at: string }) => ({
     id: pu.id,
     user_id: pu.user_id,
     full_name: pu.full_name,
     email: pu.user_id === user?.id ? user?.email || "" : "",
+    role: pu.role,
     created_at: pu.created_at,
   }));
 
@@ -200,6 +204,99 @@ export async function acceptInvite(token: string): Promise<{
   }
 
   return { success: true, project_slug: project.slug };
+}
+
+/**
+ * Get the current user's role in a project
+ */
+export async function getCurrentUserRole(projectId: string): Promise<{
+  role?: ProjectRole;
+  error?: string;
+}> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const { data, error } = await supabase
+    .from("project_users")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching user role:", error);
+    return { error: error.message };
+  }
+
+  return { role: data.role as ProjectRole };
+}
+
+/**
+ * Update a team member's role in a project
+ */
+export async function updateTeamMemberRole(
+  projectId: string,
+  userId: string,
+  newRole: ProjectRole
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  // Get the current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check if current user is an admin of this project
+  const { data: currentMembership } = await supabase
+    .from("project_users")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (currentMembership?.role !== "admin") {
+    return { error: "Only admins can change member roles" };
+  }
+
+  // Don't allow admins to demote themselves (prevents orphaned projects)
+  if (userId === user.id && newRole !== "admin") {
+    return { error: "You cannot remove your own admin status" };
+  }
+
+  // Get project for revalidation
+  const { data: project } = await supabase
+    .from("projects")
+    .select("slug")
+    .eq("id", projectId)
+    .single();
+
+  // Update the role
+  const { error } = await supabase
+    .from("project_users")
+    .update({ role: newRole })
+    .eq("project_id", projectId)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error updating team member role:", error);
+    return { error: error.message };
+  }
+
+  if (project?.slug) {
+    revalidatePath(`/${project.slug}/team`);
+  }
+  return { success: true };
 }
 
 /**

@@ -62,8 +62,10 @@ insert into auth.identities (
 );
 
 -- The trigger will auto-create the profile, but let's update it to ensure the name is set
+-- Also set is_admin = true so this test user has app-level admin access
 update public.profiles 
-set full_name = 'Andrew Mason'
+set full_name = 'Andrew Mason',
+    is_admin = true
 where id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
 -- Create the Tabletop Library project
@@ -93,16 +95,178 @@ insert into public.projects (
   now()
 );
 
--- Link user to project
+-- Link user to project (as admin)
 insert into public.project_users (
   id,
   project_id,
   user_id,
+  role,
   created_at
 ) values (
   'c1d2e3f4-a5b6-7890-cdef-123456789012',
   'b1c2d3e4-f5a6-7890-bcde-f12345678901',
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'admin',
+  now()
+);
+
+-- ============================================
+-- ADDITIONAL TEST USERS (non-admin members)
+-- ============================================
+
+-- Create test user: Vera Devera (member)
+insert into auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_user_meta_data,
+  raw_app_meta_data,
+  created_at,
+  updated_at,
+  role,
+  aud,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change
+) values (
+  'b2c3d4e5-f6a7-8901-bcde-f23456789012',
+  '00000000-0000-0000-0000-000000000000',
+  'vera@test.com',
+  crypt('password123', gen_salt('bf')),
+  now(),
+  '{"full_name": "Vera Devera"}'::jsonb,
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  now(),
+  now(),
+  'authenticated',
+  'authenticated',
+  '',
+  '',
+  '',
+  ''
+);
+
+insert into auth.identities (
+  id,
+  user_id,
+  identity_data,
+  provider,
+  provider_id,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) values (
+  'b2c3d4e5-f6a7-8901-bcde-f23456789012',
+  'b2c3d4e5-f6a7-8901-bcde-f23456789012',
+  jsonb_build_object(
+    'sub', 'b2c3d4e5-f6a7-8901-bcde-f23456789012',
+    'email', 'vera@test.com',
+    'email_verified', true
+  ),
+  'email',
+  'vera@test.com',
+  now(),
+  now(),
+  now()
+);
+
+update public.profiles 
+set full_name = 'Vera Devera'
+where id = 'b2c3d4e5-f6a7-8901-bcde-f23456789012';
+
+-- Add Vera to TTL as member
+insert into public.project_users (
+  id,
+  project_id,
+  user_id,
+  role,
+  created_at
+) values (
+  'c2d3e4f5-a6b7-8901-def0-234567890123',
+  'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+  'b2c3d4e5-f6a7-8901-bcde-f23456789012',
+  'member',
+  now()
+);
+
+-- Create test user: Nabeel Hyatt (member)
+insert into auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_user_meta_data,
+  raw_app_meta_data,
+  created_at,
+  updated_at,
+  role,
+  aud,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change
+) values (
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  '00000000-0000-0000-0000-000000000000',
+  'nabeel@test.com',
+  crypt('password123', gen_salt('bf')),
+  now(),
+  '{"full_name": "Nabeel Hyatt"}'::jsonb,
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  now(),
+  now(),
+  'authenticated',
+  'authenticated',
+  '',
+  '',
+  '',
+  ''
+);
+
+insert into auth.identities (
+  id,
+  user_id,
+  identity_data,
+  provider,
+  provider_id,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) values (
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  jsonb_build_object(
+    'sub', 'c3d4e5f6-a7b8-9012-cdef-345678901234',
+    'email', 'nabeel@test.com',
+    'email_verified', true
+  ),
+  'email',
+  'nabeel@test.com',
+  now(),
+  now(),
+  now()
+);
+
+update public.profiles 
+set full_name = 'Nabeel Hyatt'
+where id = 'c3d4e5f6-a7b8-9012-cdef-345678901234';
+
+-- Add Nabeel to TTL as member
+insert into public.project_users (
+  id,
+  project_id,
+  user_id,
+  role,
+  created_at
+) values (
+  'c3d4e5f6-b7c8-9012-ef01-345678901234',
+  'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+  'c3d4e5f6-a7b8-9012-cdef-345678901234',
+  'member',
   now()
 );
 
@@ -462,16 +626,18 @@ insert into public.projects (
   now()
 );
 
--- Link user to Mason Family project
+-- Link user to Mason Family project (as admin)
 insert into public.project_users (
   id,
   project_id,
   user_id,
+  role,
   created_at
 ) values (
   'f2b3c4d5-e6f7-8901-bcde-000000000002',
   'f1a2b3c4-d5e6-7890-abcd-000000000001',
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'admin',
   now()
 );
 
