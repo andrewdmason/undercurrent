@@ -491,3 +491,55 @@ export async function applyRejectionEdits(
 
   return { success: true, appliedCount };
 }
+
+// ============================================
+// DELETE PROJECT
+// ============================================
+
+/**
+ * Delete a project and all related data.
+ * Only project admins can delete projects.
+ * Cascading deletes in the database handle related records.
+ */
+export async function deleteProject(projectId: string): Promise<{
+  success?: boolean;
+  error?: string;
+}> {
+  const supabase = await createClient();
+
+  // Get the current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Check if user is a project admin
+  const { data: membership } = await supabase
+    .from("project_users")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (membership?.role !== "admin") {
+    return { error: "Only project admins can delete projects" };
+  }
+
+  // Delete the project (cascading deletes handle related records)
+  const { error } = await supabase
+    .from("projects")
+    .delete()
+    .eq("id", projectId);
+
+  if (error) {
+    console.error("Error deleting project:", error);
+    return { error: error.message };
+  }
+
+  // Revalidate home page
+  revalidatePath("/");
+  return { success: true };
+}

@@ -168,7 +168,35 @@ CREATE POLICY "Users can view chat logs for their projects"
   );
 
 -- ============================================
--- STEP 8: INDEX FOR ROLE QUERIES
+-- STEP 8: PROJECT UPDATE POLICY FOR ADMINS
+-- ============================================
+-- Only project admins (not all members) can update project settings
+
+DROP POLICY IF EXISTS "Users can update projects they belong to" ON public.projects;
+
+CREATE POLICY "Project admins can update their projects"
+  ON public.projects FOR UPDATE
+  USING (
+    public.is_project_admin(id)
+    OR public.is_app_admin()
+  );
+
+-- ============================================
+-- STEP 9: PROJECT DELETE POLICY FOR ADMINS
+-- ============================================
+-- Any project admin (not just creator) can delete the project
+
+DROP POLICY IF EXISTS "Project creators can delete their projects" ON public.projects;
+
+CREATE POLICY "Project admins can delete their projects"
+  ON public.projects FOR DELETE
+  USING (
+    public.is_project_admin(id)
+    OR public.is_app_admin()
+  );
+
+-- ============================================
+-- STEP 10: INDEX FOR ROLE QUERIES
 -- ============================================
 
 CREATE INDEX IF NOT EXISTS project_users_role_idx ON public.project_users(role);
