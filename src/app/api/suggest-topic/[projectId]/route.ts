@@ -68,6 +68,13 @@ export async function POST(
   const includedTopics = allTopics?.filter((t) => !t.is_excluded) || [];
   const excludedTopics = allTopics?.filter((t) => t.is_excluded) || [];
 
+  // Fetch distribution channels
+  const { data: channels } = await supabase
+    .from("project_channels")
+    .select("platform, custom_label")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
   // Build the prompt from template
   const promptTemplate = await readFile(
     path.join(process.cwd(), "prompts", "suggest-topic.md"),
@@ -102,6 +109,14 @@ export async function POST(
           .join("\n")
       : "No excluded topics.";
 
+  // Format distribution channels section
+  const channelsSection =
+    channels && channels.length > 0
+      ? channels
+          .map((c) => `- ${c.custom_label || c.platform}`)
+          .join("\n")
+      : "No distribution channels configured yet.";
+
   // Build refinement section if provided
   let refinementSection = "";
   if (refineData.currentTopic && refineData.feedback) {
@@ -130,6 +145,7 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
       "{{projectObjectives}}",
       project.business_objectives || "No business objectives defined yet."
     )
+    .replace("{{distributionChannels}}", channelsSection)
     .replace("{{existingTopics}}", existingTopicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace(/\{\{#if currentTopic\}\}[\s\S]*?\{\{\/if\}\}/g, refinementSection);

@@ -83,8 +83,8 @@ export function CreateProjectForm() {
       localStorage.setItem("undercurrent:lastProjectSlug", project.slug);
     }
 
-    // Redirect to the project feed using slug
-    router.push(`/${project.slug}`);
+    // Redirect to onboarding flow
+    router.push(`/${project.slug}/onboarding`);
     router.refresh();
   };
 

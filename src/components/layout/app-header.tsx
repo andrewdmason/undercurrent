@@ -38,6 +38,12 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   const slug = params?.slug as string | undefined;
+  
+  // Hide header on onboarding pages
+  const isOnboarding = pathname?.includes("/onboarding");
+  if (isOnboarding) {
+    return null;
+  }
 
   useEffect(() => {
     setMounted(true);

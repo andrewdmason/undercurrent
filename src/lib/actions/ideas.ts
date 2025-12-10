@@ -634,19 +634,28 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
 
     // Use after() to generate thumbnails in the background
     // This keeps the serverless function alive until thumbnails complete
+    // Generate all thumbnails in parallel for speed
     after(async () => {
-      for (const insertedIdea of insertedIdeas || []) {
-        try {
-          await generateThumbnail(insertedIdea.id, projectId);
-        } catch (err) {
-          console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
-        }
-      }
+      await Promise.all(
+        (insertedIdeas || []).map(async (insertedIdea) => {
+          try {
+            await generateThumbnail(insertedIdea.id, projectId);
+          } catch (err) {
+            console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
+          }
+        })
+      );
     });
 
     await revalidateProjectPaths(projectId);
 
-    return { success: true, count: generatedIdeas.length, ideaIds };
+    // Build ideas array with id and title for UI display
+    const ideasWithTitles = insertedIdeas?.map((inserted, index) => ({
+      id: inserted.id,
+      title: generatedIdeas[index]?.title || "Untitled",
+    })) || [];
+
+    return { success: true, count: generatedIdeas.length, ideaIds, ideas: ideasWithTitles };
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";

@@ -1,0 +1,383 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useOnboarding } from "./onboarding-context";
+import { createCharacter, deleteCharacter, uploadCharacterImage } from "@/lib/actions/characters";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowRight, ArrowLeft, Plus, Trash2, SkipForward, User, Sparkles, Upload, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ProjectCharacter } from "@/lib/types";
+import { CreateAICharacterModal } from "@/components/strategy/create-ai-character-modal";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+interface AICharacterData {
+  name: string;
+  description: string;
+  imageUrl: string;
+  isAiGenerated: boolean;
+  aiStyle: string;
+}
+
+export function CharactersStep() {
+  const { project, characters, setCharacters, addCharacter, goNext, goBack } = useOnboarding();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
+  const handleSaveCharacter = async (data: { name: string; description: string; pendingImage?: File }) => {
+    const result = await createCharacter(project.id, {
+      name: data.name,
+      description: data.description || null,
+      image_url: null,
+      is_ai_generated: false,
+      ai_style: null,
+    });
+
+    if (result.success && result.character) {
+      let newCharacter = result.character;
+      
+      // Upload image if there's a pending one
+      if (data.pendingImage) {
+        const formData = new FormData();
+        formData.append("file", data.pendingImage);
+        const uploadResult = await uploadCharacterImage(project.id, newCharacter.id, formData);
+        if (uploadResult.success && uploadResult.imageUrl) {
+          newCharacter = { ...newCharacter, image_url: uploadResult.imageUrl };
+        }
+      }
+      
+      addCharacter(newCharacter);
+    }
+
+    setIsDialogOpen(false);
+  };
+
+  const handleDeleteCharacter = async (characterId: string) => {
+    await deleteCharacter(characterId, project.id);
+    setCharacters(characters.filter((c) => c.id !== characterId));
+  };
+
+  const handleAICharacterReady = async (data: AICharacterData) => {
+    // Create the character in the database
+    const result = await createCharacter(project.id, {
+      name: data.name,
+      description: data.description,
+      image_url: data.imageUrl,
+      is_ai_generated: data.isAiGenerated,
+      ai_style: data.aiStyle,
+    });
+
+    if (result.success && result.character) {
+      addCharacter(result.character);
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div className="space-y-3">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight">
+          Who appears in your videos?
+        </h1>
+        <p className="text-lg text-slate-500">
+          Add the people (or AI avatars) who will be on camera. The AI will tailor scripts to their personality.
+        </p>
+      </div>
+
+      {/* Character list */}
+      <div className="space-y-3">
+        {characters.map((character) => (
+          <div
+            key={character.id}
+            className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {character.image_url ? (
+                <img
+                  src={character.image_url}
+                  alt={character.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="h-5 w-5 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-base font-medium text-slate-800">{character.name}</span>
+              {character.description && (
+                <p className="text-sm text-slate-400 mt-0.5 line-clamp-1">{character.description}</p>
+              )}
+              {character.is_ai_generated && (
+                <span className="inline-flex items-center gap-1 text-xs text-violet-600 mt-1">
+                  <Sparkles className="h-3 w-3" />
+                  AI Avatar
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteCharacter(character.id)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-slate-400 hover:text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+
+        {/* Add character buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsDialogOpen(true)}
+            className="h-11"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add person
+          </Button>
+          <Button
+            onClick={() => setIsAIModalOpen(true)}
+            className="bg-violet-600 hover:bg-violet-700 text-white h-11"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Create AI avatar
+          </Button>
+        </div>
+
+        {/* Empty state */}
+        {characters.length === 0 && (
+          <div className="text-center py-8 text-slate-400">
+            No characters added yet. Add people who appear in your videos or create an AI avatar.
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 pt-4">
+        <Button variant="outline" onClick={goBack} className="h-11">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <Button onClick={goNext} className="h-11 px-6">
+          {characters.length > 0 ? (
+            <>
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          ) : (
+            <>
+              Skip for now
+              <SkipForward className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* AI Character Modal */}
+      <CreateAICharacterModal
+        projectId={project.id}
+        open={isAIModalOpen}
+        onOpenChange={setIsAIModalOpen}
+        onCharacterReady={handleAICharacterReady}
+      />
+
+      {/* Add Character Dialog */}
+      <AddCharacterDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSaveCharacter}
+      />
+    </div>
+  );
+}
+
+interface AddCharacterDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: { name: string; description: string; pendingImage?: File }) => Promise<void>;
+}
+
+function AddCharacterDialog({ isOpen, onClose, onSave }: AddCharacterDialogProps) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setDescription("");
+      setPendingImage(null);
+      setImagePreview(null);
+      setImageError(null);
+    }
+  }, [isOpen]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      setImageError(`Image must be less than 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setImageError(null);
+    setPendingImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setPendingImage(null);
+    setImagePreview(null);
+    setImageError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+
+    setIsSaving(true);
+    await onSave({
+      name: name.trim(),
+      description: description.trim(),
+      pendingImage: pendingImage || undefined,
+    });
+    setIsSaving(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px] rounded-xl">
+        <DialogHeader className="px-4 min-h-8">
+          <DialogTitle className="text-base font-semibold text-slate-800">
+            Add Character
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 px-4 pb-4">
+          {/* Image upload */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div
+                className={cn(
+                  "w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-all duration-150 overflow-hidden",
+                  imageError && "ring-2 ring-red-500"
+                )}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Character"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-slate-400">
+                    <Upload className="h-5 w-5" />
+                    <span className="text-xs">Upload</span>
+                  </div>
+                )}
+              </div>
+              {pendingImage && (
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-slate-800 text-white rounded-full flex items-center justify-center hover:bg-slate-600 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+          </div>
+
+          {imageError && (
+            <p className="text-xs text-red-500 text-center">{imageError}</p>
+          )}
+
+          <p className="text-xs text-slate-400 text-center">
+            Click to upload an image (max 5MB)
+          </p>
+
+          {/* Name input */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-600">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter name"
+              autoFocus
+              className="h-10"
+            />
+          </div>
+
+          {/* Description input */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-600">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe this character's role, personality, and on-camera strengths..."
+              rows={4}
+              className={cn(
+                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
+                "text-sm text-slate-800 placeholder:text-slate-400",
+                "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
+                "resize-none"
+              )}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              disabled={isSaving}
+              className="h-10"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!name.trim() || isSaving}
+              className="h-10"
+            >
+              {isSaving ? "Saving..." : "Add Character"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
