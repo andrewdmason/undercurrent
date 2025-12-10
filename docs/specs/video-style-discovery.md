@@ -222,3 +222,4 @@ No schema changes needed - we're generating `project_templates` entries, same as
 2. Rate limiting concerns with YouTube API - do we need caching?
 3. Should this be the ONLY way to add templates, or an optional "discovery" mode alongside manual entry?
 
+

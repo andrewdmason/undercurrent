@@ -104,3 +104,4 @@ CREATE POLICY "Users can delete character images"
     bucket_id = 'character-images'
     AND auth.uid() IS NOT NULL
   );
+
