@@ -62,6 +62,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         project_characters (
           id,
           name,
+          description,
           image_url
         )
       ),
@@ -69,18 +70,38 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         topic_id,
         project_topics (
           id,
-          name
+          name,
+          description
         )
       ),
       project_templates (
         id,
         name,
-        description
+        description,
+        image_url,
+        source_video_url
       )
     `)
     .eq("id", ideaId)
     .eq("project_id", project.id)
     .single();
+
+  // Fetch all project channels for template editing
+  const { data: projectChannels } = await supabase
+    .from("project_channels")
+    .select("*")
+    .eq("project_id", project.id)
+    .order("created_at");
+
+  // Fetch template channels if idea has a template
+  let templateChannels: string[] = [];
+  if (idea?.template_id) {
+    const { data: tc } = await supabase
+      .from("template_channels")
+      .select("channel_id")
+      .eq("template_id", idea.template_id);
+    templateChannels = tc?.map(t => t.channel_id) || [];
+  }
 
   if (!idea) {
     notFound();
@@ -104,22 +125,36 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
     template: idea.project_templates || null,
     characters: (idea.idea_characters || [])
-      .map((ic: { project_characters: { id: string; name: string; image_url: string | null } | null }) => 
+      .map((ic: { project_characters: { id: string; name: string; description: string | null; image_url: string | null } | null }) => 
         ic.project_characters
       )
-      .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
+      .filter(Boolean) as Array<{ id: string; name: string; description?: string | null; image_url: string | null }>,
     topics: (idea.idea_topics || [])
-      .map((it: { project_topics: { id: string; name: string } | null }) => 
+      .map((it: { project_topics: { id: string; name: string; description: string | null } | null }) => 
         it.project_topics
       )
-      .filter(Boolean) as Array<{ id: string; name: string }>,
+      .filter(Boolean) as Array<{ id: string; name: string; description?: string | null }>,
   };
+
+  // Build full template with channels if available
+  const fullTemplate = idea.project_templates ? {
+    ...idea.project_templates,
+    project_id: project.id,
+    created_at: "",
+    updated_at: "",
+    channels: templateChannels.map(channelId => {
+      const channel = projectChannels?.find(c => c.id === channelId);
+      return channel ? { id: channel.id, platform: channel.platform, custom_label: channel.custom_label } : null;
+    }).filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null }>,
+  } : null;
 
   return (
     <IdeaDetailView 
       idea={typedIdea} 
       projectId={project.id}
       projectSlug={slug}
+      projectChannels={projectChannels || []}
+      fullTemplate={fullTemplate}
     />
   );
 }

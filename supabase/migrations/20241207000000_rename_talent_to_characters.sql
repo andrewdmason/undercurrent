@@ -105,3 +105,4 @@ CREATE POLICY "Users can delete character images"
     AND auth.uid() IS NOT NULL
   );
 
+

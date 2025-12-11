@@ -94,3 +94,4 @@ Respond with a JSON object containing an array of exactly 4 reason strings:
 5. **Be Diplomatic**: Frame reasons neutrally, not as criticisms of the idea.
 
 
+
