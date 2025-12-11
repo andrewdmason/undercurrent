@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateScript, generateUnderlordPrompt } from "@/lib/actions/ideas";
+import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
+import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
 import { ImageShimmer } from "@/components/ui/shimmer";
 import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
@@ -30,11 +33,14 @@ import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
 import { ChatSidebar } from "./chat-sidebar";
+import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
   projectId: string;
   projectSlug: string;
+  projectChannels: DistributionChannel[];
+  fullTemplate: ProjectTemplateWithChannels | null;
 }
 
 interface ChecklistTask {
@@ -76,7 +82,7 @@ const PLACEHOLDER_TASKS: ChecklistTask[] = [
   },
 ];
 
-export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, fullTemplate }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -92,6 +98,12 @@ export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewP
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [tasks, setTasks] = useState<ChecklistTask[]>(PLACEHOLDER_TASKS);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Edit modal state
+  const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
+  const [editingTopic, setEditingTopic] = useState<{ id: string; name: string; description?: string | null } | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<{ id: string; name: string; description?: string | null; image_url: string | null } | null>(null);
+  const [editingChannel, setEditingChannel] = useState<DistributionChannel | null>(null);
 
   // Derive selectedTask from tasks array to keep modal in sync
   const selectedTask = selectedTaskId 
@@ -375,53 +387,64 @@ export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewP
                 {((idea.channels?.length ?? 0) > 0 || idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
                   <div className={cn("flex items-center gap-1.5 flex-wrap", idea.description && "mt-4 pt-4 border-t border-[var(--border)]")}>
                     {/* Channel Pills */}
-                    {idea.channels?.map((channel) => (
-                      <span
-                        key={channel.id}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]"
-                      >
-                        <PlatformIcon platform={channel.platform} />
-                        {getChannelLabel(channel.platform, channel.custom_label)}
-                      </span>
-                    ))}
+                    {idea.channels?.map((channel) => {
+                      const fullChannel = projectChannels.find(c => c.id === channel.id);
+                      return (
+                        <button
+                          key={channel.id}
+                          onClick={() => fullChannel && setEditingChannel(fullChannel)}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+                        >
+                          <PlatformIcon platform={channel.platform} />
+                          {getChannelLabel(channel.platform, channel.custom_label)}
+                        </button>
+                      );
+                    })}
                     {/* Template Pill */}
-                    {idea.template && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]">
+                    {idea.template && fullTemplate && (
+                      <button
+                        onClick={() => setEditingTemplate(fullTemplate)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+                      >
                         <LayoutTemplate className="h-3 w-3" />
                         {idea.template.name}
-                      </span>
+                      </button>
                     )}
                     {/* Topic Pills */}
                     {idea.topics?.map((topic) => (
-                      <span
+                      <button
                         key={topic.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]"
+                        onClick={() => setEditingTopic(topic)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
                       >
                         <Tag className="h-3 w-3" />
                         {topic.name}
-                      </span>
+                      </button>
                     ))}
                     {/* Character Avatars */}
                     {idea.characters?.map((character) => (
-                      character.image_url ? (
-                        <div key={character.id} className="w-5 h-5 rounded-full overflow-hidden" title={character.name}>
-                          <Image
-                            src={character.image_url}
-                            alt={character.name}
-                            width={20}
-                            height={20}
-                            className="w-full h-full object-cover scale-125"
-                          />
-                        </div>
-                      ) : (
-                        <span
-                          key={character.id}
-                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--grey-100)] text-[var(--grey-500)]"
-                          title={character.name}
-                        >
-                          <User className="h-3 w-3" />
-                        </span>
-                      )
+                      <button
+                        key={character.id}
+                        onClick={() => setEditingCharacter(character)}
+                        className="hover:ring-2 hover:ring-[var(--grey-300)] rounded-full transition-all cursor-pointer"
+                        title={character.name}
+                      >
+                        {character.image_url ? (
+                          <div className="w-5 h-5 rounded-full overflow-hidden">
+                            <Image
+                              src={character.image_url}
+                              alt={character.name}
+                              width={20}
+                              height={20}
+                              className="w-full h-full object-cover scale-125"
+                            />
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--grey-100)] text-[var(--grey-500)]">
+                            <User className="h-3 w-3" />
+                          </span>
+                        )}
+                      </button>
                     ))}
                   </div>
                 )}
@@ -749,7 +772,409 @@ export function IdeaDetailView({ idea, projectId, projectSlug }: IdeaDetailViewP
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Template Edit Modal */}
+      <CreateTemplateModal
+        open={!!editingTemplate}
+        onOpenChange={(open) => !open && setEditingTemplate(null)}
+        projectId={projectId}
+        channels={projectChannels}
+        onTemplateCreated={() => {}}
+        onTemplateUpdated={() => router.refresh()}
+        editingTemplate={editingTemplate}
+      />
+
+      {/* Topic Edit Modal */}
+      <TopicEditModal
+        topic={editingTopic}
+        onClose={() => setEditingTopic(null)}
+        projectId={projectId}
+        onUpdate={() => router.refresh()}
+      />
+
+      {/* Character Edit Modal */}
+      <CharacterEditModal
+        character={editingCharacter}
+        onClose={() => setEditingCharacter(null)}
+        projectId={projectId}
+        onUpdate={() => router.refresh()}
+      />
+
+      {/* Channel Edit Modal */}
+      <ChannelEditModal
+        channel={editingChannel}
+        onClose={() => setEditingChannel(null)}
+        onUpdate={() => router.refresh()}
+      />
     </div>
+  );
+}
+
+// ===========================================
+// Edit Modal Components
+// ===========================================
+
+interface TopicEditModalProps {
+  topic: { id: string; name: string; description?: string | null } | null;
+  onClose: () => void;
+  projectId: string;
+  onUpdate: () => void;
+}
+
+function TopicEditModal({ topic, onClose, projectId, onUpdate }: TopicEditModalProps) {
+  const [name, setName] = useState(topic?.name || "");
+  const [description, setDescription] = useState(topic?.description || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Reset form when topic changes
+  if (topic && !initialized) {
+    setName(topic.name);
+    setDescription(topic.description || "");
+    setInitialized(true);
+  }
+  
+  // Reset initialized flag when modal closes
+  if (!topic && initialized) {
+    setInitialized(false);
+  }
+
+  const handleSave = async () => {
+    if (!topic || !name.trim()) return;
+    setIsSaving(true);
+    await updateTopic(topic.id, { name: name.trim(), description: description.trim() || null });
+    setIsSaving(false);
+    onUpdate();
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!topic) return;
+    setIsDeleting(true);
+    await deleteTopic(topic.id);
+    setIsDeleting(false);
+    onUpdate();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!topic} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px] rounded-lg">
+        <DialogHeader className="px-4 min-h-8">
+          <DialogTitle className="text-xs font-semibold text-[var(--grey-800)]">
+            Edit Topic
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 px-4 pb-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Upcoming Events"
+              className="h-8 rounded-lg bg-black/[0.03] border-0 text-xs focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., Visit the website calendar and make videos that promote upcoming events..."
+              rows={3}
+              className={cn(
+                "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
+                "text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+                "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
+                "resize-none"
+              )}
+            />
+          </div>
+          <div className="flex justify-between pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+              className="h-8 text-xs text-[var(--grey-400)] hover:text-[#f72736]"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving} className="h-8 text-xs">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={!name.trim() || isSaving} className="h-8 text-xs">
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface CharacterEditModalProps {
+  character: { id: string; name: string; description?: string | null; image_url: string | null } | null;
+  onClose: () => void;
+  projectId: string;
+  onUpdate: () => void;
+}
+
+function CharacterEditModal({ character, onClose, projectId, onUpdate }: CharacterEditModalProps) {
+  const [name, setName] = useState(character?.name || "");
+  const [description, setDescription] = useState(character?.description || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Reset form when character changes
+  if (character && !initialized) {
+    setName(character.name);
+    setDescription(character.description || "");
+    setInitialized(true);
+  }
+  
+  // Reset initialized flag when modal closes
+  if (!character && initialized) {
+    setInitialized(false);
+  }
+
+  const handleSave = async () => {
+    if (!character || !name.trim()) return;
+    setIsSaving(true);
+    await updateCharacter(character.id, projectId, { name: name.trim(), description: description.trim() || null });
+    setIsSaving(false);
+    onUpdate();
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!character) return;
+    setIsDeleting(true);
+    await deleteCharacter(character.id, projectId);
+    setIsDeleting(false);
+    onUpdate();
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!character} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px] rounded-lg">
+        <DialogHeader className="px-4 min-h-8">
+          <DialogTitle className="text-xs font-semibold text-[var(--grey-800)]">
+            Edit Character
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 px-4 pb-4">
+          {/* Avatar preview */}
+          <div className="flex justify-center">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-black/[0.03] flex items-center justify-center">
+              {character?.image_url ? (
+                <img
+                  src={character.image_url}
+                  alt={character.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User size={32} className="text-[var(--grey-400)]" />
+              )}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter name"
+              className="h-8 rounded-lg bg-black/[0.03] border-0 text-xs focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe this character's role, personality, and on-camera strengths..."
+              rows={5}
+              className={cn(
+                "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
+                "text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+                "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
+                "resize-none"
+              )}
+            />
+          </div>
+          <div className="flex justify-between pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+              className="h-8 text-xs text-[var(--grey-400)] hover:text-[#f72736]"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving} className="h-8 text-xs">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={!name.trim() || isSaving} className="h-8 text-xs">
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ChannelEditModalProps {
+  channel: DistributionChannel | null;
+  onClose: () => void;
+  onUpdate: () => void;
+}
+
+function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps) {
+  const [customLabel, setCustomLabel] = useState(channel?.custom_label || "");
+  const [goalCount, setGoalCount] = useState(channel?.goal_count?.toString() || "");
+  const [goalCadence, setGoalCadence] = useState<"weekly" | "monthly" | null>(channel?.goal_cadence || null);
+  const [notes, setNotes] = useState(channel?.notes || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Reset form when channel changes
+  if (channel && !initialized) {
+    setCustomLabel(channel.custom_label || "");
+    setGoalCount(channel.goal_count?.toString() || "");
+    setGoalCadence(channel.goal_cadence);
+    setNotes(channel.notes || "");
+    setInitialized(true);
+  }
+  
+  // Reset initialized flag when modal closes
+  if (!channel && initialized) {
+    setInitialized(false);
+  }
+
+  const handleSave = async () => {
+    if (!channel) return;
+    setIsSaving(true);
+    await updateDistributionChannel(channel.id, {
+      custom_label: customLabel.trim() || null,
+      goal_count: goalCount ? parseInt(goalCount, 10) : null,
+      goal_cadence: goalCadence,
+      notes: notes.trim() || null,
+    });
+    setIsSaving(false);
+    onUpdate();
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!channel) return;
+    setIsDeleting(true);
+    await deleteDistributionChannel(channel.id);
+    setIsDeleting(false);
+    onUpdate();
+    onClose();
+  };
+
+  const platformLabel = channel ? getChannelLabel(channel.platform, channel.custom_label) : "";
+
+  return (
+    <Dialog open={!!channel} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[520px] rounded-lg">
+        <DialogHeader className="px-4 min-h-8">
+          <DialogTitle className="text-xs font-semibold text-[var(--grey-800)] flex items-center gap-2">
+            {channel && <PlatformIcon platform={channel.platform} />}
+            Edit {platformLabel}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 px-4 pb-4">
+          {/* Custom label (only for custom platform) */}
+          {channel?.platform === "custom" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--grey-600)]">Channel Name</label>
+              <Input
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                placeholder="e.g., Company Blog, Newsletter"
+                className="h-8 rounded-lg bg-black/[0.03] border-0 text-xs focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+              />
+            </div>
+          )}
+          
+          {/* Production goal */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Production Goal</label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={goalCount}
+                onChange={(e) => setGoalCount(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="0"
+                className="h-8 w-20 rounded-lg bg-black/[0.03] border-0 text-xs focus-visible:ring-2 focus-visible:ring-[#007bc2]"
+              />
+              <select
+                value={goalCadence || ""}
+                onChange={(e) => setGoalCadence(e.target.value ? (e.target.value as "weekly" | "monthly") : null)}
+                className="h-8 px-3 rounded-lg bg-black/[0.03] border-0 text-xs focus:outline-none focus:ring-2 focus:ring-[#007bc2]"
+              >
+                <option value="">Select...</option>
+                <option value="weekly">per week</option>
+                <option value="monthly">per month</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--grey-600)]">Strategy Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Cross-post from TikTok, focus on educational content..."
+              rows={2}
+              className={cn(
+                "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
+                "text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+                "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
+                "resize-none"
+              )}
+            />
+          </div>
+
+          <div className="flex justify-between pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+              className="h-8 text-xs text-[var(--grey-400)] hover:text-[#f72736]"
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving} className="h-8 text-xs">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-8 text-xs">
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

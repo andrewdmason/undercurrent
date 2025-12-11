@@ -151,15 +151,19 @@ export interface IdeaWithChannels extends Idea {
     id: string;
     name: string;
     description: string | null;
+    image_url?: string | null;
+    source_video_url?: string | null;
   } | null;
   characters?: Array<{
     id: string;
     name: string;
+    description?: string | null;
     image_url: string | null;
   }>;
   topics?: Array<{
     id: string;
     name: string;
+    description?: string | null;
   }>;
 }
 

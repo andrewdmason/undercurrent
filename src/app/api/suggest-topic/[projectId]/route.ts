@@ -155,6 +155,9 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
 
   const stream = new ReadableStream({
     async start(controller) {
+      let fullResponse = "";
+      let errorMessage: string | null = null;
+
       try {
         const completion = await openai.chat.completions.create({
           model: DEFAULT_MODEL,
@@ -167,8 +170,6 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
           response_format: { type: "json_object" },
           stream: true,
         });
-
-        let fullResponse = "";
 
         for await (const chunk of completion) {
           const content = chunk.choices[0]?.delta?.content;
@@ -191,9 +192,10 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
             )
           );
         } catch {
+          errorMessage = "Failed to parse topic suggestion";
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: "error", error: "Failed to parse topic suggestion" })}\n\n`
+              `data: ${JSON.stringify({ type: "error", error: errorMessage })}\n\n`
             )
           );
         }
@@ -202,7 +204,7 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
           encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
         );
       } catch (error) {
-        const errorMessage =
+        errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Topic suggestion error:", error);
         controller.enqueue(
@@ -211,6 +213,16 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
           )
         );
       }
+
+      // Log the generation attempt
+      await supabase.from("generation_logs").insert({
+        project_id: projectId,
+        type: "topic_suggestion",
+        prompt_sent: prompt,
+        response_raw: fullResponse || null,
+        model: DEFAULT_MODEL,
+        error: errorMessage,
+      });
 
       controller.close();
     },
