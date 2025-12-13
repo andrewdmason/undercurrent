@@ -8,6 +8,7 @@ export interface Idea {
   title: string;
   description: string | null;
   script: string | null;
+  script_context: string | null;
   image_url: string | null;
   prompt: string | null;
   status: IdeaStatus;
@@ -180,6 +181,33 @@ export const DISTRIBUTION_PLATFORMS = [
 ] as const;
 
 export type DistributionPlatform = (typeof DISTRIBUTION_PLATFORMS)[number]["value"];
+
+// ============================================
+// Idea Todo Types (Prep List)
+// ============================================
+
+export type IdeaTodoType = "script_finalization" | "asset" | "physical_prep";
+
+export interface IdeaTodo {
+  id: string;
+  idea_id: string;
+  type: IdeaTodoType;
+  title: string;
+  details: string | null;
+  time_estimate_minutes: number | null;
+  is_complete: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedTodo {
+  type: IdeaTodoType;
+  title: string;
+  questions?: string[]; // only for script_finalization
+  details?: string; // markdown for asset/physical_prep
+  time_estimate_minutes: number;
+}
 
 // ============================================
 // Chat Types

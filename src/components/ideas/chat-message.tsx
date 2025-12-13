@@ -1,8 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { ChevronDown, ChevronUp, FileText, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Simple markdown renderer for chat messages
+function renderChatMarkdown(text: string): ReactNode {
+  // Split into paragraphs
+  const paragraphs = text.split(/\n\n+/);
+  
+  return paragraphs.map((paragraph, pIdx) => {
+    // Check if it's a numbered list
+    const numberedListMatch = paragraph.match(/^(\d+\.\s)/m);
+    if (numberedListMatch && paragraph.includes('\n')) {
+      const items = paragraph.split(/\n(?=\d+\.\s)/);
+      return (
+        <ol key={pIdx} className="list-decimal list-inside space-y-1 my-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-xs">
+              {renderInlineMarkdown(item.replace(/^\d+\.\s/, ''))}
+            </li>
+          ))}
+        </ol>
+      );
+    }
+    
+    // Check if it's a bullet list
+    if (paragraph.startsWith('- ') || paragraph.startsWith('• ')) {
+      const items = paragraph.split(/\n(?=[-•]\s)/);
+      return (
+        <ul key={pIdx} className="list-disc list-inside space-y-1 my-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-xs">
+              {renderInlineMarkdown(item.replace(/^[-•]\s/, ''))}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    
+    // Regular paragraph - handle line breaks within
+    const lines = paragraph.split('\n');
+    return (
+      <p key={pIdx} className={pIdx > 0 ? "mt-2" : ""}>
+        {lines.map((line, lIdx) => (
+          <span key={lIdx}>
+            {lIdx > 0 && <br />}
+            {renderInlineMarkdown(line)}
+          </span>
+        ))}
+      </p>
+    );
+  });
+}
+
+// Render inline markdown (bold, italic)
+function renderInlineMarkdown(text: string): ReactNode {
+  // Handle bold and italic
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|"[^"]+"|"[^"]+"|—)/g);
+  
+  return parts.map((part, i) => {
+    // Bold: **text**
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    // Italic: *text*
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={i} className="italic">{part.slice(1, -1)}</em>;
+    }
+    // Smart quotes and em dash - just return as-is
+    return part;
+  });
+}
 
 interface ChatMessageProps {
   role: "user" | "assistant" | "tool";
@@ -49,7 +118,9 @@ export function ChatMessage({
         <div className="space-y-2">
           {content && (
             <div className="rounded-lg px-3 py-2 bg-[var(--grey-50)] text-xs text-[var(--grey-800)]">
-              <p className="whitespace-pre-wrap">{content}</p>
+              <div className="chat-markdown">
+                {renderChatMarkdown(content)}
+              </div>
               {isStreaming && !toolCalls?.length && (
                 <span className="inline-block w-1 h-3 bg-[var(--grey-400)] animate-pulse ml-0.5" />
               )}

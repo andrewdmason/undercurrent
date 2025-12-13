@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
+import { generateIdeaTodos } from "./idea-todos";
 import { IdeaStatus } from "@/lib/types";
 
 interface GeneratedIdea {
@@ -628,17 +629,20 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       model: DEFAULT_MODEL,
     });
 
-    // Use after() to generate thumbnails in the background
-    // This keeps the serverless function alive until thumbnails complete
-    // Generate all thumbnails in parallel for speed
+    // Use after() to generate thumbnails and todos in the background
+    // This keeps the serverless function alive until background tasks complete
     after(async () => {
       await Promise.all(
         (insertedIdeas || []).map(async (insertedIdea) => {
-          try {
-            await generateThumbnail(insertedIdea.id, projectId);
-          } catch (err) {
-            console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
-          }
+          // Generate thumbnail and todos in parallel for each idea
+          await Promise.all([
+            generateThumbnail(insertedIdea.id, projectId).catch(err => {
+              console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
+            }),
+            generateIdeaTodos(insertedIdea.id).catch(err => {
+              console.error(`Failed to generate todos for idea ${insertedIdea.id}:`, err);
+            }),
+          ]);
         })
       );
     });
@@ -673,16 +677,17 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
 }
 
 // Generate a script for an existing idea
-export async function generateScript(ideaId: string) {
+export async function generateScript(ideaId: string, providedContext?: string) {
   const supabase = await createClient();
 
-  // Fetch the idea with its channels, characters, topics, and template
+  // Fetch the idea with its channels, characters, topics, template, and existing context
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
     .select(`
       id,
       title,
       description,
+      script_context,
       project_id,
       idea_channels (
         channel_id,
@@ -789,6 +794,12 @@ export async function generateScript(ideaId: string) {
       ? topics.map((t) => t.name).join(", ")
       : "No specific topics";
 
+  // Use provided context, or fall back to saved context from idea
+  const context = providedContext || idea.script_context;
+  const contextSection = context
+    ? `## Previous Decisions\n\nWhen creating this script, incorporate these decisions from our earlier conversation:\n\n${context}`
+    : "";
+
   // Build the final prompt
   const prompt = promptTemplate
     .replace("{{ideaTitle}}", idea.title || "Untitled")
@@ -798,7 +809,8 @@ export async function generateScript(ideaId: string) {
     .replace("{{topics}}", topicsSection)
     .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace("{{projectDescription}}", project.description || "No description provided.")
-    .replace("{{characters}}", charactersSection);
+    .replace("{{characters}}", charactersSection)
+    .replace("{{scriptContext}}", contextSection);
 
   let responseRaw = "";
 

@@ -7,6 +7,8 @@ import path from "path";
 import { ChatModel, ToolCall } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
+import { generateScript } from "@/lib/actions/ideas";
+import { completeScriptFinalization, refreshAssetTodos } from "@/lib/actions/idea-todos";
 import { after } from "next/server";
 
 // Tool definitions for the agent
@@ -25,6 +27,23 @@ const tools = [
           },
         },
         required: ["script"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "generate_script",
+      description: "Generate a complete script based on gathered information. Call this when you have collected enough information from the user to write the script, or when the user says to just use your best judgment.",
+      parameters: {
+        type: "object",
+        properties: {
+          context_summary: {
+            type: "string",
+            description: "A summary of the key decisions and information gathered from the user (e.g., 'Featured games: Catan, Wingspan, Ticket to Ride. Each chosen because...'). This will be saved for future reference.",
+          },
+        },
+        required: ["context_summary"],
       },
     },
   },
@@ -87,13 +106,15 @@ export async function POST(
   }
 
   // Parse request body
-  const { chatId, message, model } = (await request.json()) as {
+  const { chatId, message, model, isInit, scriptQuestions } = (await request.json()) as {
     chatId: string;
     message: string;
     model: ChatModel;
+    isInit?: boolean;
+    scriptQuestions?: string[];
   };
 
-  if (!chatId || !message) {
+  if (!chatId || (!message && !isInit)) {
     return new Response("Missing chatId or message", { status: 400 });
   }
 
@@ -190,7 +211,7 @@ export async function POST(
           .join(", ")
       : "No specific channels";
 
-  const systemPrompt = promptTemplate
+  let systemPrompt = promptTemplate
     .replace(/\{\{projectName\}\}/g, project.name || "Unnamed Project")
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
@@ -198,6 +219,39 @@ export async function POST(
     .replace("{{projectDescription}}", project.description || "No description provided.")
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", idea.script || "*No script generated yet*");
+
+  // For initial welcome message, add instructions
+  if (isInit) {
+    let initInstructions = `
+
+## Welcome Message Instructions
+
+This is the user's first visit to this idea. Generate a brief, friendly welcome message to help them get started. DO NOT call any tools for this message.
+
+Guidelines for your welcome message:
+- Be concise (2-3 sentences max)
+- Don't repeat the video title - they can already see it
+- Focus on what YOU need from THEM to help create a great script
+`;
+    
+    if (scriptQuestions && scriptQuestions.length > 0) {
+      initInstructions += `
+You need specific input from the user before you can finalize the script. Start by asking the FIRST question:
+
+Questions to ask (one at a time):
+${scriptQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+In your welcome message, briefly acknowledge you're here to help with the script, then ask the first question directly.`;
+    } else if (!idea.script) {
+      initInstructions += `
+No script has been generated yet. Let them know you can help create one when they're ready.`;
+    } else {
+      initInstructions += `
+A script already exists. Offer to help them refine it, change the hook, adjust the CTA, or anything else.`;
+    }
+    
+    systemPrompt += initInstructions;
+  }
 
   // Build messages array for API
   const apiMessages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: ToolCall[] }> = [
@@ -226,17 +280,22 @@ export async function POST(
     }
   }
 
-  // Add new user message
-  apiMessages.push({ role: "user", content: message });
-
-  // Save user message to database
-  const estimatedUserTokens = Math.ceil(message.length / 4);
-  await supabase.from("idea_chat_messages").insert({
-    chat_id: chatId,
-    role: "user",
-    content: message,
-    token_count: estimatedUserTokens,
-  });
+  // Add new user message (or init trigger)
+  if (isInit) {
+    // For init, we use a hidden trigger message that won't be saved
+    apiMessages.push({ role: "user", content: "[SYSTEM: Generate welcome message]" });
+  } else {
+    apiMessages.push({ role: "user", content: message });
+    
+    // Save user message to database
+    const estimatedUserTokens = Math.ceil(message.length / 4);
+    await supabase.from("idea_chat_messages").insert({
+      chat_id: chatId,
+      role: "user",
+      content: message,
+      token_count: estimatedUserTokens,
+    });
+  }
 
   // Create streaming response
   const encoder = new TextEncoder();
@@ -258,6 +317,47 @@ export async function POST(
 
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
       return JSON.stringify({ success: true, message: "Script updated successfully" });
+    }
+
+    if (toolCall.function.name === "generate_script") {
+      const { context_summary } = args;
+      
+      // Generate the script
+      const result = await generateScript(ideaId);
+      if (result.error) {
+        return JSON.stringify({ success: false, error: result.error });
+      }
+
+      // Save context to idea
+      const { error: contextError } = await supabase
+        .from("ideas")
+        .update({ script_context: context_summary })
+        .eq("id", ideaId);
+
+      if (contextError) {
+        console.error("Failed to save script context:", contextError);
+      }
+
+      // Mark script_finalization todo complete with context as outcome
+      await completeScriptFinalization(ideaId, context_summary);
+
+      // Refresh asset todos in background
+      if (result.script) {
+        after(async () => {
+          try {
+            await refreshAssetTodos(ideaId, result.script!);
+          } catch (err) {
+            console.error("Failed to refresh asset todos:", err);
+          }
+        });
+      }
+
+      revalidatePath(`/${project.slug}/ideas/${ideaId}`);
+      return JSON.stringify({ 
+        success: true, 
+        message: "Script generated successfully",
+        script: result.script 
+      });
     }
 
     if (toolCall.function.name === "regenerate_idea") {
