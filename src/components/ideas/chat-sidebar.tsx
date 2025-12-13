@@ -282,6 +282,7 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
           chatId: targetChatId,
           message: userMessage,
           model: currentChat.model,
+          scriptQuestions, // Always pass questions so AI knows what to ask
         }),
       });
 

@@ -187,6 +187,8 @@ function ToolCallIndicator({
     switch (name) {
       case "update_script":
         return isPending ? "Updating script..." : "Updated script";
+      case "generate_script":
+        return isPending ? "Generating script..." : "Generated script";
       case "regenerate_idea":
         return isPending ? "Regenerating idea..." : "Regenerated idea";
       default:
@@ -198,6 +200,8 @@ function ToolCallIndicator({
     switch (name) {
       case "update_script":
         return <FileText className={cn("h-3 w-3", isPending && "animate-pulse")} />;
+      case "generate_script":
+        return <FileText className={cn("h-3 w-3", isPending && "animate-spin")} />;
       case "regenerate_idea":
         return <RefreshCw className={cn("h-3 w-3", isPending && "animate-spin")} />;
       default:

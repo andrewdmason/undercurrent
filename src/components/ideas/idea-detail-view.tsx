@@ -782,11 +782,15 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 onIdeaRegenerate={() => router.refresh()}
                 onToolCallStart={(toolName) => {
                   if (toolName === "update_script") setIsScriptUpdating(true);
+                  if (toolName === "generate_script") setIsGeneratingScript(true);
                 }}
                 onToolCallEnd={(toolName) => {
                   // Add minimum delay so shimmer is visible
                   if (toolName === "update_script") {
                     setTimeout(() => setIsScriptUpdating(false), 800);
+                  }
+                  if (toolName === "generate_script") {
+                    setTimeout(() => setIsGeneratingScript(false), 800);
                   }
                 }}
               />

@@ -220,7 +220,26 @@ export async function POST(
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", idea.script || "*No script generated yet*");
 
-  // For initial welcome message, add instructions
+  // Add script finalization questions to context (for Q&A flow)
+  if (scriptQuestions && scriptQuestions.length > 0) {
+    systemPrompt += `
+
+## Script Finalization Questions
+
+Before generating the script, you need to gather specific information from the user. Here are the questions to ask:
+
+${scriptQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+**Important Q&A Guidelines:**
+- Ask these questions ONE AT A TIME
+- Wait for the user to answer before asking the next question
+- Keep track of which questions have been answered in the conversation
+- Once all questions have been answered (or the user says to just proceed), call \`generate_script\` with a summary of their answers
+- If the user says "just pick" or "use your best judgment", make reasonable choices and proceed with \`generate_script\`
+`;
+  }
+
+  // For initial welcome message, add special instructions
   if (isInit) {
     let initInstructions = `
 
@@ -236,12 +255,7 @@ Guidelines for your welcome message:
     
     if (scriptQuestions && scriptQuestions.length > 0) {
       initInstructions += `
-You need specific input from the user before you can finalize the script. Start by asking the FIRST question:
-
-Questions to ask (one at a time):
-${scriptQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-
-In your welcome message, briefly acknowledge you're here to help with the script, then ask the first question directly.`;
+Since you have questions to ask, start with the FIRST question from the list above.`;
     } else if (!idea.script) {
       initInstructions += `
 No script has been generated yet. Let them know you can help create one when they're ready.`;
@@ -322,8 +336,12 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
     if (toolCall.function.name === "generate_script") {
       const { context_summary } = args;
       
-      // Generate the script
-      const result = await generateScript(ideaId);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/bdc10dfe-c52c-45d9-9eb2-c067d4846130',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:generate_script',message:'generate_script tool called',data:{context_summary,hasContextSummary:!!context_summary,contextLength:context_summary?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,B'})}).catch(()=>{});
+      // #endregion
+      
+      // Generate the script with the conversation context
+      const result = await generateScript(ideaId, context_summary);
       if (result.error) {
         return JSON.stringify({ success: false, error: result.error });
       }
