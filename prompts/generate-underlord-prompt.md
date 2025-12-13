@@ -21,9 +21,6 @@ Create a comprehensive Underlord prompt that will help produce a polished short-
 
 **Project Name:** {{projectName}}
 
-**Video Marketing Strategy:**
-{{strategyPrompt}}
-
 ## Output Format
 
 Return a JSON object with a single `underlordPrompt` field containing the complete Underlord instructions:

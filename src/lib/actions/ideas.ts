@@ -400,10 +400,6 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       "{{projectObjectives}}",
       project.business_objectives || "No business objectives defined yet."
     )
-    .replace(
-      "{{strategyPrompt}}",
-      project.strategy_prompt || "No video marketing strategy defined yet."
-    )
     .replace("{{topics}}", topicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace("{{characters}}", charactersSection)
@@ -723,7 +719,7 @@ export async function generateScript(ideaId: string) {
   // Fetch project context
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("name, description, strategy_prompt")
+    .select("name, description")
     .eq("id", idea.project_id)
     .single();
 
@@ -802,7 +798,6 @@ export async function generateScript(ideaId: string) {
     .replace("{{topics}}", topicsSection)
     .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace("{{projectDescription}}", project.description || "No description provided.")
-    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.")
     .replace("{{characters}}", charactersSection);
 
   let responseRaw = "";
@@ -885,7 +880,7 @@ export async function generateUnderlordPrompt(ideaId: string) {
   // Fetch project context
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("name, strategy_prompt")
+    .select("name")
     .eq("id", idea.project_id)
     .single();
 
@@ -926,7 +921,7 @@ export async function generateUnderlordPrompt(ideaId: string) {
     .replace("{{channels}}", channelsSection)
     .replace("{{script}}", idea.script)
     .replace("{{projectName}}", project.name || "Unnamed Project")
-    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.");
+    ;
 
   let responseRaw = "";
 

@@ -136,7 +136,7 @@ export async function POST(
   // Fetch project context
   const { data: project } = await supabase
     .from("projects")
-    .select("name, slug, description, strategy_prompt")
+    .select("name, slug, description")
     .eq("id", idea.project_id)
     .single();
 
@@ -196,7 +196,6 @@ export async function POST(
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
     .replace("{{projectDescription}}", project.description || "No description provided.")
-    .replace("{{strategyPrompt}}", project.strategy_prompt || "No video marketing strategy defined yet.")
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", idea.script || "*No script generated yet*");
 

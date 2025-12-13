@@ -73,7 +73,7 @@ export async function POST(
   // Fetch project context
   const { data: project } = await supabase
     .from("projects")
-    .select("name, description, business_objectives, strategy_prompt")
+    .select("name, description, business_objectives")
     .eq("id", idea.project_id)
     .single();
 
@@ -157,7 +157,6 @@ export async function POST(
     .replace("{{projectName}}", project.name || "Unnamed Project")
     .replace("{{projectDescription}}", project.description || "No description provided.")
     .replace("{{projectObjectives}}", project.business_objectives || "No objectives defined.")
-    .replace("{{aiNotes}}", project.strategy_prompt || "No AI notes.")
     .replace("{{allTopics}}", allTopicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace("{{allCharacters}}", allCharactersSection)
@@ -244,9 +243,6 @@ export async function POST(
               }
               case "update_objectives": {
                 return { ...edit, oldText: project.business_objectives || "" };
-              }
-              case "update_ai_notes": {
-                return { ...edit, oldText: project.strategy_prompt || "" };
               }
               default:
                 return edit;

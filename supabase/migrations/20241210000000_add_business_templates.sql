@@ -123,3 +123,6 @@ alter table public.ideas add column if not exists template_id uuid references pu
 create index if not exists ideas_template_id_idx on public.ideas(template_id);
 
 
+
+
+

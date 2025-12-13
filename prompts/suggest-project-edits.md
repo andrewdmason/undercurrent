@@ -35,9 +35,6 @@ The user rejected this idea because:
 **Business Objectives:**
 {{projectObjectives}}
 
-**AI Notes:**
-{{aiNotes}}
-
 **Topics (Included):**
 {{allTopics}}
 
@@ -66,7 +63,6 @@ You can suggest these types of edits:
 6. **update_character** - Modify a character's description to clarify their role/voice
 7. **update_description** - Update the project description
 8. **update_objectives** - Update the business objectives
-9. **update_ai_notes** - Add or update AI notes with specific guidance
 
 ## Output Format
 
@@ -126,35 +122,15 @@ Each edit object must have a `type` field and relevant fields for that edit type
 { "type": "update_objectives", "text": "Updated business objectives" }
 ```
 
-**update_ai_notes:**
-```json
-{ "type": "update_ai_notes", "text": "Additional guidance to append to AI notes" }
-```
-
 ## Guidelines
 
 1. **Be Targeted**: Only suggest edits that directly address the rejection reason. If they said "too long", don't add excluded topics.
 
-2. **Prefer Structured Settings Over AI Notes**: Always prefer adding/updating topics, templates, or characters over adding to AI notes. These structured settings are more reliable and visible to the user.
+2. **Don't Over-Correct**: One rejection doesn't mean overhauling everything. Suggest minimal, focused changes.
 
-3. **AI Notes Are a Last Resort**: Only use `update_ai_notes` in exceptional circumstances where the feedback truly cannot be captured by any other setting type. Examples where AI notes might be appropriate:
-   - A hard constraint that spans all content (e.g., "never use profanity")
-   - A production limitation (e.g., "we can only film indoors")
-   - A compliance requirement (e.g., "must include accessibility disclaimers")
-   
-   Do NOT use AI notes for:
-   - Topic preferences (use excluded topics instead)
-   - Template/format guidance (update the template description instead)
-   - Character voice/role clarifications (update the character instead)
-   - Audience targeting (update business objectives instead)
+3. **Use Existing IDs**: When updating topics, templates, or characters, use the exact UUIDs provided in the context.
 
-4. **Don't Over-Correct**: One rejection doesn't mean overhauling everything. Suggest minimal, focused changes.
+4. **Be Actionable**: Each edit should clearly prevent similar rejections in the future.
 
-5. **Use Existing IDs**: When updating topics, templates, or characters, use the exact UUIDs provided in the context.
-
-6. **Preserve Existing Content**: For update_ai_notes, provide text to APPEND, not replace. For other updates, provide the complete new description.
-
-7. **Be Actionable**: Each edit should clearly prevent similar rejections in the future.
-
-8. **Max 3 Edits**: Don't overwhelm the user. Focus on the most impactful 1-3 changes. Often 1-2 edits is sufficient.
+5. **Max 3 Edits**: Don't overwhelm the user. Focus on the most impactful 1-3 changes. Often 1-2 edits is sufficient.
 

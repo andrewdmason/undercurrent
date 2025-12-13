@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   // Fetch project context
   const { data: project } = await supabase
     .from("projects")
-    .select("name, description, business_objectives, strategy_prompt")
+    .select("name, description, business_objectives")
     .eq("id", projectId)
     .single();
 
@@ -199,6 +199,9 @@ export async function POST(request: Request) {
     },
   });
 }
+
+
+
 
 
 

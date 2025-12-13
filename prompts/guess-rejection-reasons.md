@@ -34,9 +34,6 @@ You are helping a user understand why they might be rejecting a video idea. Base
 **Business Objectives:**
 {{projectObjectives}}
 
-**AI Notes:**
-{{aiNotes}}
-
 **Available Topics:**
 {{allTopics}}
 
@@ -92,6 +89,9 @@ Respond with a JSON object containing an array of exactly 4 reason strings:
 4. **Keep It Short**: Each reason should be scannable at a glance (under 10 words).
 
 5. **Be Diplomatic**: Frame reasons neutrally, not as criticisms of the idea.
+
+
+
 
 
 
