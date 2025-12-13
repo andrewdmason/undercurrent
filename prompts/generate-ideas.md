@@ -18,9 +18,6 @@ Generate exactly **{{ideaCount}}** unique video ideas based on the context below
 **Project Objectives:**
 {{projectObjectives}}
 
-**Video Marketing Strategy:**
-{{strategyPrompt}}
-
 **Topics:**
 {{topics}}
 

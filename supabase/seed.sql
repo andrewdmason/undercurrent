@@ -76,7 +76,6 @@ insert into public.projects (
   url,
   description,
   business_objectives,
-  strategy_prompt,
   content_inspiration_sources,
   created_by,
   created_at,
@@ -88,7 +87,6 @@ insert into public.projects (
   'https://www.tabletoplibrary.com',
   'Tabletop Library is a 24-table board game club in Berkeley, California opening in early 2026. We''re membership-based with over 800 games in our collection, including rare and out-of-print titles. We host events most days, have an AI concierge to help organize pickup games, and feature a small retail section, coffee, pastries, and a back room with 500 vinyl records.',
   E'## Goals\n\n- **Primary**: Drive founding membership sign-ups before launch (target: 200 founding members)\n- **Secondary**: Build brand awareness in the Berkeley/Oakland board game community\n- **Long-term**: Establish Tabletop Library as THE place for board games in the East Bay\n\n## Success Metrics\n\n- Email list sign-ups from video CTAs\n- Website traffic from social platforms\n- Engagement rate (comments, shares, saves)\n- Founding member conversions attributed to video content\n\n## Target Audience\n\n- **Primary**: Board game enthusiasts in Berkeley/Oakland (25-45 years old)\n- **Secondary**: Young professionals looking for social activities beyond bars\n- **Tertiary**: Families looking for wholesome entertainment options\n\nOur ideal member is someone who owns 10+ board games, attends game nights with friends, and is looking for a dedicated space to play and discover new games.',
-  E'## Content Themes\n\n1. **Product Highlights**: Unboxings, new arrivals, staff picks, rare game spotlights\n\n2. **Educational**: How to play, game comparisons, buying guides\n\n3. **Community**: Event recaps, member spotlights, game night vibes\n\n4. **Behind the Scenes**: Club life, collection curation, staff banter\n\n5. **Berkeley/Local**: Local community tie-ins, neighborhood features\n\n\n## Style & Tone\n\n- Warm, welcoming, and inclusive - like a living room\n- Knowledgeable but not gatekeep-y\n- "Board games are having a moment" energy\n- Genuine enthusiasm, not corporate\n- Slight humor, board game puns welcome\n\n\n## Production Values\n\n- Natural lighting when possible\n- iPhone 15 Pro for most content\n- Lapel mics for talking-head videos\n- Clean backgrounds showing game shelves and cozy club atmosphere\n- Consistent thumbnail style with brand colors\n\n\n## Brand Elements\n\n- Logo watermark in corner\n- Cozy, living room aesthetic\n- End cards with membership info and location\n\n\n## Key Messages\n\n- Membership-based model (not pay-per-hour)\n- 800+ game collection including rare titles\n- AI concierge for organizing pickup games\n- Events most days\n- "Your mythical third place"',
   '["tabletoplibrary.com/events", "boardgamegeek.com/hotness", "new board game releases 2025", "board game cafe marketing", "Berkeley local events"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now(),
@@ -607,7 +605,6 @@ insert into public.projects (
   url,
   description,
   business_objectives,
-  strategy_prompt,
   content_inspiration_sources,
   created_by,
   created_at,
@@ -619,7 +616,6 @@ insert into public.projects (
   'https://www.youtube.com/@masonfamilyhijinks',
   'The Mason family is a tightly knit, high-energy Berkeley crew built around curiosity, creativity, and shared projects. Andrew and Jenny anchor the household—balancing ambitious professional lives with deep engagement in family activities. The family turns experiences into shared narratives through board-game clubs, tech side-projects, travel adventures, and whatever else captures their imagination. Sebastian (11) brings athletic intensity and intellectual curiosity, while Oscar (9) adds creative energy and storytelling instincts.',
   E'## Goals\n\n- **Primary**: Document our family adventures and create lasting memories\n- **Secondary**: Build a community of like-minded families\n- **Long-term**: Grow the YouTube channel to 50K subscribers and potentially monetize\n\n## Success Metrics\n\n- YouTube subscriber growth\n- Watch time and average view duration\n- Comment engagement from families\n- Kids'' enthusiasm to keep creating content together\n\n## Target Audience\n\n- **Primary**: Parents (30-45) looking for family activity inspiration\n- **Secondary**: Other families with kids in similar age ranges (8-12)\n- **Tertiary**: Grandparents and extended family keeping up with the kids\n\nOur ideal viewer is a parent who wants authentic, non-performative family content that gives them ideas for activities with their own kids.',
-  E'# Video Marketing Strategy for The Mason Family Hijinks\n\n## Distribution Channels\n- **YouTube** (2x/week): Main long-form content, family adventures, project builds\n- **Instagram Reels** (4x/week): Behind-the-scenes, quick moments, family life\n- **TikTok** (5x/week): Trending formats, family comedy, relatable parenting\n- **YouTube Shorts** (3x/week): Cross-post best performing short content\n\n## Content Themes\n1. **Family Projects**: Building things together, coding projects, LEGO builds\n2. **Adventures**: Travel vlogs, hiking, exploring new places\n3. **Sports & Activities**: Little League, baseball analytics, family games\n4. **Educational**: Learning together, book discussions, curious exploration\n5. **Comedy**: Family dynamics, kid perspectives, relatable parenting moments\n6. **Behind the Scenes**: Real family life, routines, chaos and all\n\n## Style & Tone\n- Authentic and unscripted feeling\n- Curious and enthusiastic\n- Warm family dynamic, mutual support visible\n- Kids are real participants, not props\n- Balance of chaos and heartfelt moments\n\n## Production Values\n- Mix of polished and casual content\n- iPhone for most content, mirrorless for bigger productions\n- Good audio is priority (lapel mics for interviews)\n- Natural settings: home, yard, Berkeley locations\n\n## Key Messages\n- Families that explore together, grow together\n- Curiosity is contagious\n- Kids have valuable perspectives\n- Making memories through shared projects',
   '["family vloggers 2025", "kid-friendly content ideas", "family youtube channel inspiration", "Berkeley family activities", "parent-child projects"]'::jsonb,
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now(),
@@ -805,6 +801,15 @@ insert into public.project_topics (
     now(),
     now()
   ),
+  (
+    '05f7a8b9-c9d0-0234-f123-456789012345',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Behind the Scenes',
+    'TTL staff talks about how and why they made the decisions about how TTL works.',
+    false,
+    now(),
+    now()
+  ),
   -- Tabletop Library: Topics to AVOID
   (
     '06f7a8b9-c9d0-1234-f123-456789012345',
@@ -949,6 +954,16 @@ insert into public.project_templates (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Behind the Scenes',
     'Authentic peek into club life, game curation, or staff moments. Cozy vibes, relationship building content.',
+    null,
+    null,
+    now(),
+    now()
+  ),
+  (
+    'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Vertical Full Body',
+    'Set up a static, vertical camera on a tripod to capture the presenter full-body at Tabletop Library, while they speak directly to the lens. The footage is likely a single take, edited with frequent jump cuts to remove dead air and keep the pace fast, relying on the natural audio from the mic rather than background music to maintain an authentic, conversational connection.',
     null,
     null,
     now(),

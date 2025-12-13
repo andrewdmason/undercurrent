@@ -17,9 +17,6 @@ You are a helpful video scriptwriting assistant for {{projectName}}. Your job is
 **Project Description:**
 {{projectDescription}}
 
-**Video Marketing Strategy:**
-{{strategyPrompt}}
-
 **Characters:**
 {{characters}}
 

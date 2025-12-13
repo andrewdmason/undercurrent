@@ -301,8 +301,6 @@ export function RejectIdeaModal({
         return "Update project description";
       case "update_objectives":
         return "Update business objectives";
-      case "update_ai_notes":
-        return "Add to AI notes";
       default:
         return "Unknown edit";
     }
@@ -351,22 +349,6 @@ export function RejectIdeaModal({
           <span className="bg-[#dcfce7] text-[#166534] px-2 py-1 rounded inline-block">
             {content}
           </span>
-        </div>
-      );
-    }
-
-    // For update_ai_notes, show what's being appended
-    if (edit.type === "update_ai_notes") {
-      return (
-        <div className="mt-2 text-sm space-y-1">
-          {edit.oldText && (
-            <div className="text-[var(--grey-400)] text-xs mb-2">
-              Current notes will be preserved, adding:
-            </div>
-          )}
-          <div className="bg-[#dcfce7] text-[#166534] px-2 py-1 rounded whitespace-pre-wrap">
-            {edit.text}
-          </div>
         </div>
       );
     }

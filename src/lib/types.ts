@@ -25,7 +25,6 @@ export interface Project {
   url: string | null;
   description: string | null;
   business_objectives: string | null;
-  strategy_prompt: string | null;
   content_inspiration_sources: string[] | null;
   created_at: string;
   updated_at: string;

@@ -11,7 +11,6 @@ export async function updateProjectInfo(
     url?: string | null;
     description?: string | null;
     business_objectives?: string | null;
-    strategy_prompt?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -60,35 +59,6 @@ export async function updateProjectInfo(
   }
 
   return { success: true, newSlug: data.slug };
-}
-
-export async function updateStrategyPrompt(
-  projectId: string,
-  strategyPrompt: string | null
-) {
-  const supabase = await createClient();
-
-  // Get the project slug for revalidation
-  const { data: project } = await supabase
-    .from("projects")
-    .select("slug")
-    .eq("id", projectId)
-    .single();
-
-  const { error } = await supabase
-    .from("projects")
-    .update({ strategy_prompt: strategyPrompt })
-    .eq("id", projectId);
-
-  if (error) {
-    console.error("Error updating strategy prompt:", error);
-    return { error: error.message };
-  }
-
-  if (project?.slug) {
-    revalidatePath(`/${project.slug}/settings`);
-  }
-  return { success: true };
 }
 
 /**
@@ -336,8 +306,7 @@ export type ProjectEditSuggestion =
   | { type: "update_template"; id: string; name?: string; description: string; oldDescription?: string }
   | { type: "update_character"; id: string; name?: string; description: string; oldDescription?: string }
   | { type: "update_description"; text: string; oldText?: string }
-  | { type: "update_objectives"; text: string; oldText?: string }
-  | { type: "update_ai_notes"; text: string; oldText?: string };
+  | { type: "update_objectives"; text: string; oldText?: string };
 
 export async function applyRejectionEdits(
   projectId: string,
@@ -345,10 +314,10 @@ export async function applyRejectionEdits(
 ): Promise<{ success: boolean; error?: string; appliedCount?: number }> {
   const supabase = await createClient();
 
-  // Get the project for revalidation and current values
+  // Get the project for revalidation
   const { data: project } = await supabase
     .from("projects")
-    .select("slug, strategy_prompt")
+    .select("slug")
     .eq("id", projectId)
     .single();
 
@@ -444,21 +413,6 @@ export async function applyRejectionEdits(
           const { error } = await supabase
             .from("projects")
             .update({ business_objectives: edit.text })
-            .eq("id", projectId);
-          if (error) throw error;
-          appliedCount++;
-          break;
-        }
-
-        case "update_ai_notes": {
-          // Append to existing AI notes (strategy_prompt)
-          const currentNotes = project.strategy_prompt || "";
-          const newNotes = currentNotes
-            ? `${currentNotes}\n\n${edit.text}`
-            : edit.text;
-          const { error } = await supabase
-            .from("projects")
-            .update({ strategy_prompt: newNotes })
             .eq("id", projectId);
           if (error) throw error;
           appliedCount++;

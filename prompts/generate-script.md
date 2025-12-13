@@ -25,9 +25,6 @@ Write a complete script for the video idea below. The script should be detailed 
 **Project Description:**
 {{projectDescription}}
 
-**Video Marketing Strategy:**
-{{strategyPrompt}}
-
 **Characters:**
 {{characters}}
 
