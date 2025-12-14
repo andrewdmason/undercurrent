@@ -314,6 +314,9 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
   // Create streaming response
   const encoder = new TextEncoder();
 
+  // Track generation log IDs created during tool execution (keyed by tool call ID)
+  const generationLogIdMap: Record<string, string> = {};
+
   // Helper to handle tool execution
   const executeToolCall = async (toolCall: ToolCall): Promise<string> => {
     const args = JSON.parse(toolCall.function.arguments);
@@ -326,7 +329,36 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
         .eq("id", ideaId);
 
       if (error) {
+        // Log the failed update
+        const { data: logData } = await supabase.from("generation_logs").insert({
+          project_id: idea.project_id,
+          type: "script_update",
+          prompt_sent: `Update script for idea: ${idea.title}`,
+          response_raw: script,
+          model: "chat-tool",
+          error: error.message,
+          idea_id: ideaId,
+        }).select("id").single();
+        
+        if (logData?.id) {
+          generationLogIdMap[toolCall.id] = logData.id;
+        }
+
         return JSON.stringify({ success: false, error: error.message });
+      }
+
+      // Log the successful update
+      const { data: logData } = await supabase.from("generation_logs").insert({
+        project_id: idea.project_id,
+        type: "script_update",
+        prompt_sent: `Update script for idea: ${idea.title}`,
+        response_raw: script,
+        model: "chat-tool",
+        idea_id: ideaId,
+      }).select("id").single();
+      
+      if (logData?.id) {
+        generationLogIdMap[toolCall.id] = logData.id;
       }
 
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
@@ -336,12 +368,14 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
     if (toolCall.function.name === "generate_script") {
       const { context_summary } = args;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/bdc10dfe-c52c-45d9-9eb2-c067d4846130',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'route.ts:generate_script',message:'generate_script tool called',data:{context_summary,hasContextSummary:!!context_summary,contextLength:context_summary?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,B'})}).catch(()=>{});
-      // #endregion
-      
       // Generate the script with the conversation context
       const result = await generateScript(ideaId, context_summary);
+      
+      // Track the generation log ID for linking
+      if (result.generationLogId) {
+        generationLogIdMap[toolCall.id] = result.generationLogId;
+      }
+
       if (result.error) {
         return JSON.stringify({ success: false, error: result.error });
       }
@@ -410,7 +444,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
     const stream = new ReadableStream({
       async start(controller) {
         let fullResponse = "";
-        let toolCallsToExecute: ToolCall[] = [];
+        const toolCallsToExecute: ToolCall[] = [];
         let inputTokens = 0;
         let outputTokens = 0;
 
@@ -551,6 +585,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             messages_sent: apiMessages,
             response_raw: fullResponse,
             tool_calls_made: toolCallsToExecute.length > 0 ? toolCallsToExecute : null,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             input_tokens: inputTokens || null,
             output_tokens: outputTokens || null,
           });
@@ -566,6 +601,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             project_id: idea.project_id,
             model: DEFAULT_MODEL,
             messages_sent: apiMessages,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             error: errorMessage,
           });
 
@@ -663,7 +699,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             },
           });
 
-          let toolCallsToExecute: ToolCall[] = [];
+          const toolCallsToExecute: ToolCall[] = [];
 
           for await (const chunk of response) {
             const text = chunk.text;
@@ -744,6 +780,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             messages_sent: apiMessages,
             response_raw: fullResponse,
             tool_calls_made: toolCallsToExecute.length > 0 ? toolCallsToExecute : null,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
           });
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
@@ -756,6 +793,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             project_id: idea.project_id,
             model: TEXT_MODEL,
             messages_sent: apiMessages,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             error: errorMessage,
           });
 

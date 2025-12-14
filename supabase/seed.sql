@@ -285,7 +285,7 @@ insert into public.project_characters (
     'e1a2b3c4-d5e6-7890-abcd-ef1234567890',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Andrew Mason',
-    'Partner and co-founder. Brings entrepreneurial energy and a passion for making board games accessible to everyone. Primary on-camera host for longer-form content.',
+    'Partner at Tabletop Library. Prefers unscripted videos where he works from an outline rather than a full script. Can record from his home studio or the Library. Has a professional recording setup that''s ready to go at a moment''s notice—no prep or setup time needed.',
     '/seed/characters/andrew.png',
     now(),
     now()

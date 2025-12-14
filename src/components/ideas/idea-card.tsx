@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +21,8 @@ interface IdeaCardProps {
   idea: IdeaWithChannels;
   projectId: string;
   projectSlug?: string;
-  onClick: () => void;
+  href?: string;
+  onClick?: () => void;
   isLoadingImage?: boolean;
   viewType: ViewType;
   onReject?: () => void;
@@ -96,6 +98,7 @@ export function IdeaCard({
   idea,
   projectId,
   projectSlug,
+  href,
   onClick,
   isLoadingImage = false,
   viewType,
@@ -221,25 +224,16 @@ export function IdeaCard({
     onPublish?.();
   };
 
-  return (
-    <article
-      onClick={isClickable ? onClick : undefined}
-      className={cn(
-        "group rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
-        "overflow-hidden transition-all duration-150",
-        isClickable && "cursor-pointer hover:shadow-md",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]"
-      )}
-      tabIndex={isClickable ? 0 : undefined}
-      onKeyDown={isClickable ? (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      } : undefined}
-      role={isClickable ? "button" : undefined}
-      aria-label={isClickable ? `View details for ${idea.title}` : undefined}
-    >
+  // Shared class names for card wrapper
+  const baseCardClasses = cn(
+    "group rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
+    "overflow-hidden transition-all duration-150",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]"
+  );
+
+  // Card content (shared between Link and article variants)
+  const cardContent = (
+    <>
       {/* Image - Fixed 4:3 aspect ratio container, crops tall images */}
       <div className="relative w-full aspect-video overflow-hidden bg-[var(--grey-100)]">
         {hasImage ? (
@@ -414,6 +408,36 @@ export function IdeaCard({
           </div>
         )}
       </div>
+    </>
+  );
+
+  // Render as Link if href provided, otherwise as article
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={cn(baseCardClasses, "cursor-pointer hover:shadow-md block")}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <article
+      onClick={isClickable ? onClick : undefined}
+      className={cn(baseCardClasses, isClickable && "cursor-pointer hover:shadow-md")}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
+      role={isClickable ? "button" : undefined}
+      aria-label={isClickable ? `View details for ${idea.title}` : undefined}
+    >
+      {cardContent}
     </article>
   );
 }

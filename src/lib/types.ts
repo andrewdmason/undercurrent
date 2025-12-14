@@ -54,7 +54,7 @@ export interface Profile {
 
 export type ProjectRole = "admin" | "member";
 
-export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "other";
+export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "script_generation" | "script_update" | "todo_generation" | "todo_refresh" | "other";
 
 export interface GenerationLog {
   id: string;
@@ -65,6 +65,7 @@ export interface GenerationLog {
   ideas_created: string[] | null;
   model: string;
   error: string | null;
+  idea_id: string | null;
   created_at: string;
 }
 
@@ -253,6 +254,7 @@ export interface ChatLog {
   messages_sent: unknown;
   response_raw: string | null;
   tool_calls_made: ToolCall[] | null;
+  generation_log_ids: Record<string, string> | null; // Maps tool_call_id -> generation_log_id
   input_tokens: number | null;
   output_tokens: number | null;
   error: string | null;

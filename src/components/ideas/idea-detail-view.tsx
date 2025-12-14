@@ -35,6 +35,7 @@ import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
+import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
@@ -451,6 +452,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   <Play className="h-3.5 w-3.5" />
                   Publish
                 </DropdownMenuItem>
+                <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
                   onClick={handleCancel}

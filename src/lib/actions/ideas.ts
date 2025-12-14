@@ -678,10 +678,6 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
 
 // Generate a script for an existing idea
 export async function generateScript(ideaId: string, providedContext?: string) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/bdc10dfe-c52c-45d9-9eb2-c067d4846130',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ideas.ts:generateScript:entry',message:'generateScript called',data:{ideaId,hasProvidedContext:!!providedContext,providedContextLength:providedContext?.length,providedContextPreview:providedContext?.slice(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  
   const supabase = await createClient();
 
   // Fetch the idea with its channels, characters, topics, template, and existing context
@@ -804,10 +800,6 @@ export async function generateScript(ideaId: string, providedContext?: string) {
     ? `## Previous Decisions\n\nWhen creating this script, incorporate these decisions from our earlier conversation:\n\n${context}`
     : "";
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/bdc10dfe-c52c-45d9-9eb2-c067d4846130',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ideas.ts:generateScript:context',message:'Context resolution',data:{hasProvidedContext:!!providedContext,hasSavedContext:!!idea.script_context,finalContextUsed:!!context,contextPreview:context?.slice(0,300),ideaTitle:idea.title,ideaDescPreview:idea.description?.slice(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,C,D'})}).catch(()=>{});
-  // #endregion
-
   // Build the final prompt
   const prompt = promptTemplate
     .replace("{{ideaTitle}}", idea.title || "Untitled")
@@ -821,10 +813,6 @@ export async function generateScript(ideaId: string, providedContext?: string) {
     .replace("{{scriptContext}}", contextSection);
 
   let responseRaw = "";
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/bdc10dfe-c52c-45d9-9eb2-c067d4846130',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ideas.ts:generateScript:prompt',message:'Final prompt check',data:{promptLength:prompt.length,hasContextInPrompt:prompt.includes('Previous Decisions'),contextSectionPreview:contextSection?.slice(0,400)||'EMPTY'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
 
   try {
     // Call ChatGPT
@@ -857,13 +845,35 @@ export async function generateScript(ideaId: string, providedContext?: string) {
       throw new Error(`Failed to save script: ${updateError.message}`);
     }
 
+    // Log the successful generation
+    const { data: logData } = await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "script_generation",
+      prompt_sent: prompt,
+      response_raw: responseRaw,
+      model: DEFAULT_MODEL,
+      idea_id: ideaId,
+    }).select("id").single();
+
     await revalidateProjectPaths(idea.project_id);
 
-    return { success: true, script };
+    return { success: true, script, generationLogId: logData?.id };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error generating script:", error);
-    return { error: errorMessage };
+
+    // Log the failed generation
+    const { data: logData } = await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "script_generation",
+      prompt_sent: prompt,
+      response_raw: responseRaw || null,
+      model: DEFAULT_MODEL,
+      error: errorMessage,
+      idea_id: ideaId,
+    }).select("id").single();
+
+    return { error: errorMessage, generationLogId: logData?.id };
   }
 }
 

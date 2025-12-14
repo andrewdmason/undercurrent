@@ -75,3 +75,14 @@ create policy "Users can delete todos for ideas in their projects"
     )
   );
 
+-- Add linking columns between generation_logs and chat_logs
+-- When a generation is triggered from chat, we link them together
+alter table public.generation_logs 
+  add column if not exists idea_id uuid references public.ideas(id) on delete set null;
+
+alter table public.chat_logs
+  add column if not exists generation_log_ids jsonb;
+
+-- Create index for faster lookups
+create index if not exists generation_logs_idea_id_idx on public.generation_logs(idea_id);
+

@@ -16,7 +16,7 @@ async function revalidateIdeaPaths(ideaId: string) {
     .eq("id", ideaId)
     .single();
 
-  const project = idea?.projects as { slug: string } | null;
+  const project = idea?.projects as unknown as { slug: string } | null;
   if (project?.slug) {
     revalidatePath(`/${project.slug}`);
     revalidatePath(`/${project.slug}/ideas/${ideaId}`);
@@ -222,6 +222,16 @@ export async function generateIdeaTodos(
 
     const generatedTodos: GeneratedTodo[] = parsed.todos || [];
 
+    // Log the generation
+    await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "todo_generation",
+      prompt_sent: prompt,
+      response_raw: responseRaw,
+      model: DEFAULT_MODEL,
+      idea_id: ideaId,
+    });
+
     if (generatedTodos.length === 0) {
       // No todos needed - that's okay
       return { success: true, todos: [] };
@@ -263,6 +273,18 @@ export async function generateIdeaTodos(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error generating todos:", error);
+    
+    // Log the error
+    await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "todo_generation",
+      prompt_sent: prompt,
+      response_raw: null,
+      model: DEFAULT_MODEL,
+      error: errorMessage,
+      idea_id: ideaId,
+    });
+    
     return { success: false, error: errorMessage };
   }
 }
@@ -396,6 +418,16 @@ export async function refreshAssetTodos(
     const parsed = JSON.parse(responseRaw);
     const generatedTodos: GeneratedTodo[] = parsed.todos || [];
 
+    // Log the refresh
+    await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "todo_refresh",
+      prompt_sent: prompt,
+      response_raw: responseRaw,
+      model: DEFAULT_MODEL,
+      idea_id: ideaId,
+    });
+
     // Filter to only asset/physical_prep todos that aren't duplicates
     const newTodos = generatedTodos.filter(
       t => (t.type === "asset" || t.type === "physical_prep") &&
@@ -431,6 +463,18 @@ export async function refreshAssetTodos(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     console.error("Error refreshing asset todos:", error);
+    
+    // Log the error
+    await supabase.from("generation_logs").insert({
+      project_id: idea.project_id,
+      type: "todo_refresh",
+      prompt_sent: prompt,
+      response_raw: null,
+      model: DEFAULT_MODEL,
+      error: errorMessage,
+      idea_id: ideaId,
+    });
+    
     return { success: false, error: errorMessage };
   }
 }
