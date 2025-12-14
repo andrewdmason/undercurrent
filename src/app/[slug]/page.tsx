@@ -1,13 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { IdeasFeed } from "@/components/ideas/ideas-feed";
-import { KanbanBoard } from "@/components/ideas/kanban-board";
-import { ViewToggle, ViewMode } from "@/components/ideas/view-toggle";
-import { IdeaWithChannels, KANBAN_STATUSES } from "@/lib/types";
+import { IdeasView, ViewToggle } from "@/components/ideas/ideas-view";
+import { IdeaWithChannels, IdeaAsset, AssetType } from "@/lib/types";
 import { ChannelFilter } from "@/components/ideas/channel-filter";
 import { GenerateIdeasButton } from "@/components/ideas/generate-ideas-button";
 import { NewIdeasSection } from "@/components/ideas/new-ideas-section";
-import { getChannelSlug } from "@/lib/utils";
+import { getChannelSlug, calculateIdeaStatus } from "@/lib/utils";
 
 interface IdeasPageProps {
   params: Promise<{
@@ -15,15 +13,13 @@ interface IdeasPageProps {
   }>;
   searchParams: Promise<{
     channels?: string;
-    view?: string;
   }>;
 }
 
 export default async function IdeasPage({ params, searchParams }: IdeasPageProps) {
   const { slug } = await params;
-  const { channels: channelFilter, view: viewParam } = await searchParams;
+  const { channels: channelFilter } = await searchParams;
   const selectedSlugs = channelFilter ? channelFilter.split(",") : [];
-  const currentView: ViewMode = viewParam === "grid" ? "grid" : "kanban";
   const supabase = await createClient();
 
   // Verify user is authenticated
@@ -71,7 +67,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
       .eq("project_id", project.id)
       .order("created_at", { ascending: true }),
 
-    // Production pipeline ideas (preproduction, production, postproduction) - published has its own tab
+    // Production pipeline ideas: accepted but not published or canceled
     supabase
       .from("ideas")
       .select(`
@@ -107,15 +103,18 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
         ),
         idea_assets (
           id,
+          type,
           is_complete,
           time_estimate_minutes
         )
       `)
       .eq("project_id", project.id)
-      .in("status", KANBAN_STATUSES as unknown as string[])
-      .order("sort_order", { ascending: true }),
+      .not("accepted_at", "is", null)
+      .is("published_at", null)
+      .is("canceled_at", null)
+      .order("accepted_at", { ascending: true }),
 
-    // NEW ideas for the review modal
+    // NEW ideas for the review modal (not accepted, not rejected)
     supabase
       .from("ideas")
       .select(`
@@ -148,10 +147,17 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
           id,
           name,
           description
+        ),
+        idea_assets (
+          id,
+          type,
+          is_complete,
+          time_estimate_minutes
         )
       `)
       .eq("project_id", project.id)
-      .eq("status", "new")
+      .is("accepted_at", null)
+      .is("reject_reason", null)
       .order("created_at", { ascending: false }),
 
     // Characters for generate modal and review modal
@@ -205,15 +211,33 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   }));
 
   // Helper to transform idea data
-  const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transformIdea = (idea: any): IdeaWithChannels => {
+    // Transform assets for status calculation
+    const assets: IdeaAsset[] = (idea.idea_assets || []).map((a: { id: string; type: string; is_complete: boolean; time_estimate_minutes: number | null }) => ({
+      ...a,
+      type: a.type as AssetType,
+    }));
+
     // Calculate remaining prep time from incomplete assets
-    const prepTimeMinutes = (idea.idea_assets || [])
-      .filter((asset: { is_complete: boolean }) => !asset.is_complete)
-      .reduce((sum: number, asset: { time_estimate_minutes: number | null }) => 
-        sum + (asset.time_estimate_minutes || 0), 0);
+    const prepTimeMinutes = assets
+      .filter((asset) => !asset.is_complete)
+      .reduce((sum, asset) => sum + (asset.time_estimate_minutes || 0), 0);
+
+    // Calculate status from timestamps and assets
+    const status = calculateIdeaStatus(
+      {
+        accepted_at: idea.accepted_at,
+        published_at: idea.published_at,
+        canceled_at: idea.canceled_at,
+        reject_reason: idea.reject_reason,
+      },
+      assets.map(a => ({ type: a.type, is_complete: a.is_complete }))
+    );
 
     return {
       ...idea,
+      status,
       channels: (idea.idea_channels || [])
         .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
           ic.project_channels ? {
@@ -233,6 +257,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
           it.project_topics
         )
         .filter(Boolean) as Array<{ id: string; name: string }>,
+      assets,
       prepTimeMinutes,
     };
   };
@@ -267,7 +292,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <ViewToggle currentView={currentView} />
+              <ViewToggle />
               {(distributionChannels?.length ?? 0) > 0 && (
                 <ChannelFilter
                   channels={distributionChannels || []}
@@ -296,11 +321,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            currentView === "kanban" ? (
-              <KanbanBoard ideas={typedIdeas} projectSlug={project.slug} />
-            ) : (
-              <IdeasFeed ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} viewType="queue" />
-            )
+            <IdeasView ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} />
           ) : (
             <IdeasEmptyState />
           )}

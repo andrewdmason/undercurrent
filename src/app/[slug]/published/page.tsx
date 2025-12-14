@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { IdeasFeed } from "@/components/ideas/ideas-feed";
-import { IdeaWithChannels } from "@/lib/types";
+import { IdeaWithChannels, IdeaStatus } from "@/lib/types";
 
 interface PublishedPageProps {
   params: Promise<{
@@ -42,7 +42,7 @@ export default async function PublishedPage({ params }: PublishedPageProps) {
     notFound();
   }
 
-  // Fetch PUBLISHED ideas for this project, newest first
+  // Fetch PUBLISHED ideas for this project (has published_at), newest first
   const { data: ideas } = await supabase
     .from("ideas")
     .select(`
@@ -78,12 +78,13 @@ export default async function PublishedPage({ params }: PublishedPageProps) {
       )
     `)
     .eq("project_id", project.id)
-    .eq("status", "published")
-    .order("updated_at", { ascending: false });
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: false });
 
   // Transform the data to flatten related info
   const typedIdeas: IdeaWithChannels[] = (ideas || []).map((idea) => ({
     ...idea,
+    status: "published" as IdeaStatus, // Published ideas always have "published" status
     channels: (idea.idea_channels || [])
       .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
         ic.project_channels ? {

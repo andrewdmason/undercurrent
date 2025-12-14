@@ -96,11 +96,12 @@ export function NewIdeasAlertBar({
   const checkForUpdates = useCallback(async () => {
     const supabase = createClient();
     
-    // Get count of new ideas and how many have thumbnails
+    // Get count of new ideas and how many have thumbnails (not accepted, not rejected)
     const { data: newIdeas } = await supabase
       .from("ideas")
       .select("id, image_url")
-      .eq("status", "new");
+      .is("accepted_at", null)
+      .is("reject_reason", null);
 
     if (newIdeas) {
       const total = newIdeas.length;

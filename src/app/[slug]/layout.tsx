@@ -25,12 +25,13 @@ export default async function ProjectLayout({
     notFound();
   }
 
-  // Get count of new ideas awaiting review
+  // Get count of new ideas awaiting review (not accepted, not rejected)
   const { count: newIdeasCount } = await supabase
     .from("ideas")
     .select("*", { count: "exact", head: true })
     .eq("project_id", project.id)
-    .eq("status", "new");
+    .is("accepted_at", null)
+    .is("reject_reason", null);
 
   // AppHeader handles its own visibility (hides on onboarding routes)
   return (

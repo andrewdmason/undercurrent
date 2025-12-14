@@ -1,8 +1,83 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { IdeaStatus, AssetType, ASSET_STAGE_MAP } from "./types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+/**
+ * Calculate idea status from timestamps and asset completion states
+ * 
+ * Status priority:
+ * 1. canceled_at set → "canceled"
+ * 2. reject_reason set (and not accepted) → "rejected"
+ * 3. published_at set → "published"
+ * 4. accepted_at not set → "new"
+ * 5. No assets yet → "preproduction" (waiting for assets to generate)
+ * 6. Has incomplete preproduction assets → "preproduction"
+ * 7. Has incomplete production assets → "production"
+ * 8. Otherwise → "postproduction"
+ * 
+ * Note: Ideas skip stages that have no assets (e.g., if no production assets exist,
+ * status goes from preproduction directly to postproduction)
+ */
+export function calculateIdeaStatus(
+  idea: {
+    accepted_at: string | null;
+    published_at: string | null;
+    canceled_at: string | null;
+    reject_reason: string | null;
+  },
+  assets: { type: AssetType; is_complete: boolean }[]
+): IdeaStatus {
+  // Priority 1: Canceled overrides everything
+  if (idea.canceled_at) {
+    return "canceled";
+  }
+
+  // Priority 2: Rejected (only if not yet accepted into production)
+  if (idea.reject_reason && !idea.accepted_at) {
+    return "rejected";
+  }
+
+  // Priority 3: Published
+  if (idea.published_at) {
+    return "published";
+  }
+
+  // Priority 4: Not yet accepted
+  if (!idea.accepted_at) {
+    return "new";
+  }
+
+  // If no assets exist yet, idea is in preproduction (waiting for assets to be generated)
+  if (assets.length === 0) {
+    return "preproduction";
+  }
+
+  // Group assets by stage and check completion
+  const assetsByStage = {
+    preproduction: assets.filter(a => ASSET_STAGE_MAP[a.type] === "preproduction"),
+    production: assets.filter(a => ASSET_STAGE_MAP[a.type] === "production"),
+    postproduction: assets.filter(a => ASSET_STAGE_MAP[a.type] === "postproduction"),
+  };
+
+  // Check stages in order - only count stages that have assets
+  // Priority 5: Incomplete preproduction assets
+  if (assetsByStage.preproduction.length > 0 && 
+      assetsByStage.preproduction.some(a => !a.is_complete)) {
+    return "preproduction";
+  }
+
+  // Priority 6: Incomplete production assets
+  if (assetsByStage.production.length > 0 && 
+      assetsByStage.production.some(a => !a.is_complete)) {
+    return "production";
+  }
+
+  // Priority 7: Default to postproduction (ready to edit, or all done but not published)
+  return "postproduction";
 }
 
 /**
