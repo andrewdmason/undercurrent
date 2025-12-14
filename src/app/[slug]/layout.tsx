@@ -25,27 +25,17 @@ export default async function ProjectLayout({
     notFound();
   }
 
-  // Get counts for tabs
-  const [{ count: newCount }, { count: createCount }] = await Promise.all([
-    supabase
-      .from("ideas")
-      .select("*", { count: "exact", head: true })
-      .eq("project_id", project.id)
-      .eq("status", "new"),
-    supabase
-      .from("ideas")
-      .select("*", { count: "exact", head: true })
-      .eq("project_id", project.id)
-      .eq("status", "accepted"),
-  ]);
+  // Get count for ideas tab (accepted ideas)
+  const { count: ideasCount } = await supabase
+    .from("ideas")
+    .select("*", { count: "exact", head: true })
+    .eq("project_id", project.id)
+    .eq("status", "accepted");
 
   // AppHeader handles its own visibility (hides on onboarding routes)
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <AppHeader 
-        newCount={newCount ?? 0} 
-        createCount={createCount ?? 0} 
-      />
+      <AppHeader ideasCount={ideasCount ?? 0} />
       <main className="flex-1 min-h-0 flex flex-col">{children}</main>
     </div>
   );

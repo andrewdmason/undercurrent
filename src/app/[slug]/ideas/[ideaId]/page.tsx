@@ -136,9 +136,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
-  // Only allow access to accepted ideas (create items)
+  // Only allow access to accepted ideas
   if (idea.status !== "accepted") {
-    redirect(`/${slug}/create`);
+    redirect(`/${slug}`);
   }
 
   // Transform the data to flatten related info

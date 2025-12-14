@@ -25,11 +25,10 @@ interface Project {
 }
 
 interface AppHeaderProps {
-  newCount?: number;
-  createCount?: number;
+  ideasCount?: number;
 }
 
-export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
+export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
@@ -109,25 +108,16 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
   const navSlug = currentProject?.slug;
   const tabs = navSlug ? [
     {
-      name: "New",
-      href: `/${navSlug}/new`,
-      count: newCount,
-      isActive: pathname === `/${navSlug}/new` || pathname === `/${navSlug}`,
-      badgeVariant: "strong" as const,
-    },
-    {
-      name: "Create",
-      href: `/${navSlug}/create`,
-      count: createCount,
-      isActive: pathname === `/${navSlug}/create`,
-      badgeVariant: "default" as const,
+      name: "Ideas",
+      href: `/${navSlug}`,
+      count: ideasCount,
+      isActive: pathname === `/${navSlug}`,
     },
     {
       name: "Published",
       href: `/${navSlug}/published`,
       count: null,
       isActive: pathname === `/${navSlug}/published`,
-      badgeVariant: "default" as const,
     },
   ] : [];
 
@@ -177,12 +167,8 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                     className={cn(
                       "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold tabular-nums",
                       tab.isActive
-                        ? tab.badgeVariant === "strong"
-                          ? "bg-[#0d7377] text-white"
-                          : "bg-[var(--grey-800)] text-white"
-                        : tab.badgeVariant === "strong"
-                          ? "bg-[#0d7377] text-white"
-                          : "bg-[var(--grey-200)] text-[var(--grey-600)]"
+                        ? "bg-[var(--grey-800)] text-white"
+                        : "bg-[var(--grey-200)] text-[var(--grey-600)]"
                     )}
                   >
                     {tab.count > 99 ? "99+" : tab.count}
