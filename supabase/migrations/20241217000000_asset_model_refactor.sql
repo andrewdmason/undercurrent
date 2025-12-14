@@ -9,7 +9,7 @@ create table if not exists public.idea_assets (
   id uuid primary key default gen_random_uuid(),
   idea_id uuid not null references public.ideas(id) on delete cascade,
   type text not null, -- 'talking_points' | 'script' | 'a_roll' | 'b_roll_footage' | 'b_roll_screen_recording' | 'thumbnail'
-  status text not null default 'pending', -- 'pending' | 'in_progress' | 'ready'
+  is_complete boolean not null default false,
   title text not null,
   instructions text, -- markdown instructions for preparing the asset
   time_estimate_minutes integer,

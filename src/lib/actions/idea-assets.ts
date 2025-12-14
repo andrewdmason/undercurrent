@@ -5,7 +5,7 @@ import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
-import { IdeaAsset, AssetStatus, GeneratedAsset, AssetType } from "@/lib/types";
+import { IdeaAsset, GeneratedAsset, AssetType } from "@/lib/types";
 
 // Helper to get project slug and revalidate paths
 async function revalidateIdeaPaths(ideaId: string) {
@@ -42,10 +42,10 @@ export async function getIdeaAssets(ideaId: string): Promise<{ data: IdeaAsset[]
   return { data: data as IdeaAsset[], error: null };
 }
 
-// Update asset status
-export async function updateAssetStatus(
+// Toggle asset completion
+export async function toggleAssetComplete(
   assetId: string,
-  status: AssetStatus
+  isComplete: boolean
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
@@ -62,13 +62,13 @@ export async function updateAssetStatus(
   const { error } = await supabase
     .from("idea_assets")
     .update({
-      status,
+      is_complete: isComplete,
       updated_at: new Date().toISOString(),
     })
     .eq("id", assetId);
 
   if (error) {
-    console.error("Error updating asset status:", error);
+    console.error("Error updating asset completion:", error);
     return { success: false, error: error.message };
   }
 
@@ -300,13 +300,13 @@ export async function generateTalkingPoints(
 
     // Check if AI needs more input from user
     if (parsed.needs_input && parsed.questions?.length > 0) {
-      // Create a talking_points asset with pending status and store questions
+      // Create a talking_points asset (not complete) and store questions
       const { data: asset, error: insertError } = await supabase
         .from("idea_assets")
         .insert({
           idea_id: ideaId,
           type: "talking_points",
-          status: "pending",
+          is_complete: false,
           title: "Talking Points",
           instructions: JSON.stringify(parsed.questions),
           is_ai_generatable: true,
@@ -334,7 +334,7 @@ export async function generateTalkingPoints(
       .insert({
         idea_id: ideaId,
         type: "talking_points",
-        status: "ready",
+        is_complete: true,
         title: "Talking Points",
         instructions: parsed.instructions || null,
         content_text: parsed.talking_points,
@@ -430,32 +430,62 @@ export async function generateScript(
       idea_id: ideaId,
     });
 
-    // Get max sort_order
-    const { data: existingAssets } = await supabase
+    // Check if a script asset already exists
+    const { data: existingScript } = await supabase
       .from("idea_assets")
-      .select("sort_order")
-      .eq("idea_id", ideaId);
-    const maxSortOrder = Math.max(0, ...(existingAssets || []).map(a => a.sort_order));
-
-    // Create the script asset
-    const { data: asset, error: insertError } = await supabase
-      .from("idea_assets")
-      .insert({
-        idea_id: ideaId,
-        type: "script",
-        status: "ready",
-        title: "Script",
-        instructions: parsed.instructions || null,
-        content_text: parsed.script,
-        is_ai_generatable: true,
-        time_estimate_minutes: parsed.time_estimate_minutes || 10,
-        sort_order: maxSortOrder + 1,
-      })
-      .select()
+      .select("*")
+      .eq("idea_id", ideaId)
+      .eq("type", "script")
       .single();
 
-    if (insertError) {
-      throw new Error(`Failed to save script: ${insertError.message}`);
+    let asset;
+    if (existingScript) {
+      // Update existing script asset
+      const { data: updatedAsset, error: updateError } = await supabase
+        .from("idea_assets")
+        .update({
+          content_text: parsed.script,
+          instructions: parsed.instructions || null,
+          time_estimate_minutes: parsed.time_estimate_minutes || 10,
+          is_complete: true,
+        })
+        .eq("id", existingScript.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Failed to update script: ${updateError.message}`);
+      }
+      asset = updatedAsset;
+    } else {
+      // Get max sort_order for new asset
+      const { data: existingAssets } = await supabase
+        .from("idea_assets")
+        .select("sort_order")
+        .eq("idea_id", ideaId);
+      const maxSortOrder = Math.max(0, ...(existingAssets || []).map(a => a.sort_order));
+
+      // Create the script asset
+      const { data: newAsset, error: insertError } = await supabase
+        .from("idea_assets")
+        .insert({
+          idea_id: ideaId,
+          type: "script",
+          is_complete: true,
+          title: "Script",
+          instructions: parsed.instructions || null,
+          content_text: parsed.script,
+          is_ai_generatable: true,
+          time_estimate_minutes: parsed.time_estimate_minutes || 10,
+          sort_order: maxSortOrder + 1,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(`Failed to save script: ${insertError.message}`);
+      }
+      asset = newAsset;
     }
 
     await revalidateIdeaPaths(ideaId);
@@ -561,7 +591,7 @@ export async function generateProductionAssets(
     const assetsToInsert = validAssets.map((asset, index) => ({
       idea_id: ideaId,
       type: asset.type,
-      status: "pending" as AssetStatus,
+      is_complete: false,
       title: asset.title,
       instructions: asset.instructions || null,
       time_estimate_minutes: asset.time_estimate_minutes || null,

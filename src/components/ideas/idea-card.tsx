@@ -427,23 +427,21 @@ export function IdeaCard({
                       >
                         <span
                           className={cn(
-                            "flex-shrink-0 w-3.5 h-3.5 rounded border",
-                            asset.status === "ready"
+                            "flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center",
+                            asset.is_complete
                               ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
-                              : asset.status === "in_progress"
-                              ? "bg-[#007bc2] border-[#007bc2]"
                               : "border-[var(--grey-300)]"
                           )}
                         >
-                          {asset.status === "ready" && (
-                            <Check className="h-3.5 w-3.5 text-white p-0.5" />
+                          {asset.is_complete && (
+                            <Check className="h-2.5 w-2.5 text-white" />
                           )}
                         </span>
                         <span
                           className={cn(
                             "flex-1 truncate",
-                            asset.status === "ready"
-                              ? "text-[var(--grey-400)] line-through"
+                            asset.is_complete
+                              ? "text-[var(--grey-400)]"
                               : "text-[var(--grey-700)]"
                           )}
                         >

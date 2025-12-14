@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, AssetStatus, ASSET_STAGE_MAP } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { updateAssetStatus } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -149,37 +149,34 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     enabled: assetsLikelyGenerating,
   });
 
-  const handleCycleAssetStatus = async (assetId: string) => {
+  const handleToggleAssetComplete = async (assetId: string) => {
     const asset = assets.find(a => a.id === assetId);
     if (!asset) return;
     
-    // Cycle through statuses: pending -> in_progress -> ready -> pending
-    const statusOrder: AssetStatus[] = ["pending", "in_progress", "ready"];
-    const currentIndex = statusOrder.indexOf(asset.status);
-    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+    const newIsComplete = !asset.is_complete;
     
     // Optimistic update
     setAssets(prev => 
       prev.map(a => 
-        a.id === assetId ? { ...a, status: nextStatus } : a
+        a.id === assetId ? { ...a, is_complete: newIsComplete } : a
       )
     );
     
     // Persist to database
-    const result = await updateAssetStatus(assetId, nextStatus);
+    const result = await toggleAssetComplete(assetId, newIsComplete);
     if (!result.success) {
       // Revert on error
       setAssets(prev => 
         prev.map(a => 
-          a.id === assetId ? { ...a, status: asset.status } : a
+          a.id === assetId ? { ...a, is_complete: asset.is_complete } : a
         )
       );
-      toast.error(result.error || "Failed to update asset status");
+      toast.error(result.error || "Failed to update asset");
     }
   };
 
   const remainingMinutes = assets
-    .filter(asset => asset.status !== "ready")
+    .filter(asset => !asset.is_complete)
     .reduce((sum, asset) => sum + (asset.time_estimate_minutes || 0), 0);
 
   const handleGenerateThumbnail = async () => {
@@ -580,35 +577,41 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                   )}
                                   onClick={() => setSelectedAssetId(asset.id)}
                                 >
-                                  {/* Status indicator - colored circle */}
+                                  {/* Checkbox */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleCycleAssetStatus(asset.id);
+                                      handleToggleAssetComplete(asset.id);
                                     }}
-                                    className="flex-shrink-0 transition-colors"
-                                    title={`Status: ${asset.status}. Click to cycle.`}
-                                  >
-                                    {asset.status === "ready" ? (
-                                      <Circle className="h-3 w-3 fill-[#00975a] text-[#00975a]" />
-                                    ) : asset.status === "in_progress" ? (
-                                      <Circle className="h-3 w-3 fill-[#007bc2] text-[#007bc2]" />
-                                    ) : (
-                                      <Circle className="h-3 w-3 text-[var(--grey-300)] hover:text-[var(--grey-400)]" />
+                                    className={cn(
+                                      "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
+                                      asset.is_complete
+                                        ? "bg-[#00975a] border-[#00975a] text-white"
+                                        : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
                                     )}
+                                    title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
+                                  >
+                                    {asset.is_complete && <Check className="h-3 w-3" />}
                                   </button>
+
+                                  {/* Asset Type Icon */}
+                                  <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
+                                    {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
+                                    {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
+                                    {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
+                                  </span>
+
+                                  {/* AI sparkles next to icon */}
+                                  {asset.is_ai_generatable && (
+                                    <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
+                                  )}
 
                                   {/* Asset Title */}
                                   <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
                                     {asset.title}
                                   </span>
-
-                                  {/* AI badge */}
-                                  {asset.is_ai_generatable && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--grey-100)] text-[var(--grey-500)]">
-                                      AI
-                                    </span>
-                                  )}
 
                                   {/* Time Estimate */}
                                   {asset.time_estimate_minutes && (
@@ -639,24 +642,26 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                         {selectedAsset.title}
                       </h4>
                       <div className="flex items-center gap-2">
-                        {/* Status dropdown */}
-                        <select
-                          value={selectedAsset.status}
-                          onChange={(e) => {
-                            const newStatus = e.target.value as AssetStatus;
-                            // Update locally first for responsiveness
-                            setAssets(prev => prev.map(a => 
-                              a.id === selectedAsset.id ? { ...a, status: newStatus } : a
-                            ));
-                            // Then persist to server
-                            updateAssetStatus(selectedAsset.id, newStatus);
-                          }}
-                          className="text-xs px-2 py-1 rounded border border-[var(--border)] bg-[var(--grey-0)] text-[var(--grey-600)] focus:outline-none focus:ring-1 focus:ring-[var(--grey-300)]"
+                        {/* Completion checkbox */}
+                        <button
+                          onClick={() => handleToggleAssetComplete(selectedAsset.id)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded border transition-colors text-xs",
+                            selectedAsset.is_complete
+                              ? "bg-[#00975a]/10 border-[#00975a]/30 text-[#00975a]"
+                              : "border-[var(--border)] text-[var(--grey-500)] hover:border-[var(--grey-400)]"
+                          )}
                         >
-                          <option value="pending">Pending</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="ready">Ready</option>
-                        </select>
+                          <div className={cn(
+                            "w-3.5 h-3.5 rounded border flex items-center justify-center",
+                            selectedAsset.is_complete
+                              ? "bg-[#00975a] border-[#00975a] text-white"
+                              : "border-current"
+                          )}>
+                            {selectedAsset.is_complete && <Check className="h-2.5 w-2.5" />}
+                          </div>
+                          {selectedAsset.is_complete ? "Complete" : "Incomplete"}
+                        </button>
                         
                         {/* Copy button - only for text content */}
                         {(selectedAsset.content_text || selectedAsset.instructions) && (
@@ -781,8 +786,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 ideaId={idea.id}
                 projectSlug={projectSlug}
                 scriptQuestions={(() => {
-                  // Get questions from pending talking_points asset if it has them
-                  if (talkingPointsAsset?.status === "pending" && talkingPointsAsset.instructions) {
+                  // Get questions from incomplete talking_points asset if it has them
+                  if (talkingPointsAsset && !talkingPointsAsset.is_complete && talkingPointsAsset.instructions) {
                     try {
                       const questions = JSON.parse(talkingPointsAsset.instructions);
                       return Array.isArray(questions) ? questions : undefined;

@@ -29,13 +29,13 @@ export async function GET(
 
   const typedAssets = assets as IdeaAsset[];
 
-  // Calculate totals - only pending assets count toward remaining
+  // Calculate totals - only incomplete assets count toward remaining
   const totalMinutes = typedAssets.reduce(
     (sum, asset) => sum + (asset.time_estimate_minutes || 0),
     0
   );
   const remainingMinutes = typedAssets
-    .filter(asset => asset.status !== "ready")
+    .filter(asset => !asset.is_complete)
     .reduce((sum, asset) => sum + (asset.time_estimate_minutes || 0), 0);
 
   // Group assets by stage for UI

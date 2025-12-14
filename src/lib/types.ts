@@ -217,9 +217,6 @@ export const ASSET_TYPES = [
 ] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
-export const ASSET_STATUSES = ["pending", "in_progress", "ready"] as const;
-export type AssetStatus = (typeof ASSET_STATUSES)[number];
-
 // Map asset types to their production stage (derived, not stored)
 export const ASSET_STAGE_MAP: Record<AssetType, "preproduction" | "production" | "postproduction"> = {
   talking_points: "preproduction",
@@ -244,7 +241,7 @@ export interface IdeaAsset {
   id: string;
   idea_id: string;
   type: AssetType;
-  status: AssetStatus;
+  is_complete: boolean;
   title: string;
   instructions: string | null;
   time_estimate_minutes: number | null;
