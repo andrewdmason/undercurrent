@@ -8,6 +8,7 @@ import {
   deleteCharacter,
   uploadCharacterImage,
 } from "@/lib/actions/characters";
+import { getTeamMembers, TeamMember } from "@/lib/actions/team";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Upload, User, X, Sparkles } from "lucide-react";
+import { Plus, Trash2, Upload, User, X, Sparkles, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateAICharacterModal } from "./create-ai-character-modal";
 
@@ -105,10 +106,14 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
     setAiCharacterData(null);
   };
 
-  const handleSave = async (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string }) => {
+  const handleSave = async (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string; memberId?: string | null }) => {
     if (editingCharacter) {
       // Update existing character
-      await updateCharacter(editingCharacter.id, projectId, data);
+      await updateCharacter(editingCharacter.id, projectId, {
+        name: data.name,
+        description: data.description,
+        member_id: data.memberId,
+      });
       
       // Upload image if there's a pending one
       if (data.pendingImage) {
@@ -118,20 +123,20 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
         if (result.success && result.imageUrl) {
           setCharacterList(
             characterList.map((c) =>
-              c.id === editingCharacter.id ? { ...c, ...data, image_url: result.imageUrl! } : c
+              c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null, image_url: result.imageUrl! } : c
             )
           );
         } else {
           setCharacterList(
             characterList.map((c) =>
-              c.id === editingCharacter.id ? { ...c, ...data } : c
+              c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null } : c
             )
           );
         }
       } else {
         setCharacterList(
           characterList.map((c) =>
-            c.id === editingCharacter.id ? { ...c, ...data } : c
+            c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null } : c
           )
         );
       }
@@ -143,6 +148,7 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
         image_url: data.imageUrl || null,
         is_ai_generated: data.isAiGenerated || false,
         ai_style: data.aiStyle || null,
+        member_id: data.memberId || null,
       });
       if (result.success && result.character) {
         let newCharacter = result.character;
@@ -218,6 +224,7 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
       </div>
 
       <CharacterDialog
+        projectId={projectId}
         isOpen={isDialogOpen}
         onClose={handleClose}
         onSave={handleSave}
@@ -291,22 +298,37 @@ function CharacterCard({ character, onEdit, onDelete }: CharacterCardProps) {
 }
 
 interface CharacterDialogProps {
+  projectId: string;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string }) => Promise<void>;
+  onSave: (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string; memberId?: string | null }) => Promise<void>;
   character: ProjectCharacter | null;
   existingImageUrl?: string | null;
   initialData?: AICharacterData | null;
 }
 
-function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl, initialData }: CharacterDialogProps) {
+function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existingImageUrl, initialData }: CharacterDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch team members when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      getTeamMembers(projectId).then((result) => {
+        if (result.members) {
+          setTeamMembers(result.members);
+        }
+      });
+    }
+  }, [isOpen, projectId]);
 
   // Reset form when dialog opens/closes or character changes
   useEffect(() => {
@@ -315,13 +337,16 @@ function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl,
       if (initialData) {
         setName(initialData.name || "");
         setDescription(initialData.description || "");
+        setSelectedMemberId(null);
       } else {
         setName(character?.name || "");
         setDescription(character?.description || "");
+        setSelectedMemberId(character?.member_id || null);
       }
       setPendingImage(null);
       setImagePreview(null);
       setImageError(null);
+      setShowMemberPicker(false);
     }
   }, [isOpen, character, initialData]);
 
@@ -370,9 +395,12 @@ function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl,
       isAiGenerated: initialData?.isAiGenerated,
       aiStyle: initialData?.aiStyle,
       imageUrl: initialData?.imageUrl,
+      memberId: selectedMemberId,
     });
     setIsSaving(false);
   };
+
+  const selectedMember = teamMembers.find((m) => m.id === selectedMemberId);
 
   const displayImage = imagePreview || existingImageUrl;
   const isEditing = !!character;
@@ -465,6 +493,70 @@ function CharacterDialog({ isOpen, onClose, onSave, character, existingImageUrl,
               )}
             />
           </div>
+
+          {/* Team Member (optional) */}
+          {teamMembers.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--grey-600)]">
+                Team Member <span className="text-[var(--grey-400)] font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowMemberPicker(!showMemberPicker)}
+                  className="w-full flex items-center justify-between h-8 px-3 rounded-lg bg-black/[0.03] text-xs text-left hover:bg-black/[0.05] transition-colors"
+                >
+                  <span className={selectedMember ? "text-[var(--grey-800)]" : "text-[var(--grey-400)]"}>
+                    {selectedMember ? selectedMember.full_name || "Unnamed Member" : "Select team member..."}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={cn(
+                      "text-[var(--grey-400)] transition-transform",
+                      showMemberPicker && "rotate-180"
+                    )}
+                  />
+                </button>
+
+                {showMemberPicker && (
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-[var(--border)] py-1 max-h-48 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMemberId(null);
+                        setShowMemberPicker(false);
+                      }}
+                      className={cn(
+                        "w-full px-3 py-2 text-xs text-left hover:bg-[var(--grey-50)] transition-colors",
+                        !selectedMemberId && "bg-[var(--grey-50)]"
+                      )}
+                    >
+                      <span className="text-[var(--grey-400)]">None</span>
+                    </button>
+                    {teamMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMemberId(member.id);
+                          setShowMemberPicker(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2 text-xs text-left hover:bg-[var(--grey-50)] transition-colors",
+                          selectedMemberId === member.id && "bg-[var(--grey-50)]"
+                        )}
+                      >
+                        {member.full_name || "Unnamed Member"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-[var(--grey-400)]">
+                Link this character to a team member for task assignment
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">

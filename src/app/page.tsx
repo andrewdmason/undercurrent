@@ -35,7 +35,7 @@ export default async function HomePage() {
 
   // Logged in users: redirect to their project
   const { data: projectUsers } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("project_id")
     .eq("user_id", user.id);
 

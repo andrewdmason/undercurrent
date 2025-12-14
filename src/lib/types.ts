@@ -56,6 +56,7 @@ export interface ProjectCharacter {
   image_url: string | null;
   is_ai_generated: boolean;
   ai_style: string | null;
+  member_id: string | null;
   created_at: string;
   updated_at: string;
 }

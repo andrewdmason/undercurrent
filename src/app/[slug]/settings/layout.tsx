@@ -34,7 +34,7 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
 
   // Verify user has access to this project and get their role
   const { data: membership } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("id, role")
     .eq("project_id", project.id)
     .eq("user_id", user.id)
