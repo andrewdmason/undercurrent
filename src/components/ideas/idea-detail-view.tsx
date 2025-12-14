@@ -534,8 +534,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full px-6 py-6 flex flex-col">
           <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '340px minmax(400px, 1fr) 300px' }}>
-            {/* Left Column - Image & Info (scrollable) */}
-            <div className="flex flex-col gap-4 overflow-auto">
+            {/* Left Column - Image & Info */}
+            <div className="flex flex-col gap-4 min-h-0 h-full">
 
               {/* Image */}
               <div className="group/image relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--grey-100)]">
@@ -668,8 +668,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 )}
               </div>
 
-              {/* Prep List */}
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+              {/* Prep List - expands to fill remaining space */}
+              <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
                 {/* Prep List Header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
                   <ListTodo className="h-4 w-4 text-[var(--grey-400)]" />
@@ -685,7 +685,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 </div>
 
                 {/* Todo List - Scrollable */}
-                <div className="max-h-[240px] overflow-y-auto p-3 space-y-1">
+                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
                   {todos.length === 0 ? (
                     <p className="text-xs text-[var(--grey-400)] text-center py-4">
                       No prep tasks yet

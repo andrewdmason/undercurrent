@@ -100,6 +100,11 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
           id,
           name,
           description
+        ),
+        idea_todos (
+          id,
+          is_complete,
+          time_estimate_minutes
         )
       `)
       .eq("project_id", project.id)
@@ -176,28 +181,37 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   const topics = topicsResult.data || [];
 
   // Helper to transform idea data
-  const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => ({
-    ...idea,
-    channels: (idea.idea_channels || [])
-      .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
-        ic.project_channels ? {
-          ...ic.project_channels,
-          video_url: ic.video_url,
-        } : null
-      )
-      .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
-    template: idea.project_templates || null,
-    characters: (idea.idea_characters || [])
-      .map((ic: { project_characters: { id: string; name: string; image_url: string | null } | null }) => 
-        ic.project_characters
-      )
-      .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
-    topics: (idea.idea_topics || [])
-      .map((it: { project_topics: { id: string; name: string } | null }) => 
-        it.project_topics
-      )
-      .filter(Boolean) as Array<{ id: string; name: string }>,
-  });
+  const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => {
+    // Calculate remaining prep time from todos
+    const prepTimeMinutes = (idea.idea_todos || [])
+      .filter((todo: { is_complete: boolean }) => !todo.is_complete)
+      .reduce((sum: number, todo: { time_estimate_minutes: number | null }) => 
+        sum + (todo.time_estimate_minutes || 0), 0);
+
+    return {
+      ...idea,
+      channels: (idea.idea_channels || [])
+        .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
+          ic.project_channels ? {
+            ...ic.project_channels,
+            video_url: ic.video_url,
+          } : null
+        )
+        .filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null; video_url: string | null }>,
+      template: idea.project_templates || null,
+      characters: (idea.idea_characters || [])
+        .map((ic: { project_characters: { id: string; name: string; image_url: string | null } | null }) => 
+          ic.project_characters
+        )
+        .filter(Boolean) as Array<{ id: string; name: string; image_url: string | null }>,
+      topics: (idea.idea_topics || [])
+        .map((it: { project_topics: { id: string; name: string } | null }) => 
+          it.project_topics
+        )
+        .filter(Boolean) as Array<{ id: string; name: string }>,
+      prepTimeMinutes,
+    };
+  };
 
   // Transform accepted ideas
   const allIdeas: IdeaWithChannels[] = (ideas || []).map(transformIdea);
