@@ -15,10 +15,11 @@ function renderChatMarkdown(text: string): ReactNode {
     if (numberedListMatch && paragraph.includes('\n')) {
       const items = paragraph.split(/\n(?=\d+\.\s)/);
       return (
-        <ol key={pIdx} className="list-decimal list-inside space-y-1 my-2">
+        <ol key={pIdx} className="space-y-1 my-2">
           {items.map((item, i) => (
-            <li key={i} className="text-xs">
-              {renderInlineMarkdown(item.replace(/^\d+\.\s/, ''))}
+            <li key={i} className="text-xs flex gap-1.5">
+              <span className="text-[var(--grey-500)] flex-shrink-0">{i + 1}.</span>
+              <span>{renderInlineMarkdown(item.replace(/^\d+\.\s/, ''))}</span>
             </li>
           ))}
         </ol>
