@@ -93,6 +93,28 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     .eq("project_id", project.id)
     .order("created_at");
 
+  // Fetch all project characters for remix modal
+  const { data: projectCharacters } = await supabase
+    .from("project_characters")
+    .select("id, name, image_url")
+    .eq("project_id", project.id)
+    .order("created_at");
+
+  // Fetch all project templates for remix modal
+  const { data: projectTemplates } = await supabase
+    .from("project_templates")
+    .select("id, name")
+    .eq("project_id", project.id)
+    .order("created_at");
+
+  // Fetch all project topics (included only) for remix modal
+  const { data: projectTopics } = await supabase
+    .from("project_topics")
+    .select("id, name")
+    .eq("project_id", project.id)
+    .eq("is_excluded", false)
+    .order("created_at");
+
   // Fetch template channels if idea has a template
   let templateChannels: string[] = [];
   if (idea?.template_id) {
@@ -161,6 +183,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       projectId={project.id}
       projectSlug={slug}
       projectChannels={projectChannels || []}
+      projectCharacters={projectCharacters || []}
+      projectTemplates={projectTemplates || []}
+      projectTopics={projectTopics || []}
       fullTemplate={fullTemplate}
       initialTodos={(ideaTodos || []) as IdeaTodo[]}
     />

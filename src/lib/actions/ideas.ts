@@ -676,6 +676,435 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
   }
 }
 
+// Options for remixing an idea
+export interface RemixIdeaOptions {
+  characterIds?: string[];  // new characters, or undefined to keep original
+  channelIds?: string[];    // new channels, or undefined to keep original
+  templateId?: string | null;      // new template, or undefined to keep original
+  topicId?: string | null;         // new topic, or undefined to keep original
+  customInstructions?: string;
+  saveAsCopy?: boolean;     // if true, create new idea; if false, update in place
+}
+
+// Remix an existing idea with new parameters
+export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) {
+  const supabase = await createClient();
+
+  const {
+    characterIds,
+    channelIds,
+    templateId,
+    topicId,
+    customInstructions,
+    saveAsCopy = false,
+  } = options;
+
+  // Fetch the original idea with all its relationships
+  const { data: originalIdea, error: ideaError } = await supabase
+    .from("ideas")
+    .select(`
+      id,
+      title,
+      description,
+      status,
+      project_id,
+      template_id,
+      idea_channels (
+        channel_id,
+        project_channels (
+          id,
+          platform,
+          custom_label
+        )
+      ),
+      idea_characters (
+        character_id,
+        project_characters (
+          id,
+          name,
+          description
+        )
+      ),
+      idea_topics (
+        topic_id,
+        project_topics (
+          id,
+          name,
+          description
+        )
+      ),
+      project_templates (
+        id,
+        name,
+        description
+      )
+    `)
+    .eq("id", ideaId)
+    .single();
+
+  if (ideaError || !originalIdea) {
+    console.error("Error fetching idea:", ideaError);
+    return { error: "Idea not found" };
+  }
+
+  const projectId = originalIdea.project_id;
+
+  // Fetch project profile
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("name, description")
+    .eq("id", projectId)
+    .single();
+
+  if (projectError || !project) {
+    console.error("Error fetching project:", projectError);
+    return { error: "Project not found" };
+  }
+
+  // Determine which characters to use (user selection or original)
+  const originalCharacterIds = (originalIdea.idea_characters as unknown as Array<{
+    character_id: string;
+    project_characters: { id: string; name: string; description: string | null } | null;
+  }> || [])
+    .map(ic => ic.character_id)
+    .filter(Boolean);
+  
+  const targetCharacterIds = characterIds !== undefined ? characterIds : originalCharacterIds;
+
+  // Fetch characters (either selected ones or all for context)
+  let charactersQuery = supabase
+    .from("project_characters")
+    .select("id, name, description")
+    .eq("project_id", projectId);
+  
+  if (targetCharacterIds.length > 0) {
+    charactersQuery = charactersQuery.in("id", targetCharacterIds);
+  }
+  
+  const { data: characters } = await charactersQuery;
+
+  // Determine which channels to use (user selection or original)
+  const originalChannelIds = (originalIdea.idea_channels as unknown as Array<{
+    channel_id: string;
+    project_channels: { id: string; platform: string; custom_label: string | null } | null;
+  }> || [])
+    .map(ic => ic.channel_id)
+    .filter(Boolean);
+  
+  const targetChannelIds = channelIds !== undefined ? channelIds : originalChannelIds;
+
+  // Fetch channels
+  let channelsQuery = supabase
+    .from("project_channels")
+    .select("id, platform, custom_label")
+    .eq("project_id", projectId);
+  
+  if (targetChannelIds.length > 0) {
+    channelsQuery = channelsQuery.in("id", targetChannelIds);
+  }
+  
+  const { data: channels } = await channelsQuery;
+
+  // Determine template (user selection or original)
+  const originalTemplateId = originalIdea.template_id;
+  const targetTemplateId = templateId !== undefined ? templateId : originalTemplateId;
+
+  // Fetch templates
+  let templatesQuery = supabase
+    .from("project_templates")
+    .select("id, name, description")
+    .eq("project_id", projectId);
+  
+  if (targetTemplateId) {
+    templatesQuery = templatesQuery.eq("id", targetTemplateId);
+  }
+  
+  const { data: templates } = await templatesQuery;
+
+  // Determine topic (user selection or original)
+  const originalTopicIds = (originalIdea.idea_topics as unknown as Array<{
+    topic_id: string;
+    project_topics: { id: string; name: string; description: string | null } | null;
+  }> || [])
+    .map(it => it.topic_id)
+    .filter(Boolean);
+  
+  const targetTopicId = topicId !== undefined ? topicId : (originalTopicIds[0] || null);
+
+  // Fetch topics
+  let topicsQuery = supabase
+    .from("project_topics")
+    .select("id, name, description")
+    .eq("project_id", projectId)
+    .eq("is_excluded", false);
+  
+  if (targetTopicId) {
+    topicsQuery = topicsQuery.eq("id", targetTopicId);
+  }
+  
+  const { data: topics } = await topicsQuery;
+
+  // Build the prompt from template
+  const promptTemplate = await readFile(
+    path.join(process.cwd(), "prompts", "remix-idea.md"),
+    "utf-8"
+  );
+
+  // Format characters section
+  const charactersSection =
+    characters && characters.length > 0
+      ? characters
+          .map((c) => `- **${c.name}** (id: "${c.id}"): ${c.description || "No description"}`)
+          .join("\n")
+      : "No character profiles configured.";
+
+  // Format channels section
+  const channelsSection =
+    channels && channels.length > 0
+      ? channels
+          .map((c) => {
+            const name = c.platform === "custom" && c.custom_label 
+              ? c.custom_label 
+              : c.platform;
+            return `- **${name}** (platform: "${c.platform}")`;
+          })
+          .join("\n")
+      : "No distribution channels configured.";
+
+  // Format templates section
+  const templatesSection =
+    templates && templates.length > 0
+      ? templates
+          .map((t) => `- **${t.name}** (id: "${t.id}")${t.description ? `: ${t.description}` : ""}`)
+          .join("\n")
+      : "No video templates configured.";
+
+  // Format topics section
+  const topicsSection =
+    topics && topics.length > 0
+      ? topics
+          .map((t) => `- **${t.name}** (id: "${t.id}")${t.description ? `: ${t.description}` : ""}`)
+          .join("\n")
+      : "No topics configured.";
+
+  // Build the final prompt
+  let prompt = promptTemplate
+    .replace("{{originalTitle}}", originalIdea.title || "Untitled")
+    .replace("{{originalDescription}}", originalIdea.description || "No description")
+    .replace("{{projectName}}", project.name || "Unnamed Project")
+    .replace("{{projectDescription}}", project.description || "No description provided.")
+    .replace("{{characters}}", charactersSection)
+    .replace("{{distributionChannels}}", channelsSection)
+    .replace("{{templates}}", templatesSection)
+    .replace("{{topics}}", topicsSection);
+
+  // Add selection mode instructions
+  const filteringInstructions: string[] = [];
+  
+  if (targetCharacterIds.length > 0) {
+    filteringInstructions.push(`**Characters:** The remixed idea MUST feature the character(s) listed above.`);
+  } else {
+    filteringInstructions.push(`**Characters:** No specific character required. Use an empty array for characterIds.`);
+  }
+  
+  if (targetChannelIds.length > 0) {
+    filteringInstructions.push(`**Channels:** The remixed idea MUST target the channel(s) listed above.`);
+  } else {
+    filteringInstructions.push(`**Channels:** No specific channel required. Use an empty array for channels.`);
+  }
+  
+  if (targetTemplateId) {
+    filteringInstructions.push(`**Template:** The remixed idea MUST use the template listed above.`);
+  } else {
+    filteringInstructions.push(`**Template:** No specific template required. Set templateId to null.`);
+  }
+  
+  if (targetTopicId) {
+    filteringInstructions.push(`**Topic:** The remixed idea MUST cover the topic listed above.`);
+  } else {
+    filteringInstructions.push(`**Topics:** No specific topic required. Use an empty array for topicIds.`);
+  }
+  
+  prompt += `\n\n## Selection Mode\n\n${filteringInstructions.join('\n\n')}`;
+
+  // Add custom instructions if provided
+  if (customInstructions) {
+    prompt += `\n\n## Remix Instructions\n\n${customInstructions}`;
+  }
+
+  // Build channel platform to ID map
+  const channelIdMap = new Map<string, string>();
+  if (channels) {
+    for (const c of channels) {
+      channelIdMap.set(c.platform, c.id);
+    }
+  }
+
+  let responseRaw = "";
+  let errorMessage: string | null = null;
+
+  try {
+    // Call ChatGPT
+    const completion = await openai.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    responseRaw = completion.choices[0]?.message?.content || "";
+    const parsed = JSON.parse(responseRaw) as GeneratedIdea;
+
+    if (!parsed.title || !parsed.description) {
+      throw new Error("Invalid response: missing title or description");
+    }
+
+    // Validate template ID
+    const validTemplateIds = new Set(templates?.map((t) => t.id) || []);
+    const validTemplateId = parsed.templateId && validTemplateIds.has(parsed.templateId) 
+      ? parsed.templateId 
+      : null;
+
+    let resultIdeaId: string;
+
+    if (saveAsCopy) {
+      // Create a new idea with the same status as the original
+      const { data: newIdea, error: insertError } = await supabase
+        .from("ideas")
+        .insert({
+          project_id: projectId,
+          title: parsed.title,
+          description: parsed.description,
+          status: originalIdea.status as IdeaStatus,
+          template_id: validTemplateId,
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !newIdea) {
+        throw new Error(`Failed to create idea copy: ${insertError?.message}`);
+      }
+
+      resultIdeaId = newIdea.id;
+    } else {
+      // Update existing idea in place, clear script, image, and related data
+      const { error: updateError } = await supabase
+        .from("ideas")
+        .update({
+          title: parsed.title,
+          description: parsed.description,
+          template_id: validTemplateId,
+          script: null,
+          script_context: null,
+          prompt: null,
+          image_url: null, // Clear image so new thumbnail will be generated
+        })
+        .eq("id", ideaId);
+
+      if (updateError) {
+        throw new Error(`Failed to update idea: ${updateError.message}`);
+      }
+
+      // Delete existing relationships for in-place update
+      await supabase.from("idea_channels").delete().eq("idea_id", ideaId);
+      await supabase.from("idea_characters").delete().eq("idea_id", ideaId);
+      await supabase.from("idea_topics").delete().eq("idea_id", ideaId);
+      await supabase.from("idea_todos").delete().eq("idea_id", ideaId);
+
+      resultIdeaId = ideaId;
+    }
+
+    // Insert new channel relationships
+    if (parsed.channels && Array.isArray(parsed.channels)) {
+      const channelLinks = parsed.channels
+        .map((platform) => {
+          const channelId = channelIdMap.get(platform);
+          return channelId ? { idea_id: resultIdeaId, channel_id: channelId } : null;
+        })
+        .filter(Boolean) as Array<{ idea_id: string; channel_id: string }>;
+
+      if (channelLinks.length > 0) {
+        await supabase.from("idea_channels").insert(channelLinks);
+      }
+    }
+
+    // Insert new character relationships
+    const validCharacterIds = new Set(characters?.map((c) => c.id) || []);
+    if (parsed.characterIds && Array.isArray(parsed.characterIds)) {
+      const characterLinks = parsed.characterIds
+        .filter((id) => validCharacterIds.has(id))
+        .map((id) => ({ idea_id: resultIdeaId, character_id: id }));
+
+      if (characterLinks.length > 0) {
+        await supabase.from("idea_characters").insert(characterLinks);
+      }
+    }
+
+    // Insert new topic relationships
+    const validTopicIds = new Set(topics?.map((t) => t.id) || []);
+    if (parsed.topicIds && Array.isArray(parsed.topicIds)) {
+      const topicLinks = parsed.topicIds
+        .filter((id) => validTopicIds.has(id))
+        .map((id) => ({ idea_id: resultIdeaId, topic_id: id }));
+
+      if (topicLinks.length > 0) {
+        await supabase.from("idea_topics").insert(topicLinks);
+      }
+    }
+
+    // Log the successful remix
+    await supabase.from("generation_logs").insert({
+      project_id: projectId,
+      type: "idea_remix",
+      prompt_sent: prompt,
+      response_raw: responseRaw,
+      model: DEFAULT_MODEL,
+      idea_id: resultIdeaId,
+    });
+
+    // Generate thumbnail and todos in background
+    after(async () => {
+      await Promise.all([
+        generateThumbnail(resultIdeaId, projectId).catch(err => {
+          console.error(`Failed to generate thumbnail for remixed idea ${resultIdeaId}:`, err);
+        }),
+        generateIdeaTodos(resultIdeaId).catch(err => {
+          console.error(`Failed to generate todos for remixed idea ${resultIdeaId}:`, err);
+        }),
+      ]);
+    });
+
+    await revalidateProjectPaths(projectId);
+
+    return { 
+      success: true, 
+      ideaId: resultIdeaId, 
+      title: parsed.title,
+      isCopy: saveAsCopy,
+    };
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error("Error remixing idea:", error);
+
+    // Log the failed remix
+    await supabase.from("generation_logs").insert({
+      project_id: projectId,
+      type: "idea_remix",
+      prompt_sent: prompt,
+      response_raw: responseRaw || null,
+      model: DEFAULT_MODEL,
+      error: errorMessage,
+      idea_id: ideaId,
+    });
+
+    return { error: errorMessage };
+  }
+}
+
 // Generate a script for an existing idea
 export async function generateScript(ideaId: string, providedContext?: string) {
   const supabase = await createClient();
