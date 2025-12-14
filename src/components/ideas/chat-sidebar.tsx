@@ -408,6 +408,8 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
     } finally {
       setIsSending(false);
       setStreamingMessage(null);
+      // Keep focus on input so user can continue typing
+      inputRef.current?.focus();
     }
   }, [inputValue, currentChat, isSending, ideaId, router, onToolCallStart, onToolCallEnd, onScriptUpdate, onIdeaRegenerate, scriptQuestions]);
 
