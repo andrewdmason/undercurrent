@@ -60,13 +60,17 @@ Examples:
 
 ### 3. `physical_prep` (Setup and Logistics)
 
-Tasks for physical preparation before shooting.
+Tasks for physical preparation before shooting. **Only include if genuinely needed** — many creators have permanent setups that don't require prep.
 
 Examples:
-- Set up filming area with proper lighting
-- Gather props or products to feature
-- Charge camera batteries and clear memory cards
-- Prepare wardrobe or styling
+- Gather specific props for this video
+- Print reference materials or cue cards
+- Prepare special wardrobe (costumes, branded clothing)
+
+**Skip physical_prep entirely if:**
+- Character descriptions indicate a ready-to-go setup
+- No special props or materials are needed for this specific video
+- It's a standard talking-head or simple format
 
 ## Output Format
 
@@ -77,7 +81,7 @@ Return a JSON object with a `todos` array:
   "todos": [
     {
       "type": "script_finalization",
-      "title": "Finalize script details",
+      "title": "Pick featured games",
       "questions": [
         "Which 3 games would you like to feature in this video?",
         "For each game, what's one thing that makes it special to you?"
@@ -86,15 +90,9 @@ Return a JSON object with a `todos` array:
     },
     {
       "type": "asset",
-      "title": "Record gameplay footage",
-      "details": "## Setup\n\n- Set up screen capture with OBS or similar\n- Resolution: 1080p minimum, 4K preferred\n- Capture game audio separately if possible\n\n## What to Capture\n\nFor each of the 3 featured games:\n- 30-60 seconds of engaging gameplay\n- Focus on visually interesting moments\n- Capture any key mechanics mentioned in the script\n\n## Tips\n\n- Record more than you need — better to have options\n- Avoid UI-heavy moments unless discussing the UI",
-      "time_estimate_minutes": 45
-    },
-    {
-      "type": "physical_prep",
-      "title": "Prepare filming space",
-      "details": "## Checklist\n\n- [ ] Clear background of clutter\n- [ ] Set up ring light or key light\n- [ ] Test camera framing (rule of thirds)\n- [ ] Check audio levels with a test recording\n- [ ] Silence phone notifications",
-      "time_estimate_minutes": 15
+      "title": "Capture gameplay footage",
+      "details": "## Setup\n\n- Screen capture at 1080p minimum\n- Capture game audio separately if possible\n\n## What to Capture\n\nFor each featured game:\n- 30-60 seconds of engaging gameplay\n- Focus on visually interesting moments\n\n## Tips\n\n- Record more than you need\n- Avoid UI-heavy moments unless discussing UI",
+      "time_estimate_minutes": 30
     }
   ]
 }
@@ -102,27 +100,20 @@ Return a JSON object with a `todos` array:
 
 ## Guidelines
 
-1. **Be Specific**: Generic tasks like "prepare materials" aren't helpful. Make each task concrete and actionable.
+1. **Respect Character Descriptions**: Carefully read the character descriptions above. If a character says they have a ready setup, don't need prep time, or have specific capabilities — **honor that**. Don't generate setup/prep tasks for someone who explicitly says they don't need them.
 
-2. **Detailed Asset Briefs**: For `asset` todos, write comprehensive markdown instructions including:
-   - Setup requirements
-   - What specifically to capture
-   - Tips or best practices
-   - Any technical specifications
+2. **Concise Titles**: Keep task titles short — 3-6 words max. Put details in the `details` field, not the title. Good: "Lock in outline" / Bad: "Lock in outline and concrete examples for the philosophy video"
 
-3. **Smart Script Finalization**: Only include `script_finalization` if there are genuine unknowns that require user input. If a script is already provided and complete, skip this type entirely.
+3. **Be Specific**: Generic tasks aren't helpful. Make each task concrete and actionable.
 
-4. **Realistic Time Estimates**: Provide reasonable time estimates in minutes:
-   - Quick tasks: 5-15 minutes
-   - Medium tasks: 15-45 minutes  
-   - Involved tasks: 45-90 minutes
+4. **Detailed Asset Briefs**: For `asset` todos, write comprehensive markdown instructions including setup requirements, what specifically to capture, tips, and any technical specifications.
 
-5. **Prioritize by Workflow**: Order todos logically — typically `script_finalization` first (if needed), then `physical_prep`, then `asset` tasks.
+5. **Smart Script Finalization**: Only include `script_finalization` if there are genuine unknowns that require user input. If a script is already provided and complete, skip this type entirely.
 
-6. **Consider the Template**: If a template is specified, tailor tasks to that production style. A "talking head" video needs different prep than a "B-roll heavy" explainer.
+6. **Realistic Time Estimates**: Quick tasks: 5-15 min, Medium: 15-45 min, Involved: 45-90 min.
 
-7. **Consider Existing Script**: If a script is provided, focus on asset and prep tasks. If no script exists and user input would be valuable, include `script_finalization`.
+7. **Consider the Template**: If a template is specified, tailor tasks to that production style.
 
-8. **Keep It Manageable**: Aim for 3-6 todos total. Don't overwhelm the creator with an exhaustive list — focus on what matters most.
+8. **Less is More**: Many videos need just 1-3 prep tasks, or even zero. Don't pad the list. If the character has a ready-to-go setup and the video doesn't need special assets, the prep list might be empty or just contain script finalization questions.
 
-9. **Questions Should Be Conversational**: When writing questions for `script_finalization`, write them as you would ask in a friendly chat, not as formal survey questions.
+9. **Questions Should Be Conversational**: When writing questions for `script_finalization`, write them as you would ask in a friendly chat.

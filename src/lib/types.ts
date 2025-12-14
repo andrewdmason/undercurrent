@@ -166,6 +166,7 @@ export interface IdeaWithChannels extends Idea {
     name: string;
     description?: string | null;
   }>;
+  prepTimeMinutes?: number; // Total remaining prep time in minutes
 }
 
 // Platform options for distribution channels

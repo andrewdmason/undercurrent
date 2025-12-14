@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate } from "lucide-react";
+import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
@@ -15,7 +15,9 @@ import { ImageShimmer } from "@/components/ui/shimmer";
 import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ViewType } from "./ideas-feed";
+import { IdeaTodo } from "@/lib/types";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
@@ -29,6 +31,7 @@ interface IdeaCardProps {
   onReject?: () => void;
   onPublish?: () => void;
   onRemix?: () => void;
+  prepTimeMinutes?: number; // Total remaining prep time in minutes
 }
 
 // Platform icons
@@ -96,6 +99,14 @@ export function getChannelLabel(platform: string, customLabel?: string | null): 
   return DISTRIBUTION_PLATFORMS.find((p) => p.value === platform)?.label || platform;
 }
 
+// Helper to format time as "Xh Ymin"
+function formatPrepTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+}
+
 export function IdeaCard({
   idea,
   projectId,
@@ -108,6 +119,7 @@ export function IdeaCard({
   onReject,
   onPublish,
   onRemix,
+  prepTimeMinutes,
 }: IdeaCardProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -116,10 +128,32 @@ export function IdeaCard({
   const [isTruncated, setIsTruncated] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [prepListData, setPrepListData] = useState<{ todos: IdeaTodo[]; totalMinutes: number; remainingMinutes: number } | null>(null);
+  const [isPrepListLoading, setIsPrepListLoading] = useState(false);
+  const [prepListError, setPrepListError] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const hasImage = !!idea.image_url;
   const showShimmer = isLoadingImage || isGenerating || isRemixing || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
+
+  // Fetch prep list on hover
+  const handlePrepListHover = async () => {
+    if (prepListData || isPrepListLoading) return;
+    
+    setIsPrepListLoading(true);
+    setPrepListError(false);
+    
+    try {
+      const response = await fetch(`/api/ideas/${idea.id}/prep-list`);
+      if (!response.ok) throw new Error("Failed to fetch");
+      const data = await response.json();
+      setPrepListData(data);
+    } catch {
+      setPrepListError(true);
+    } finally {
+      setIsPrepListLoading(false);
+    }
+  };
   
   // Check if description is truncated
   useEffect(() => {
@@ -292,23 +326,25 @@ export function IdeaCard({
           />
         )}
 
-        {/* Generate/Regenerate button */}
-        <button
-          onClick={handleGenerateThumbnail}
-          disabled={isGenerating}
-          className={cn(
-            "absolute bottom-3 right-3 p-2 rounded-md transition-opacity duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "disabled:cursor-not-allowed",
-            hasImage && !isGenerating
-              ? "bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-black/80"
-              : "bg-[var(--grey-800)] text-white opacity-100"
-          )}
-          title={isGenerating ? "Generating..." : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
-          aria-label={isGenerating ? "Generating thumbnail" : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
-        >
-          <RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
-        </button>
+        {/* Generate/Regenerate button - hide for queue view */}
+        {viewType !== "queue" && (
+          <button
+            onClick={handleGenerateThumbnail}
+            disabled={isGenerating}
+            className={cn(
+              "absolute bottom-3 right-3 p-2 rounded-md transition-opacity duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-white/50",
+              "disabled:cursor-not-allowed",
+              hasImage && !isGenerating
+                ? "bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-black/80"
+                : "bg-[var(--grey-800)] text-white opacity-100"
+            )}
+            title={isGenerating ? "Generating..." : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
+            aria-label={isGenerating ? "Generating thumbnail" : hasImage ? "Regenerate thumbnail" : "Generate thumbnail"}
+          >
+            <RefreshCw className={cn("h-4 w-4", isGenerating && "animate-spin")} />
+          </button>
+        )}
       </div>
 
       {/* Image Lightbox */}
@@ -328,8 +364,8 @@ export function IdeaCard({
           {idea.title}
         </h3>
 
-        {/* Template badge */}
-        {idea.template && (
+        {/* Template badge - hide for queue view */}
+        {viewType !== "queue" && idea.template && (
           <div className="flex items-center gap-1 mb-2">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]">
               <LayoutTemplate className="h-3 w-3" />
@@ -338,8 +374,95 @@ export function IdeaCard({
           </div>
         )}
 
-        {/* Description */}
-        {idea.description && (
+        {/* Prep time for queue view */}
+        {viewType === "queue" && prepTimeMinutes !== undefined && prepTimeMinutes > 0 && (
+          <HoverCard openDelay={200} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <button
+                onMouseEnter={handlePrepListHover}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-[var(--grey-500)] hover:text-[var(--grey-700)] hover:bg-[var(--grey-50)] transition-colors mb-3"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                <span>{formatPrepTime(prepTimeMinutes)} remaining</span>
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent 
+              align="start" 
+              className="w-72 p-0 bg-[var(--grey-0)] border border-[var(--border)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-3 py-2 border-b border-[var(--border)] flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
+                  Prep List
+                </span>
+                {prepListData && (
+                  <span className="text-xs text-[var(--grey-400)]">
+                    {formatPrepTime(prepListData.remainingMinutes)} remaining
+                  </span>
+                )}
+              </div>
+              <div className="p-2 max-h-[200px] overflow-y-auto">
+                {isPrepListLoading && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--grey-400)]" />
+                  </div>
+                )}
+                {prepListError && (
+                  <p className="text-xs text-[var(--grey-400)] text-center py-4">
+                    Failed to load prep list
+                  </p>
+                )}
+                {prepListData && prepListData.todos.length === 0 && (
+                  <p className="text-xs text-[var(--grey-400)] text-center py-4">
+                    No prep tasks
+                  </p>
+                )}
+                {prepListData && prepListData.todos.length > 0 && (
+                  <div className="space-y-1">
+                    {prepListData.todos.map((todo) => (
+                      <div
+                        key={todo.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
+                      >
+                        <span
+                          className={cn(
+                            "flex-shrink-0 w-3.5 h-3.5 rounded border",
+                            todo.is_complete
+                              ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
+                              : "border-[var(--grey-300)]"
+                          )}
+                        >
+                          {todo.is_complete && (
+                            <Check className="h-3.5 w-3.5 text-white p-0.5" />
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            "flex-1 truncate",
+                            todo.is_complete
+                              ? "text-[var(--grey-400)] line-through"
+                              : "text-[var(--grey-700)]"
+                          )}
+                        >
+                          {todo.title}
+                        </span>
+                        {todo.time_estimate_minutes && (
+                          <span className="text-[var(--grey-400)] tabular-nums flex-shrink-0">
+                            {todo.time_estimate_minutes}min
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        )}
+
+        {/* Description - hide for queue view */}
+        {viewType !== "queue" && idea.description && (
           <div className="mb-4">
             <p 
               ref={descriptionRef}

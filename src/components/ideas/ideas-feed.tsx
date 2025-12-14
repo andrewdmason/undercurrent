@@ -132,6 +132,7 @@ export function IdeasFeed({
             onReject={() => setRejectModalIdea(idea)}
             onPublish={() => setPublishModalIdea(idea)}
             onRemix={viewType === "inbox" ? () => setRemixModalIdea(idea) : undefined}
+            prepTimeMinutes={idea.prepTimeMinutes}
           />
         ))}
       </div>
