@@ -97,6 +97,75 @@ export async function rejectIdea(ideaId: string, reason?: string) {
   return { success: true };
 }
 
+// Undo reject - move idea back to new status
+export async function undoRejectIdea(ideaId: string) {
+  const supabase = await createClient();
+
+  // Get idea to find project_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("project_id, status")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  if (idea.status !== "rejected") {
+    return { error: "Idea is not rejected" };
+  }
+
+  const { error } = await supabase
+    .from("ideas")
+    .update({ 
+      status: "new" as IdeaStatus,
+      reject_reason: null,
+    })
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error undoing reject:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
+// Undo accept - move idea back to new status
+export async function undoAcceptIdea(ideaId: string) {
+  const supabase = await createClient();
+
+  // Get idea to find project_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("project_id, status")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  if (idea.status !== "accepted") {
+    return { error: "Idea is not accepted" };
+  }
+
+  const { error } = await supabase
+    .from("ideas")
+    .update({ status: "new" as IdeaStatus })
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error undoing accept:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
 // Cancel an idea from the production queue
 export async function cancelIdea(ideaId: string) {
   const supabase = await createClient();

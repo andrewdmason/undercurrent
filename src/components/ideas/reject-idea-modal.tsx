@@ -25,6 +25,8 @@ interface RejectIdeaModalProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** If true, the idea has already been rejected and we're just adding a reason */
+  alreadyRejected?: boolean;
 }
 
 type Step = "reason" | "suggestions";
@@ -40,6 +42,7 @@ export function RejectIdeaModal({
   projectId,
   open,
   onOpenChange,
+  alreadyRejected = false,
 }: RejectIdeaModalProps) {
   const router = useRouter();
   
@@ -225,6 +228,9 @@ export function RejectIdeaModal({
     setIsSubmitting(true);
     try {
       const reason = skipReason ? undefined : getFullReason() || undefined;
+      
+      // If already rejected, we're just adding a reason, so call rejectIdea with reason to update
+      // If not already rejected, this does the full rejection
       const result = await rejectIdea(ideaId, reason);
       
       if (result.error) {
@@ -239,9 +245,14 @@ export function RejectIdeaModal({
         await fetchSuggestions(reason);
       } else {
         // No reason - just close
-        toast.success("Idea rejected");
-        onOpenChange(false);
-        router.refresh();
+        if (alreadyRejected) {
+          // Just close the modal silently since idea was already rejected
+          onOpenChange(false);
+        } else {
+          toast.success("Idea rejected");
+          onOpenChange(false);
+          router.refresh();
+        }
       }
     } catch (error) {
       toast.error("Failed to reject idea");
@@ -403,10 +414,13 @@ export function RejectIdeaModal({
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-destructive/10">
                   <X className="h-4 w-4 text-destructive" />
                 </div>
-                Reject Idea
+                {alreadyRejected ? "Add Rejection Reason" : "Reject Idea"}
               </DialogTitle>
               <DialogDescription className="text-left">
-                You&apos;re rejecting &ldquo;{ideaTitle}&rdquo;. Tell us why and we&apos;ll suggest improvements to your project settings.
+                {alreadyRejected 
+                  ? <>Tell us why you rejected &ldquo;{ideaTitle}&rdquo; and we&apos;ll suggest improvements to your project settings.</>
+                  : <>You&apos;re rejecting &ldquo;{ideaTitle}&rdquo;. Tell us why and we&apos;ll suggest improvements to your project settings.</>
+                }
               </DialogDescription>
             </DialogHeader>
 
@@ -477,23 +491,23 @@ export function RejectIdeaModal({
             <DialogFooter className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => handleReject(true)}
+                onClick={() => alreadyRejected ? onOpenChange(false) : handleReject(true)}
                 disabled={isSubmitting}
               >
-                Skip
+                {alreadyRejected ? "Cancel" : "Skip"}
               </Button>
               <Button
                 onClick={() => handleReject(false)}
                 disabled={isSubmitting || !hasAnyReason}
-                variant="destructive"
+                variant={alreadyRejected ? "default" : "destructive"}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Rejecting...
+                    {alreadyRejected ? "Submitting..." : "Rejecting..."}
                   </>
                 ) : (
-                  "Reject & Get Suggestions"
+                  alreadyRejected ? "Submit & Get Suggestions" : "Reject & Get Suggestions"
                 )}
               </Button>
             </DialogFooter>

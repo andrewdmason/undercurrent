@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { IdeasFeed, IdeasEmptyState } from "@/components/ideas/ideas-feed";
+import { IdeasStack } from "@/components/ideas/ideas-stack";
+import { IdeasEmptyState } from "@/components/ideas/ideas-feed";
 import { GenerateIdeasButton } from "@/components/ideas/generate-ideas-button";
 import { IdeaWithChannels } from "@/lib/types";
 
@@ -165,28 +166,36 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
                 Review and accept ideas to start creating
               </p>
             </div>
-            <GenerateIdeasButton 
+            {/* Only show button in header when there are ideas - otherwise it's in the empty state */}
+            {typedIdeas.length > 0 && (
+              <GenerateIdeasButton 
+                projectId={project.id}
+                characters={characters}
+                channels={channels}
+                templates={templates}
+                topics={topics}
+              />
+            )}
+          </div>
+
+          {/* Card Stack */}
+          {typedIdeas.length > 0 ? (
+            <IdeasStack 
+              ideas={typedIdeas} 
+              projectId={project.id} 
+              projectSlug={project.slug}
+              characters={characters}
+              channels={channels}
+              templates={templates}
+            />
+          ) : (
+            <IdeasEmptyState
               projectId={project.id}
               characters={characters}
               channels={channels}
               templates={templates}
               topics={topics}
             />
-          </div>
-
-          {/* Feed */}
-          {typedIdeas.length > 0 ? (
-            <IdeasFeed 
-              ideas={typedIdeas} 
-              projectId={project.id} 
-              projectSlug={project.slug} 
-              viewType="inbox"
-              characters={characters}
-              channels={channels}
-              templates={templates}
-            />
-          ) : (
-            <IdeasEmptyState />
           )}
         </div>
       </div>
