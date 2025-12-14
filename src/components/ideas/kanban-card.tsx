@@ -114,3 +114,4 @@ export function KanbanCard({ idea, projectSlug }: KanbanCardProps) {
     </div>
   );
 }
+

@@ -20,7 +20,7 @@ export function KanbanColumn({ status, ideas, projectSlug }: KanbanColumnProps) 
   const ideaIds = ideas.map((idea) => idea.id);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col self-stretch">
       {/* Column Header */}
       <div className="flex items-center gap-2 py-3">
         <h3 className="text-sm font-medium text-[var(--grey-800)]">
@@ -31,10 +31,10 @@ export function KanbanColumn({ status, ideas, projectSlug }: KanbanColumnProps) 
         </span>
       </div>
 
-      {/* Droppable Area */}
+      {/* Droppable Area - large min-height ensures drop target is always available when scrolling */}
       <div
         ref={setNodeRef}
-        className={`flex-1 rounded-lg transition-colors min-h-[200px] ${
+        className={`flex-1 rounded-lg transition-colors min-h-[50vh] ${
           isOver ? "bg-[var(--grey-100)]" : ""
         }`}
       >
@@ -58,3 +58,4 @@ export function KanbanColumn({ status, ideas, projectSlug }: KanbanColumnProps) 
     </div>
   );
 }
+

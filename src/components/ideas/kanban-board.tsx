@@ -12,7 +12,9 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  rectIntersection,
+  pointerWithin,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import { toast } from "sonner";
@@ -25,6 +27,38 @@ interface KanbanBoardProps {
   ideas: IdeaWithChannels[];
   projectSlug: string;
 }
+
+// Custom collision detection that works well for kanban boards
+// Prioritizes columns (droppables) when not directly over a card
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  // First, check if we're directly over any sortable items
+  const pointerCollisions = pointerWithin(args);
+  
+  if (pointerCollisions.length > 0) {
+    // If we're over a card, use that
+    const cardCollision = pointerCollisions.find(
+      (collision) => !KANBAN_STATUSES.includes(collision.id as KanbanStatus)
+    );
+    if (cardCollision) {
+      return [cardCollision];
+    }
+  }
+  
+  // Otherwise, use rect intersection to find columns
+  const rectCollisions = rectIntersection(args);
+  
+  // Prefer column droppables
+  const columnCollision = rectCollisions.find(
+    (collision) => KANBAN_STATUSES.includes(collision.id as KanbanStatus)
+  );
+  
+  if (columnCollision) {
+    return [columnCollision];
+  }
+  
+  // Fall back to first collision
+  return rectCollisions.length > 0 ? [rectCollisions[0]] : [];
+};
 
 export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
   const router = useRouter();
@@ -51,9 +85,11 @@ export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
     })
   );
 
-  // Group ideas by status (only kanban statuses, not published)
+  // Group ideas by status (only kanban statuses, not published), sorted by sort_order
   const ideasByStatus = KANBAN_STATUSES.reduce((acc, status) => {
-    acc[status] = localIdeas.filter((idea) => idea.status === status);
+    acc[status] = localIdeas
+      .filter((idea) => idea.status === status)
+      .sort((a, b) => a.sort_order - b.sort_order);
     return acc;
   }, {} as Record<KanbanStatus, IdeaWithChannels[]>);
 
@@ -125,8 +161,10 @@ export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
 
     const currentStatus = activeIdea.status as KanbanStatus;
     
-    // Get the ideas in the target column
-    const columnIdeas = localIdeas.filter((i) => i.status === currentStatus);
+    // Get the ideas in the target column, sorted by sort_order
+    const columnIdeas = localIdeas
+      .filter((i) => i.status === currentStatus)
+      .sort((a, b) => a.sort_order - b.sort_order);
     const activeIndex = columnIdeas.findIndex((i) => i.id === activeIdeaId);
 
     // Determine if we dropped on a column or another card
@@ -211,7 +249,7 @@ export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={kanbanCollisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -239,3 +277,4 @@ export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
     </DndContext>
   );
 }
+

@@ -53,3 +53,4 @@ export function ViewToggle({ currentView }: ViewToggleProps) {
     </div>
   );
 }
+
