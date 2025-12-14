@@ -94,7 +94,7 @@ insert into public.projects (
 );
 
 -- Link user to project (as admin)
-insert into public.project_users (
+insert into public.project_members (
   id,
   project_id,
   user_id,
@@ -176,7 +176,7 @@ set full_name = 'Vera Devera'
 where id = 'b2c3d4e5-f6a7-8901-bcde-f23456789012';
 
 -- Add Vera to TTL as member
-insert into public.project_users (
+insert into public.project_members (
   id,
   project_id,
   user_id,
@@ -254,7 +254,7 @@ set full_name = 'Nabeel Hyatt'
 where id = 'c3d4e5f6-a7b8-9012-cdef-345678901234';
 
 -- Add Nabeel to TTL as member
-insert into public.project_users (
+insert into public.project_members (
   id,
   project_id,
   user_id,
@@ -278,6 +278,7 @@ insert into public.project_characters (
   name,
   description,
   image_url,
+  member_id,
   created_at,
   updated_at
 ) values
@@ -287,6 +288,7 @@ insert into public.project_characters (
     'Andrew Mason',
     'Partner at Tabletop Library. Prefers unscripted videos where he works from an outline rather than a full script. Can record from his home studio or the Library. Has a professional recording setup that''s ready to go at a moment''s notice—no prep or setup time needed.',
     '/seed/characters/andrew.png',
+    'c1d2e3f4-a5b6-7890-cdef-123456789012',
     now(),
     now()
   ),
@@ -296,6 +298,7 @@ insert into public.project_characters (
     'Nabeel Hyatt',
     'Partner and co-founder. Deep gaming industry experience and expertise in community building. Great for strategic content and industry commentary.',
     '/seed/characters/nabeel.png',
+    'c3d4e5f6-b7c8-9012-ef01-345678901234',
     now(),
     now()
   ),
@@ -305,6 +308,7 @@ insert into public.project_characters (
     'Vera Devera',
     'General Manager. The face of day-to-day operations at Tabletop Library. Expert at teaching games and creating welcoming experiences for members.',
     '/seed/characters/vera.png',
+    'c2d3e4f5-a6b7-8901-def0-234567890123',
     now(),
     now()
   );
@@ -640,7 +644,7 @@ insert into public.projects (
 );
 
 -- Link user to Mason Family project (as admin)
-insert into public.project_users (
+insert into public.project_members (
   id,
   project_id,
   user_id,

@@ -81,7 +81,7 @@ export async function POST(
 
   // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("id")
     .eq("project_id", projectId)
     .eq("user_id", user.id)

@@ -56,7 +56,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
       if (!user) return;
 
       const { data: projectUsers } = await supabase
-        .from("project_users")
+        .from("project_members")
         .select("project_id")
         .eq("user_id", user.id);
 

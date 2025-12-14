@@ -64,9 +64,9 @@ export function CreateProjectForm() {
       return;
     }
 
-    // Add user to project_users
+    // Add user to project_members
     const { error: memberError } = await supabase
-      .from("project_users")
+      .from("project_members")
       .insert({
         project_id: project.id,
         user_id: user.id,

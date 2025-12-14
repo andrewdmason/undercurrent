@@ -472,7 +472,7 @@ export async function deleteProject(projectId: string): Promise<{
 
   // Check if user is a project admin
   const { data: membership } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", user.id)

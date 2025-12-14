@@ -181,7 +181,7 @@ export async function acceptInvite(token: string): Promise<{
 
   // Check if already a member
   const { data: existingMember } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("id")
     .eq("project_id", project.id)
     .eq("user_id", user.id)
@@ -193,7 +193,7 @@ export async function acceptInvite(token: string): Promise<{
   }
 
   // Add user to project
-  const { error: addError } = await supabase.from("project_users").insert({
+  const { error: addError } = await supabase.from("project_members").insert({
     project_id: project.id,
     user_id: user.id,
   });
@@ -224,7 +224,7 @@ export async function getCurrentUserRole(projectId: string): Promise<{
   }
 
   const { data, error } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", user.id)
@@ -259,7 +259,7 @@ export async function updateTeamMemberRole(
 
   // Check if current user is an admin of this project
   const { data: currentMembership } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", user.id)
@@ -283,7 +283,7 @@ export async function updateTeamMemberRole(
 
   // Update the role
   const { error } = await supabase
-    .from("project_users")
+    .from("project_members")
     .update({ role: newRole })
     .eq("project_id", projectId)
     .eq("user_id", userId);
@@ -316,7 +316,7 @@ export async function removeTeamMember(
     .single();
 
   const { error } = await supabase
-    .from("project_users")
+    .from("project_members")
     .delete()
     .eq("project_id", projectId)
     .eq("user_id", userId);

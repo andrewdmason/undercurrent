@@ -1,0 +1,1 @@
+Before we get started, let's brainstorm together. I want you to "yes, and" this, and share a few ideas to build on top of this direction that maybe I haven't thought about already. Share your ideas one at a time, and wait for my response before you proceed to the next. Just share your best three and then we'll move on.

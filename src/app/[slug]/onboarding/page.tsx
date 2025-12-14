@@ -33,7 +33,7 @@ export default async function OnboardingPage({ params }: OnboardingPageProps) {
 
   // Verify user has access to this project
   const { data: membership } = await supabase
-    .from("project_users")
+    .from("project_members")
     .select("id")
     .eq("project_id", project.id)
     .eq("user_id", user.id)
