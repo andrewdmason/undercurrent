@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaTodo, PRODUCTION_STATUSES } from "@/lib/types";
+import { IdeaWithChannels, IdeaAsset, PRODUCTION_STATUSES } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 
 interface IdeaDetailPageProps {
@@ -100,12 +100,32 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     .eq("project_id", project.id)
     .order("created_at");
 
-  // Fetch all project templates for remix modal
-  const { data: projectTemplates } = await supabase
+  // Fetch all project templates for remix modal (with their channels)
+  const { data: projectTemplatesRaw } = await supabase
     .from("project_templates")
-    .select("id, name")
+    .select(`
+      id, 
+      name,
+      template_channels (
+        distribution_channels:channel_id (
+          id,
+          platform
+        )
+      )
+    `)
     .eq("project_id", project.id)
     .order("created_at");
+  
+  // Transform templates to flatten the nested channels structure
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectTemplates = (projectTemplatesRaw || []).map((t: any) => ({
+    id: t.id as string,
+    name: t.name as string,
+    channels: (t.template_channels || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((tc: any) => tc.distribution_channels)
+      .filter(Boolean) as Array<{ id: string; platform: string }>,
+  }));
 
   // Fetch all project topics (included only) for remix modal
   const { data: projectTopics } = await supabase
@@ -125,9 +145,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     templateChannels = tc?.map(t => t.channel_id) || [];
   }
 
-  // Fetch idea todos (prep list)
-  const { data: ideaTodos } = await supabase
-    .from("idea_todos")
+  // Fetch idea assets
+  const { data: ideaAssets } = await supabase
+    .from("idea_assets")
     .select("*")
     .eq("idea_id", ideaId)
     .order("sort_order", { ascending: true });
@@ -187,7 +207,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       projectTemplates={projectTemplates || []}
       projectTopics={projectTopics || []}
       fullTemplate={fullTemplate}
-      initialTodos={(ideaTodos || []) as IdeaTodo[]}
+      initialAssets={(ideaAssets || []) as IdeaAsset[]}
     />
   );
 }

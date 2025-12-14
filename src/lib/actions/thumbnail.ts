@@ -101,7 +101,7 @@ export async function generateThumbnail(ideaId: string, projectId: string) {
   // Fetch the idea
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
-    .select("id, title, description, script")
+    .select("id, title, description")
     .eq("id", ideaId)
     .single();
 
@@ -129,7 +129,6 @@ export async function generateThumbnail(ideaId: string, projectId: string) {
 
 Title: ${idea.title}
 ${idea.description ? `Description: ${idea.description}` : ""}
-${idea.script ? `Script summary: ${idea.script.slice(0, 500)}${idea.script.length > 500 ? "..." : ""}` : ""}
 
 Style guidelines:
 - Eye-catching and clickable

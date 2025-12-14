@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
+import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Printer } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaTodo } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { cancelIdea, generateScript, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleTodoComplete } from "@/lib/actions/idea-todos";
+import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
+import { MarkdownDisplay } from "@/components/ui/markdown-display";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
@@ -45,10 +47,10 @@ interface IdeaDetailViewProps {
   projectSlug: string;
   projectChannels: DistributionChannel[];
   projectCharacters: Array<{ id: string; name: string; image_url: string | null }>;
-  projectTemplates: Array<{ id: string; name: string }>;
+  projectTemplates: Array<{ id: string; name: string; channels?: Array<{ id: string; platform: string }> }>;
   projectTopics: Array<{ id: string; name: string }>;
   fullTemplate: ProjectTemplateWithChannels | null;
-  initialTodos: IdeaTodo[];
+  initialAssets: IdeaAsset[];
 }
 
 // Helper to format time as "Xh Ymin"
@@ -59,105 +61,12 @@ function formatTime(minutes: number): string {
   return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
-// Simple markdown renderer for todo details
-function renderMarkdown(text: string): React.ReactNode {
-  const lines = text.split('\n');
-  const elements: React.ReactNode[] = [];
-  let currentList: string[] = [];
-  let isCheckbox = false;
-
-  const flushList = () => {
-    if (currentList.length > 0) {
-      elements.push(
-        <ul key={elements.length} className={cn("space-y-1 my-2", isCheckbox ? "list-none pl-0" : "list-disc pl-5")}>
-          {currentList.map((item, i) => {
-            if (isCheckbox) {
-              const checked = item.startsWith('[x]');
-              const text = item.replace(/^\[[ x]\]\s*/, '');
-              return (
-                <li key={i} className="flex items-start gap-2">
-                  <span className={cn(
-                    "flex-shrink-0 w-4 h-4 mt-0.5 rounded border",
-                    checked ? "bg-[var(--grey-800)] border-[var(--grey-800)]" : "border-[var(--grey-300)]"
-                  )}>
-                    {checked && <Check className="h-4 w-4 text-white p-0.5" />}
-                  </span>
-                  <span className={cn(checked && "line-through text-[var(--grey-400)]")}>{text}</span>
-                </li>
-              );
-            }
-            return <li key={i}>{item}</li>;
-          })}
-        </ul>
-      );
-      currentList = [];
-      isCheckbox = false;
-    }
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Headers
-    if (line.startsWith('## ')) {
-      flushList();
-      elements.push(
-        <h3 key={elements.length} className="text-sm font-semibold text-[var(--grey-800)] mt-4 first:mt-0 mb-2">
-          {line.slice(3)}
-        </h3>
-      );
-      continue;
-    }
-    
-    // Checkbox items
-    if (line.match(/^- \[[ x]\]/)) {
-      if (currentList.length > 0 && !isCheckbox) flushList();
-      isCheckbox = true;
-      currentList.push(line.slice(2)); // Remove "- "
-      continue;
-    }
-    
-    // List items
-    if (line.startsWith('- ')) {
-      if (currentList.length > 0 && isCheckbox) flushList();
-      currentList.push(line.slice(2));
-      continue;
-    }
-    
-    // Empty lines
-    if (line.trim() === '') {
-      flushList();
-      continue;
-    }
-    
-    // Regular paragraphs (handle bold)
-    flushList();
-    const formatted = line.split(/(\*\*[^*]+\*\*)/).map((part, j) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-    elements.push(
-      <p key={elements.length} className="text-sm text-[var(--grey-600)] leading-relaxed my-2">
-        {formatted}
-      </p>
-    );
-  }
-  
-  flushList();
-  return elements;
-}
-
-export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, fullTemplate, initialTodos }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, fullTemplate, initialAssets }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingUnderlordPrompt, setIsGeneratingUnderlordPrompt] = useState(false);
   const [isScriptUpdating, setIsScriptUpdating] = useState(false);
-  const [currentScript, setCurrentScript] = useState<string | null>(idea.script);
   const [currentPrompt, setCurrentPrompt] = useState<string | null>(idea.prompt);
   const [isCanceling, setIsCanceling] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
@@ -165,20 +74,52 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [remixModalOpen, setRemixModalOpen] = useState(false);
   const [isRemixing, setIsRemixing] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [todos, setTodos] = useState<IdeaTodo[]>(initialTodos);
-  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
-  const [copiedTodoDetails, setCopiedTodoDetails] = useState(false);
+  const [isGeneratingTalkingPoints, setIsGeneratingTalkingPoints] = useState(false);
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(() => {
+    // Will be properly initialized in useEffect (can't access localStorage during SSR)
+    return null;
+  });
+
+  // Initialize selected asset from localStorage or default to first asset
+  useEffect(() => {
+    if (assets.length === 0) return;
+    
+    const storageKey = `undercurrent-selected-asset-${idea.id}`;
+    const savedAssetId = localStorage.getItem(storageKey);
+    
+    // Check if saved asset still exists in the list
+    if (savedAssetId && assets.some(a => a.id === savedAssetId)) {
+      setSelectedAssetId(savedAssetId);
+    } else {
+      // Default to first asset
+      setSelectedAssetId(assets[0].id);
+    }
+  }, [idea.id, assets]);
+
+  // Persist selected asset to localStorage
+  useEffect(() => {
+    if (!selectedAssetId) return;
+    const storageKey = `undercurrent-selected-asset-${idea.id}`;
+    localStorage.setItem(storageKey, selectedAssetId);
+  }, [idea.id, selectedAssetId]);
+
+  // Derive the selected asset
+  const selectedAsset = selectedAssetId 
+    ? assets.find(a => a.id === selectedAssetId) ?? null 
+    : null;
+
+  // Legacy: still need script reference for Underlord prompt generation
+  const scriptAsset = assets.find(a => a.type === "script");
+  const talkingPointsAsset = assets.find(a => a.type === "talking_points");
+  const currentScript = scriptAsset?.content_text || null;
 
   // Edit modal state
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
   const [editingTopic, setEditingTopic] = useState<{ id: string; name: string; description?: string | null } | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<{ id: string; name: string; description?: string | null; image_url: string | null } | null>(null);
   const [editingChannel, setEditingChannel] = useState<DistributionChannel | null>(null);
-
-  // Derive selectedTodo from todos array to keep modal in sync
-  const selectedTodo = selectedTodoId 
-    ? todos.find(t => t.id === selectedTodoId) ?? null 
-    : null;
 
   const hasImage = !!idea.image_url;
   const showShimmer = isGeneratingThumbnail || isRemixing || !hasImage;
@@ -194,114 +135,51 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     enabled: !hasImage,
   });
 
-  const handleToggleTodo = async (todoId: string) => {
-    const todo = todos.find(t => t.id === todoId);
-    if (!todo) return;
+  // Check if assets are likely being generated (idea updated within last 60 seconds and no assets)
+  const isRecentlyUpdated = Date.now() - new Date(idea.updated_at).getTime() < 60000;
+  const assetsLikelyGenerating = assets.length === 0 && isRecentlyUpdated;
+
+  // Poll for asset updates when we think they're being generated
+  const handleAssetUpdate = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  usePollAssets({
+    ideaId: idea.id,
+    currentAssetCount: assets.length,
+    onUpdate: handleAssetUpdate,
+    enabled: assetsLikelyGenerating,
+  });
+
+  const handleToggleAssetComplete = async (assetId: string) => {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    
+    const newIsComplete = !asset.is_complete;
     
     // Optimistic update
-    setTodos(prev => 
-      prev.map(t => 
-        t.id === todoId ? { ...t, is_complete: !t.is_complete } : t
+    setAssets(prev => 
+      prev.map(a => 
+        a.id === assetId ? { ...a, is_complete: newIsComplete } : a
       )
     );
     
     // Persist to database
-    const result = await toggleTodoComplete(todoId, !todo.is_complete);
+    const result = await toggleAssetComplete(assetId, newIsComplete);
     if (!result.success) {
       // Revert on error
-      setTodos(prev => 
-        prev.map(t => 
-          t.id === todoId ? { ...t, is_complete: todo.is_complete } : t
+      setAssets(prev => 
+        prev.map(a => 
+          a.id === assetId ? { ...a, is_complete: asset.is_complete } : a
         )
       );
-      toast.error(result.error || "Failed to update todo");
+      toast.error(result.error || "Failed to update asset");
     }
   };
 
-  const remainingMinutes = todos
-    .filter(todo => !todo.is_complete)
-    .reduce((sum, todo) => sum + (todo.time_estimate_minutes || 0), 0);
-
-  // Helper to parse and format todo details (handles script_finalization JSON questions)
-  const formatTodoDetails = (todo: IdeaTodo): { questions?: string[]; details?: string; outcome?: string } => {
-    if (!todo.details) return {};
-    
-    // Check if details contains an outcome section (separated by ---)
-    const parts = todo.details.split('\n\n---\n\n');
-    
-    if (todo.type === 'script_finalization') {
-      try {
-        // First part should be JSON array of questions
-        const questions = JSON.parse(parts[0]);
-        if (Array.isArray(questions)) {
-          return {
-            questions,
-            outcome: parts[1] || undefined,
-          };
-        }
-      } catch {
-        // Not JSON, treat as regular details
-      }
-    }
-    
-    return {
-      details: parts[0],
-      outcome: parts[1] || undefined,
-    };
-  };
-
-  const handleCopyTodoDetails = async () => {
-    if (!selectedTodo?.details) return;
-    try {
-      await navigator.clipboard.writeText(selectedTodo.details);
-      setCopiedTodoDetails(true);
-      toast.success("Details copied to clipboard");
-      setTimeout(() => setCopiedTodoDetails(false), 2000);
-    } catch {
-      toast.error("Failed to copy details");
-    }
-  };
-
-  const handlePrintTodo = () => {
-    if (!selectedTodo) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
-    const { questions, details, outcome } = formatTodoDetails(selectedTodo);
-    let content = `<h1>${selectedTodo.title}</h1>`;
-    if (selectedTodo.time_estimate_minutes) {
-      content += `<p><em>Estimated time: ${selectedTodo.time_estimate_minutes} minutes</em></p>`;
-    }
-    if (questions) {
-      content += '<h2>Questions</h2><ul>';
-      questions.forEach(q => { content += `<li>${q}</li>`; });
-      content += '</ul>';
-    }
-    if (details) {
-      content += `<div>${details.replace(/\n/g, '<br>')}</div>`;
-    }
-    if (outcome) {
-      content += `<h2>Outcome</h2><div>${outcome.replace(/\n/g, '<br>')}</div>`;
-    }
-    
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${selectedTodo.title}</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-            h1 { font-size: 1.5em; margin-bottom: 0.5em; }
-            h2 { font-size: 1.1em; margin-top: 1.5em; color: #666; }
-            ul { padding-left: 1.5em; }
-            li { margin: 0.5em 0; }
-          </style>
-        </head>
-        <body>${content}</body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
+  const remainingMinutes = assets
+    .filter(asset => !asset.is_complete)
+    .reduce((sum, asset) => sum + (asset.time_estimate_minutes || 0), 0);
 
   const handleGenerateThumbnail = async () => {
     if (isGeneratingThumbnail) return;
@@ -323,6 +201,54 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
   };
 
+  const handleGenerateTalkingPoints = async () => {
+    if (isGeneratingTalkingPoints) return;
+    
+    setIsGeneratingTalkingPoints(true);
+    try {
+      const result = await generateTalkingPoints(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Talking points generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate talking points");
+      console.error(error);
+    } finally {
+      setIsGeneratingTalkingPoints(false);
+    }
+  };
+
+  const handleGenerateScript = async () => {
+    if (isGeneratingScript) return;
+    
+    // Check if talking points exist
+    if (!talkingPointsAsset?.content_text) {
+      toast.error("Generate talking points first before creating a script");
+      return;
+    }
+    
+    setIsGeneratingScript(true);
+    try {
+      const result = await generateScript(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Script generated");
+        // Also generate production assets in background
+        generateProductionAssets(idea.id).catch(console.error);
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate script");
+      console.error(error);
+    } finally {
+      setIsGeneratingScript(false);
+    }
+  };
+
   const handleCopyPrompt = async () => {
     if (!currentPrompt) return;
     try {
@@ -332,39 +258,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       setTimeout(() => setCopiedPrompt(false), 2000);
     } catch {
       toast.error("Failed to copy prompt");
-    }
-  };
-
-  const handleCopyScript = async () => {
-    if (!currentScript) return;
-    try {
-      await navigator.clipboard.writeText(currentScript);
-      setCopiedScript(true);
-      toast.success("Script copied to clipboard");
-      setTimeout(() => setCopiedScript(false), 2000);
-    } catch {
-      toast.error("Failed to copy script");
-    }
-  };
-
-  const handleGenerateScript = async () => {
-    if (isGeneratingScript) return;
-
-    setIsGeneratingScript(true);
-    try {
-      const result = await generateScript(idea.id);
-      if (result.error) {
-        toast.error(result.error);
-      } else if (result.script) {
-        setCurrentScript(result.script);
-        toast.success("Script generated successfully");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Failed to generate script");
-      console.error(error);
-    } finally {
-      setIsGeneratingScript(false);
     }
   };
 
@@ -514,6 +407,44 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   <Play className="h-3.5 w-3.5" />
                   Publish
                 </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
+                <DropdownMenuItem
+                  onClick={handleGenerateTalkingPoints}
+                  disabled={isGeneratingTalkingPoints}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingTalkingPoints ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {talkingPointsAsset?.content_text ? "Regenerate Talking Points" : "Generate Talking Points"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleGenerateScript}
+                  disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingScript ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {scriptAsset?.content_text ? "Regenerate Script" : "Generate Script"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleGenerateThumbnail}
+                  disabled={isGeneratingThumbnail}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingThumbnail ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate Thumbnail
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
@@ -668,13 +599,13 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 )}
               </div>
 
-              {/* Prep List - expands to fill remaining space */}
+              {/* Assets List - expands to fill remaining space */}
               <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Prep List Header */}
+                {/* Assets Header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
                   <ListTodo className="h-4 w-4 text-[var(--grey-400)]" />
                   <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Prep List
+                    Assets
                   </h4>
                   {remainingMinutes > 0 && (
                     <div className="flex items-center gap-1 ml-auto text-xs text-[var(--grey-500)]">
@@ -684,143 +615,254 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   )}
                 </div>
 
-                {/* Todo List - Scrollable */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
-                  {todos.length === 0 ? (
-                    <p className="text-xs text-[var(--grey-400)] text-center py-4">
-                      No prep tasks yet
-                    </p>
+                {/* Assets List - Scrollable, Grouped by Stage */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-3">
+                  {assets.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-4 gap-2">
+                      {assetsLikelyGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
+                          <p className="text-xs text-[var(--grey-400)]">
+                            Generating assets...
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-[var(--grey-400)]">
+                          No assets yet
+                        </p>
+                      )}
+                    </div>
                   ) : (
-                    todos.map((todo) => (
-                      <div
-                        key={todo.id}
-                        className="group flex items-center gap-3 p-2 rounded-md hover:bg-[var(--grey-50)] transition-colors cursor-pointer"
-                        onClick={() => setSelectedTodoId(todo.id)}
-                      >
-                        {/* Checkbox */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleTodo(todo.id);
-                          }}
-                          className={cn(
-                            "flex-shrink-0 w-4 h-4 rounded border transition-colors",
-                            todo.is_complete
-                              ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
-                              : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
-                          )}
-                        >
-                          {todo.is_complete && (
-                            <Check className="h-4 w-4 text-white p-0.5" />
-                          )}
-                        </button>
+                    <>
+                      {/* Group assets by stage */}
+                      {(["preproduction", "production", "postproduction"] as const).map((stage) => {
+                        const stageAssets = assets.filter(a => ASSET_STAGE_MAP[a.type as AssetType] === stage);
+                        if (stageAssets.length === 0) return null;
+                        
+                        const stageLabels = {
+                          preproduction: "Pre-Production",
+                          production: "Production",
+                          postproduction: "Post-Production",
+                        };
+                        
+                        return (
+                          <div key={stage} className="mb-4 last:mb-0">
+                            {/* Stage Header */}
+                            <div className="text-[10px] font-medium text-[var(--grey-400)] uppercase tracking-wider px-2 mb-1.5">
+                              {stageLabels[stage]}
+                            </div>
+                            
+                            {/* Assets in this stage */}
+                            <div className="space-y-0.5">
+                              {stageAssets.map((asset) => (
+                                <div
+                                  key={asset.id}
+                                  className={cn(
+                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-pointer",
+                                    selectedAssetId === asset.id
+                                      ? "bg-[var(--grey-100)]"
+                                      : "hover:bg-[var(--grey-50)]"
+                                  )}
+                                  onClick={() => setSelectedAssetId(asset.id)}
+                                >
+                                  {/* Checkbox */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAssetComplete(asset.id);
+                                    }}
+                                    className={cn(
+                                      "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
+                                      asset.is_complete
+                                        ? "bg-[#00975a] border-[#00975a] text-white"
+                                        : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
+                                    )}
+                                    title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
+                                  >
+                                    {asset.is_complete && <Check className="h-3 w-3" />}
+                                  </button>
 
-                        {/* Todo Title */}
-                        <span
-                          className={cn(
-                            "flex-1 text-sm transition-colors",
-                            todo.is_complete
-                              ? "text-[var(--grey-400)] line-through"
-                              : "text-[var(--grey-800)]"
-                          )}
-                        >
-                          {todo.title}
-                        </span>
+                                  {/* Asset Type Icon */}
+                                  <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
+                                    {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
+                                    {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
+                                    {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
+                                  </span>
 
-                        {/* Time Estimate */}
-                        {todo.time_estimate_minutes && (
-                          <span className="text-xs text-[var(--grey-400)] tabular-nums">
-                            {todo.time_estimate_minutes}min
-                          </span>
-                        )}
-                      </div>
-                    ))
+                                  {/* AI sparkles next to icon */}
+                                  {asset.is_ai_generatable && (
+                                    <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
+                                  )}
+
+                                  {/* Asset Title */}
+                                  <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
+                                    {asset.title}
+                                  </span>
+
+                                  {/* Time Estimate */}
+                                  {asset.time_estimate_minutes && (
+                                    <span className="text-xs text-[var(--grey-400)] tabular-nums">
+                                      {asset.time_estimate_minutes}min
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Middle Column - Script (full height) */}
+            {/* Middle Column - Selected Asset Content (full height) */}
             <div className="flex flex-col min-h-0 h-full">
               <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Script Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Script
-                  </h4>
-                  {currentScript && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleGenerateScript}
-                        disabled={isGeneratingScript}
-                        className="h-7 px-2"
-                        title="Regenerate script"
-                      >
-                        <RefreshCw size={14} className={cn(isGeneratingScript && "animate-spin")} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopyScript}
-                        className="h-7 px-2"
-                        title={copiedScript ? "Copied" : "Copy"}
-                      >
-                        {copiedScript ? (
-                          <Check size={14} className="text-[#00975a]" />
-                        ) : (
-                          <Copy size={14} />
+                {selectedAsset ? (
+                  <>
+                    {/* Asset Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                      <h4 className="text-sm font-medium text-[var(--grey-800)]">
+                        {selectedAsset.title}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {/* Completion checkbox */}
+                        <button
+                          onClick={() => handleToggleAssetComplete(selectedAsset.id)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded border transition-colors text-xs",
+                            selectedAsset.is_complete
+                              ? "bg-[#00975a]/10 border-[#00975a]/30 text-[#00975a]"
+                              : "border-[var(--border)] text-[var(--grey-500)] hover:border-[var(--grey-400)]"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-3.5 h-3.5 rounded border flex items-center justify-center",
+                            selectedAsset.is_complete
+                              ? "bg-[#00975a] border-[#00975a] text-white"
+                              : "border-current"
+                          )}>
+                            {selectedAsset.is_complete && <Check className="h-2.5 w-2.5" />}
+                          </div>
+                          {selectedAsset.is_complete ? "Complete" : "Incomplete"}
+                        </button>
+                        
+                        {/* Copy button - only for text content */}
+                        {(selectedAsset.content_text || selectedAsset.instructions) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const textToCopy = selectedAsset.content_text || selectedAsset.instructions || "";
+                              await navigator.clipboard.writeText(textToCopy);
+                              toast.success("Copied to clipboard");
+                            }}
+                            className="h-7 px-2"
+                            title="Copy"
+                          >
+                            <Copy size={14} />
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Script Content or Empty/Loading State */}
-                {isGeneratingScript ? (
-                  // Loading state
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                      <Loader2 className="h-6 w-6 text-[#007bc2] animate-spin" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                      Generating Script
-                    </h3>
-                    <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                      AI is writing a ready-to-shoot script for this idea...
-                    </p>
-                  </div>
-                ) : currentScript ? (
-                  // Script content
-                  <div className={cn(
-                    "flex-1 min-h-0 overflow-auto p-4 relative",
-                    isScriptUpdating && "script-updating"
-                  )}>
-                    <ScriptDisplay script={currentScript} />
-                    {isScriptUpdating && (
-                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
+                    {/* Asset Content */}
+                    {selectedAsset.type === "script" || selectedAsset.type === "talking_points" ? (
+                      // Text asset - show content_text
+                      selectedAsset.content_text ? (
+                        <div className={cn(
+                          "flex-1 min-h-0 overflow-auto p-4 relative",
+                          isScriptUpdating && selectedAsset.type === "script" && "script-updating"
+                        )}>
+                          {selectedAsset.type === "talking_points" ? (
+                            <MarkdownDisplay content={selectedAsset.content_text} />
+                          ) : (
+                            <ScriptDisplay script={selectedAsset.content_text} />
+                          )}
+                          {isScriptUpdating && selectedAsset.type === "script" && (
+                            <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
+                          )}
+                        </div>
+                      ) : (
+                        // Text asset with no content yet
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                            <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                          </div>
+                          <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                            No Content Yet
+                          </h3>
+                          <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                            {selectedAsset.type === "talking_points" 
+                              ? "Use the chat to create talking points."
+                              : "Generate a script from your talking points."}
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      // Media asset - show instructions + upload placeholder
+                      <div className="flex-1 min-h-0 overflow-auto">
+                        {/* Instructions section */}
+                        {selectedAsset.instructions && (
+                          <div className="p-4 border-b border-[var(--border)]">
+                            <h5 className="text-xs font-semibold text-[var(--grey-500)] uppercase tracking-wider mb-2">
+                              Instructions
+                            </h5>
+                            <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
+                              <MarkdownDisplay content={selectedAsset.instructions} />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Upload placeholder */}
+                        <div className="p-4">
+                          <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
+                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                              <Upload className="h-6 w-6 text-[var(--grey-300)]" />
+                            </div>
+                            <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                              Media Upload Coming Soon
+                            </h3>
+                            <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
+                              You&apos;ll be able to upload {selectedAsset.type === "thumbnail" ? "images" : "video files"} here.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </div>
+                  </>
                 ) : (
-                  // Empty state
+                  // No asset selected - empty state
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                      <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                      No Script Yet
-                    </h3>
-                    <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
-                      Generate a ready-to-shoot script based on this idea.
-                    </p>
-                    <button
-                      onClick={handleGenerateScript}
-                      className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-lg transition-all bg-gradient-to-t from-[#262626] to-[#404040] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)] hover:brightness-110"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Generate Script
-                    </button>
+                    {assetsLikelyGenerating ? (
+                      <>
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                          <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+                        </div>
+                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                          Generating Assets
+                        </h3>
+                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                          Creating talking points and production assets...
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                          <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                        </div>
+                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                          No Asset Selected
+                        </h3>
+                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                          Select an asset from the list to view its content.
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -832,29 +874,26 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 ideaId={idea.id}
                 projectSlug={projectSlug}
                 scriptQuestions={(() => {
-                  // Get questions from incomplete script_finalization todo
-                  const scriptTodo = todos.find(t => t.type === 'script_finalization' && !t.is_complete);
-                  if (!scriptTodo?.details) return undefined;
-                  try {
-                    const questions = JSON.parse(scriptTodo.details.split('\n\n---\n\n')[0]);
-                    return Array.isArray(questions) ? questions : undefined;
-                  } catch {
-                    return undefined;
+                  // Get questions from incomplete talking_points asset if it has them
+                  if (talkingPointsAsset && !talkingPointsAsset.is_complete && talkingPointsAsset.instructions) {
+                    try {
+                      const questions = JSON.parse(talkingPointsAsset.instructions);
+                      return Array.isArray(questions) ? questions : undefined;
+                    } catch {
+                      return undefined;
+                    }
                   }
+                  return undefined;
                 })()}
-                onScriptUpdate={(script) => setCurrentScript(script)}
+                onScriptUpdate={() => router.refresh()}
                 onIdeaRegenerate={() => router.refresh()}
                 onToolCallStart={(toolName) => {
                   if (toolName === "update_script") setIsScriptUpdating(true);
-                  if (toolName === "generate_script") setIsGeneratingScript(true);
                 }}
                 onToolCallEnd={(toolName) => {
                   // Add minimum delay so shimmer is visible
                   if (toolName === "update_script") {
                     setTimeout(() => setIsScriptUpdating(false), 800);
-                  }
-                  if (toolName === "generate_script") {
-                    setTimeout(() => setIsGeneratingScript(false), 800);
                   }
                 }}
               />
@@ -975,118 +1014,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 </Button>
               </div>
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Todo Details Modal */}
-      <Dialog open={!!selectedTodo} onOpenChange={(open) => !open && setSelectedTodoId(null)}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <button
-                onClick={() => selectedTodo && handleToggleTodo(selectedTodo.id)}
-                className={cn(
-                  "flex-shrink-0 w-5 h-5 rounded border transition-colors",
-                  selectedTodo?.is_complete
-                    ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
-                    : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
-                )}
-              >
-                {selectedTodo?.is_complete && (
-                  <Check className="h-5 w-5 text-white p-0.5" />
-                )}
-              </button>
-              <span className={cn(
-                selectedTodo?.is_complete && "line-through text-[var(--grey-400)]"
-              )}>
-                {selectedTodo?.title}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="mt-2 space-y-4">
-            {/* Time estimate and actions row */}
-            <div className="flex items-center justify-between">
-              {selectedTodo?.time_estimate_minutes ? (
-                <div className="flex items-center gap-2 text-sm text-[var(--grey-500)]">
-                  <Clock className="h-4 w-4" />
-                  <span>Estimated time: {selectedTodo.time_estimate_minutes} minutes</span>
-                </div>
-              ) : <div />}
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopyTodoDetails}
-                  disabled={!selectedTodo?.details}
-                  className="h-8 px-2"
-                  title="Copy details"
-                >
-                  {copiedTodoDetails ? (
-                    <Check size={14} className="text-[#00975a]" />
-                  ) : (
-                    <Copy size={14} />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePrintTodo}
-                  disabled={!selectedTodo}
-                  className="h-8 px-2"
-                  title="Print"
-                >
-                  <Printer size={14} />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Details content - scrollable */}
-            <div className="max-h-[400px] overflow-y-auto">
-              {selectedTodo && (() => {
-                const { questions, details, outcome } = formatTodoDetails(selectedTodo);
-                return (
-                  <>
-                    {/* Questions for script_finalization todos */}
-                    {questions && questions.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
-                          Questions to Answer
-                        </h4>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {questions.map((q, i) => (
-                            <li key={i} className="text-sm text-[var(--grey-600)]">{q}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {/* Regular details (rendered as markdown) */}
-                    {details && (
-                      <div className="prose prose-sm max-w-none">
-                        {renderMarkdown(details)}
-                      </div>
-                    )}
-                    
-                    {/* Outcome section */}
-                    {outcome && (
-                      <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                        <div className="prose prose-sm max-w-none">
-                          {renderMarkdown(outcome)}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Empty state */}
-                    {!questions && !details && !outcome && (
-                      <p className="text-sm text-[var(--grey-400)] italic">
-                        No additional details.
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
           </div>
         </DialogContent>
       </Dialog>

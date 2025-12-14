@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { PlatformIcon, getPlatformLabel } from "@/components/strategy/platform-icon";
+import { PlatformIcon } from "@/components/strategy/platform-icon";
 
 // Types for the options passed to the modal
 export interface CharacterOption {
@@ -31,6 +31,7 @@ export interface ChannelOption {
 export interface TemplateOption {
   id: string;
   name: string;
+  channels?: Array<{ id: string; platform: string }>;
 }
 
 // Current idea's selections to pre-populate
@@ -42,7 +43,7 @@ export interface IdeaSelections {
 
 export interface RemixOptions {
   characterIds: string[];
-  channelIds: string[];
+  channelIds?: string[]; // undefined means preserve original channels
   templateId: string | null;
   customInstructions?: string;
   saveAsCopy: boolean;
@@ -72,7 +73,6 @@ export function RemixIdeaModal({
   templates = [],
 }: RemixIdeaModalProps) {
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
-  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
   const [saveAsCopy, setSaveAsCopy] = useState(false);
@@ -85,7 +85,6 @@ export function RemixIdeaModal({
     // Only reset when transitioning from closed to open
     if (open && !wasOpen.current) {
       setSelectedCharacterIds(currentSelections.characterIds);
-      setSelectedChannelIds(currentSelections.channelIds);
       setSelectedTemplateId(currentSelections.templateId);
       setCustomInstructions("");
       setSaveAsCopy(false);
@@ -94,9 +93,15 @@ export function RemixIdeaModal({
   }, [open, currentSelections]);
 
   const handleRemix = () => {
+    // Derive channels from selected template, or undefined to preserve original
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+    const channelIds = selectedTemplate?.channels?.length 
+      ? selectedTemplate.channels.map(c => c.id) 
+      : undefined;
+    
     onRemix({
       characterIds: selectedCharacterIds,
-      channelIds: selectedChannelIds,
+      channelIds,
       templateId: selectedTemplateId,
       customInstructions: customInstructions.trim() || undefined,
       saveAsCopy,
@@ -114,19 +119,6 @@ export function RemixIdeaModal({
 
   const clearCharacters = () => {
     setSelectedCharacterIds([]);
-  };
-
-  // Channel selection handlers
-  const toggleChannel = (id: string) => {
-    if (selectedChannelIds.includes(id)) {
-      setSelectedChannelIds(selectedChannelIds.filter((cid) => cid !== id));
-    } else {
-      setSelectedChannelIds([...selectedChannelIds, id]);
-    }
-  };
-
-  const clearChannels = () => {
-    setSelectedChannelIds([]);
   };
 
   return (
@@ -202,57 +194,6 @@ export function RemixIdeaModal({
             </div>
           )}
 
-          {/* Channels - Chip Toggles (only show if channels exist) */}
-          {channels.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-[var(--grey-600)]">
-                Channels
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {/* Clear/Any option */}
-                <button
-                  type="button"
-                  onClick={clearChannels}
-                  disabled={isRemixing}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                    selectedChannelIds.length === 0
-                      ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
-                      : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
-                  )}
-                >
-                  <Shuffle className="size-3" />
-                  Any
-                </button>
-                {/* Channel chips */}
-                {channels.map((channel) => {
-                  const isSelected = selectedChannelIds.includes(channel.id);
-                  const label = getPlatformLabel(channel.platform, channel.custom_label);
-                  return (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      onClick={() => toggleChannel(channel.id)}
-                      disabled={isRemixing}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                        isSelected
-                          ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
-                          : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
-                      )}
-                    >
-                      <PlatformIcon 
-                        platform={channel.platform} 
-                        className={cn("size-3.5", isSelected && "text-white")} 
-                      />
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Template - Single Select Chips (only show if templates exist) */}
           {templates.length > 0 && (
             <div className="space-y-2">
@@ -278,6 +219,7 @@ export function RemixIdeaModal({
                 {/* Template chips */}
                 {templates.map((template) => {
                   const isSelected = selectedTemplateId === template.id;
+                  const templateChannels = template.channels || [];
                   return (
                     <button
                       key={template.id}
@@ -291,6 +233,17 @@ export function RemixIdeaModal({
                           : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
                       )}
                     >
+                      {templateChannels.length > 0 && (
+                        <span className="flex items-center gap-0.5">
+                          {templateChannels.map((channel) => (
+                            <PlatformIcon
+                              key={channel.id}
+                              platform={channel.platform}
+                              className={cn("size-3", isSelected ? "text-white/70" : "text-[var(--grey-400)]")}
+                            />
+                          ))}
+                        </span>
+                      )}
                       <span>{template.name}</span>
                     </button>
                   );
@@ -365,3 +318,4 @@ export function RemixIdeaModal({
     </Dialog>
   );
 }
+

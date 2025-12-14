@@ -105,7 +105,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
           name,
           description
         ),
-        idea_todos (
+        idea_assets (
           id,
           is_complete,
           time_estimate_minutes
@@ -161,10 +161,19 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
       .eq("project_id", project.id)
       .order("created_at", { ascending: true }),
 
-    // Templates for generate modal and review modal
+    // Templates for generate modal and review modal (with their channels)
     supabase
       .from("project_templates")
-      .select("id, name")
+      .select(`
+        id, 
+        name,
+        template_channels (
+          distribution_channels:channel_id (
+            id,
+            platform
+          )
+        )
+      `)
       .eq("project_id", project.id)
       .order("created_at", { ascending: false }),
 
@@ -181,16 +190,27 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   const ideas = acceptedIdeasResult.data;
   const newIdeasRaw = newIdeasResult.data;
   const characters = charactersResult.data || [];
-  const templates = templatesResult.data || [];
+  const templatesRaw = templatesResult.data || [];
   const topics = topicsResult.data || [];
+
+  // Transform templates to flatten the nested channels structure
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const templates = templatesRaw.map((t: any) => ({
+    id: t.id as string,
+    name: t.name as string,
+    channels: (t.template_channels || [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((tc: any) => tc.distribution_channels)
+      .filter(Boolean) as Array<{ id: string; platform: string }>,
+  }));
 
   // Helper to transform idea data
   const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => {
-    // Calculate remaining prep time from todos
-    const prepTimeMinutes = (idea.idea_todos || [])
-      .filter((todo: { is_complete: boolean }) => !todo.is_complete)
-      .reduce((sum: number, todo: { time_estimate_minutes: number | null }) => 
-        sum + (todo.time_estimate_minutes || 0), 0);
+    // Calculate remaining prep time from incomplete assets
+    const prepTimeMinutes = (idea.idea_assets || [])
+      .filter((asset: { is_complete: boolean }) => !asset.is_complete)
+      .reduce((sum: number, asset: { time_estimate_minutes: number | null }) => 
+        sum + (asset.time_estimate_minutes || 0), 0);
 
     return {
       ...idea,

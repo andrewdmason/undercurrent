@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ViewType } from "./ideas-feed";
-import { IdeaTodo } from "@/lib/types";
+import { IdeaAsset } from "@/lib/types";
 
 interface IdeaCardProps {
   idea: IdeaWithChannels;
@@ -128,7 +128,7 @@ export function IdeaCard({
   const [isTruncated, setIsTruncated] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [prepListData, setPrepListData] = useState<{ todos: IdeaTodo[]; totalMinutes: number; remainingMinutes: number } | null>(null);
+  const [prepListData, setPrepListData] = useState<{ assets: IdeaAsset[]; totalMinutes: number; remainingMinutes: number } | null>(null);
   const [isPrepListLoading, setIsPrepListLoading] = useState(false);
   const [prepListError, setPrepListError] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -136,7 +136,7 @@ export function IdeaCard({
   const showShimmer = isLoadingImage || isGenerating || isRemixing || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
 
-  // Fetch prep list on hover
+  // Fetch assets on hover
   const handlePrepListHover = async () => {
     if (prepListData || isPrepListLoading) return;
     
@@ -144,7 +144,7 @@ export function IdeaCard({
     setPrepListError(false);
     
     try {
-      const response = await fetch(`/api/ideas/${idea.id}/prep-list`);
+      const response = await fetch(`/api/ideas/${idea.id}/assets`);
       if (!response.ok) throw new Error("Failed to fetch");
       const data = await response.json();
       setPrepListData(data);
@@ -413,43 +413,43 @@ export function IdeaCard({
                     Failed to load prep list
                   </p>
                 )}
-                {prepListData && prepListData.todos.length === 0 && (
+                {prepListData && prepListData.assets.length === 0 && (
                   <p className="text-xs text-[var(--grey-400)] text-center py-4">
-                    No prep tasks
+                    No assets yet
                   </p>
                 )}
-                {prepListData && prepListData.todos.length > 0 && (
+                {prepListData && prepListData.assets.length > 0 && (
                   <div className="space-y-1">
-                    {prepListData.todos.map((todo) => (
+                    {prepListData.assets.map((asset) => (
                       <div
-                        key={todo.id}
+                        key={asset.id}
                         className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
                       >
                         <span
                           className={cn(
-                            "flex-shrink-0 w-3.5 h-3.5 rounded border",
-                            todo.is_complete
+                            "flex-shrink-0 w-3.5 h-3.5 rounded border flex items-center justify-center",
+                            asset.is_complete
                               ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
                               : "border-[var(--grey-300)]"
                           )}
                         >
-                          {todo.is_complete && (
-                            <Check className="h-3.5 w-3.5 text-white p-0.5" />
+                          {asset.is_complete && (
+                            <Check className="h-2.5 w-2.5 text-white" />
                           )}
                         </span>
                         <span
                           className={cn(
                             "flex-1 truncate",
-                            todo.is_complete
-                              ? "text-[var(--grey-400)] line-through"
+                            asset.is_complete
+                              ? "text-[var(--grey-400)]"
                               : "text-[var(--grey-700)]"
                           )}
                         >
-                          {todo.title}
+                          {asset.title}
                         </span>
-                        {todo.time_estimate_minutes && (
+                        {asset.time_estimate_minutes && (
                           <span className="text-[var(--grey-400)] tabular-nums flex-shrink-0">
-                            {todo.time_estimate_minutes}min
+                            {asset.time_estimate_minutes}min
                           </span>
                         )}
                       </div>

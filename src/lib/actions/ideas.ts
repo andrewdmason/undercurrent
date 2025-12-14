@@ -7,8 +7,8 @@ import { after } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
-import { generateIdeaTodos } from "./idea-todos";
-import { IdeaStatus, PRODUCTION_STATUSES, ProductionStatus } from "@/lib/types";
+import { generateTalkingPoints } from "./idea-assets";
+import { IdeaStatus, PRODUCTION_STATUSES, ProductionStatus, RecordingStyle } from "@/lib/types";
 
 interface GeneratedIdea {
   title: string;
@@ -833,18 +833,18 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       model: DEFAULT_MODEL,
     });
 
-    // Use after() to generate thumbnails and todos in the background
+    // Use after() to generate thumbnails and talking points in the background
     // This keeps the serverless function alive until background tasks complete
     after(async () => {
       await Promise.all(
         (insertedIdeas || []).map(async (insertedIdea) => {
-          // Generate thumbnail and todos in parallel for each idea
+          // Generate thumbnail and talking points in parallel for each idea
           await Promise.all([
             generateThumbnail(insertedIdea.id, projectId).catch(err => {
               console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
             }),
-            generateIdeaTodos(insertedIdea.id).catch(err => {
-              console.error(`Failed to generate todos for idea ${insertedIdea.id}:`, err);
+            generateTalkingPoints(insertedIdea.id).catch(err => {
+              console.error(`Failed to generate talking points for idea ${insertedIdea.id}:`, err);
             }),
           ]);
         })
@@ -1195,17 +1195,16 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
 
       resultIdeaId = newIdea.id;
     } else {
-      // Update existing idea in place, clear script, image, and related data
+      // Update existing idea in place, clear image and related data
       const { error: updateError } = await supabase
         .from("ideas")
         .update({
           title: parsed.title,
           description: parsed.description,
           template_id: validTemplateId,
-          script: null,
-          script_context: null,
           prompt: null,
           image_url: null, // Clear image so new thumbnail will be generated
+          recording_style: null, // Reset recording style for re-inference
         })
         .eq("id", ideaId);
 
@@ -1217,7 +1216,7 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
       await supabase.from("idea_channels").delete().eq("idea_id", ideaId);
       await supabase.from("idea_characters").delete().eq("idea_id", ideaId);
       await supabase.from("idea_topics").delete().eq("idea_id", ideaId);
-      await supabase.from("idea_todos").delete().eq("idea_id", ideaId);
+      await supabase.from("idea_assets").delete().eq("idea_id", ideaId);
 
       resultIdeaId = ideaId;
     }
@@ -1270,14 +1269,14 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
       idea_id: resultIdeaId,
     });
 
-    // Generate thumbnail and todos in background
+    // Generate thumbnail and talking points in background
     after(async () => {
       await Promise.all([
         generateThumbnail(resultIdeaId, projectId).catch(err => {
           console.error(`Failed to generate thumbnail for remixed idea ${resultIdeaId}:`, err);
         }),
-        generateIdeaTodos(resultIdeaId).catch(err => {
-          console.error(`Failed to generate todos for remixed idea ${resultIdeaId}:`, err);
+        generateTalkingPoints(resultIdeaId).catch(err => {
+          console.error(`Failed to generate talking points for remixed idea ${resultIdeaId}:`, err);
         }),
       ]);
     });
@@ -1309,219 +1308,46 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
   }
 }
 
-// Generate a script for an existing idea
-export async function generateScript(ideaId: string, providedContext?: string) {
+// Update recording style for an idea
+export async function updateRecordingStyle(ideaId: string, recordingStyle: RecordingStyle) {
   const supabase = await createClient();
 
-  // Fetch the idea with its channels, characters, topics, template, and existing context
-  const { data: idea, error: ideaError } = await supabase
+  // Get idea to find project_id
+  const { data: idea } = await supabase
     .from("ideas")
-    .select(`
-      id,
-      title,
-      description,
-      script_context,
-      project_id,
-      idea_channels (
-        channel_id,
-        project_channels (
-          platform,
-          custom_label
-        )
-      ),
-      idea_characters (
-        project_characters (
-          name,
-          description
-        )
-      ),
-      idea_topics (
-        project_topics (
-          name,
-          description
-        )
-      ),
-      project_templates (
-        name,
-        description
-      )
-    `)
+    .select("project_id")
     .eq("id", ideaId)
     .single();
 
-  if (ideaError || !idea) {
-    console.error("Error fetching idea:", ideaError);
+  if (!idea) {
     return { error: "Idea not found" };
   }
 
-  // Fetch project context
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("name, description")
-    .eq("id", idea.project_id)
-    .single();
+  const { error } = await supabase
+    .from("ideas")
+    .update({ recording_style: recordingStyle })
+    .eq("id", ideaId);
 
-  if (projectError || !project) {
-    console.error("Error fetching project:", projectError);
-    return { error: "Project not found" };
+  if (error) {
+    console.error("Error updating recording style:", error);
+    return { error: error.message };
   }
 
-  // Extract idea's specific characters (not all project characters)
-  const characters = (idea.idea_characters as unknown as Array<{
-    project_characters: { name: string; description: string | null } | null;
-  }> || [])
-    .map(ic => ic.project_characters)
-    .filter(Boolean) as Array<{ name: string; description: string | null }>;
-
-  // Extract idea's topics
-  const topics = (idea.idea_topics as unknown as Array<{
-    project_topics: { name: string; description: string | null } | null;
-  }> || [])
-    .map(it => it.project_topics)
-    .filter(Boolean) as Array<{ name: string; description: string | null }>;
-
-  // Extract idea's template (foreign key returns single object or null)
-  const template = idea.project_templates as unknown as { name: string; description: string | null } | null;
-
-  // Build the prompt from template
-  const promptTemplate = await readFile(
-    path.join(process.cwd(), "prompts", "generate-script.md"),
-    "utf-8"
-  );
-
-  // Format characters section (idea-specific characters)
-  const charactersSection =
-    characters.length > 0
-      ? characters
-          .map((c) => `- **${c.name}**: ${c.description || "No description"}`)
-          .join("\n")
-      : "No specific characters assigned to this idea.";
-
-  // Format channels section  
-  const channelsSection =
-    idea.idea_channels && idea.idea_channels.length > 0
-      ? (idea.idea_channels as unknown as Array<{
-          channel_id: string;
-          project_channels: {
-            platform: string;
-            custom_label: string | null;
-          } | null;
-        }>)
-          .map((ic) => {
-            const channel = ic.project_channels;
-            if (!channel) return null;
-            return channel.custom_label || channel.platform;
-          })
-          .filter(Boolean)
-          .join(", ")
-      : "No specific channels";
-
-  // Format template section
-  const templateSection = template
-    ? `**Template:** ${template.name}${template.description ? ` - ${template.description}` : ""}`
-    : "No specific template assigned.";
-
-  // Format topics section
-  const topicsSection =
-    topics.length > 0
-      ? topics.map((t) => t.name).join(", ")
-      : "No specific topics";
-
-  // Use provided context, or fall back to saved context from idea
-  const context = providedContext || idea.script_context;
-  const contextSection = context
-    ? `## Previous Decisions\n\nWhen creating this script, incorporate these decisions from our earlier conversation:\n\n${context}`
-    : "";
-
-  // Build the final prompt
-  const prompt = promptTemplate
-    .replace("{{ideaTitle}}", idea.title || "Untitled")
-    .replace("{{ideaDescription}}", idea.description || "No description")
-    .replace("{{channels}}", channelsSection)
-    .replace("{{template}}", templateSection)
-    .replace("{{topics}}", topicsSection)
-    .replace("{{projectName}}", project.name || "Unnamed Project")
-    .replace("{{projectDescription}}", project.description || "No description provided.")
-    .replace("{{characters}}", charactersSection)
-    .replace("{{scriptContext}}", contextSection);
-
-  let responseRaw = "";
-
-  try {
-    // Call ChatGPT
-    const completion = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    responseRaw = completion.choices[0]?.message?.content || "";
-    const parsed = JSON.parse(responseRaw);
-
-    const script = parsed.script;
-    if (!script) {
-      throw new Error("No script in response");
-    }
-
-    // Update the idea with the generated script
-    const { error: updateError } = await supabase
-      .from("ideas")
-      .update({ script })
-      .eq("id", ideaId);
-
-    if (updateError) {
-      throw new Error(`Failed to save script: ${updateError.message}`);
-    }
-
-    // Log the successful generation
-    const { data: logData } = await supabase.from("generation_logs").insert({
-      project_id: idea.project_id,
-      type: "script_generation",
-      prompt_sent: prompt,
-      response_raw: responseRaw,
-      model: DEFAULT_MODEL,
-      idea_id: ideaId,
-    }).select("id").single();
-
-    await revalidateProjectPaths(idea.project_id);
-
-    return { success: true, script, generationLogId: logData?.id };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    console.error("Error generating script:", error);
-
-    // Log the failed generation
-    const { data: logData } = await supabase.from("generation_logs").insert({
-      project_id: idea.project_id,
-      type: "script_generation",
-      prompt_sent: prompt,
-      response_raw: responseRaw || null,
-      model: DEFAULT_MODEL,
-      error: errorMessage,
-      idea_id: ideaId,
-    }).select("id").single();
-
-    return { error: errorMessage, generationLogId: logData?.id };
-  }
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
 }
 
-// Generate an Underlord prompt for an existing idea (requires script to exist)
+// Generate an Underlord prompt for an existing idea (requires script or talking points asset)
 export async function generateUnderlordPrompt(ideaId: string) {
   const supabase = await createClient();
 
-  // Fetch the idea with its script and channels
+  // Fetch the idea with its channels
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
     .select(`
       id,
       title,
       description,
-      script,
       project_id,
       idea_channels (
         channel_id,
@@ -1539,9 +1365,21 @@ export async function generateUnderlordPrompt(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  // Require script to exist before generating Underlord prompt
-  if (!idea.script) {
-    return { error: "Script must be generated before creating Underlord prompt" };
+  // Fetch script or talking points from assets
+  const { data: assets } = await supabase
+    .from("idea_assets")
+    .select("*")
+    .eq("idea_id", ideaId)
+    .in("type", ["script", "talking_points"]);
+
+  const scriptAsset = assets?.find(a => a.type === "script");
+  const talkingPointsAsset = assets?.find(a => a.type === "talking_points");
+
+  // Prefer script, fall back to talking points
+  const contentAsset = scriptAsset || talkingPointsAsset;
+
+  if (!contentAsset?.content_text) {
+    return { error: "Script or talking points must be ready before creating Underlord prompt" };
   }
 
   // Fetch project context
@@ -1586,7 +1424,7 @@ export async function generateUnderlordPrompt(ideaId: string) {
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
-    .replace("{{script}}", idea.script)
+    .replace("{{script}}", contentAsset.content_text)
     .replace("{{projectName}}", project.name || "Unnamed Project")
     ;
 
