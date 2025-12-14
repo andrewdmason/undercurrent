@@ -28,6 +28,8 @@ Write a complete script for the video idea below. The script should be detailed 
 **Characters:**
 {{characters}}
 
+{{scriptContext}}
+
 ## Output Format
 
 Return a JSON object with a single `script` field containing the complete script in markdown format:

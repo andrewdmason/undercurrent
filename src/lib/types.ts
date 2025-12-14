@@ -8,6 +8,7 @@ export interface Idea {
   title: string;
   description: string | null;
   script: string | null;
+  script_context: string | null;
   image_url: string | null;
   prompt: string | null;
   status: IdeaStatus;
@@ -53,7 +54,7 @@ export interface Profile {
 
 export type ProjectRole = "admin" | "member";
 
-export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "other";
+export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "script_generation" | "script_update" | "todo_generation" | "todo_refresh" | "other";
 
 export interface GenerationLog {
   id: string;
@@ -64,6 +65,7 @@ export interface GenerationLog {
   ideas_created: string[] | null;
   model: string;
   error: string | null;
+  idea_id: string | null;
   created_at: string;
 }
 
@@ -182,6 +184,33 @@ export const DISTRIBUTION_PLATFORMS = [
 export type DistributionPlatform = (typeof DISTRIBUTION_PLATFORMS)[number]["value"];
 
 // ============================================
+// Idea Todo Types (Prep List)
+// ============================================
+
+export type IdeaTodoType = "script_finalization" | "asset" | "physical_prep";
+
+export interface IdeaTodo {
+  id: string;
+  idea_id: string;
+  type: IdeaTodoType;
+  title: string;
+  details: string | null;
+  time_estimate_minutes: number | null;
+  is_complete: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneratedTodo {
+  type: IdeaTodoType;
+  title: string;
+  questions?: string[]; // only for script_finalization
+  details?: string; // markdown for asset/physical_prep
+  time_estimate_minutes: number;
+}
+
+// ============================================
 // Chat Types
 // ============================================
 
@@ -225,6 +254,7 @@ export interface ChatLog {
   messages_sent: unknown;
   response_raw: string | null;
   tool_calls_made: ToolCall[] | null;
+  generation_log_ids: Record<string, string> | null; // Maps tool_call_id -> generation_log_id
   input_tokens: number | null;
   output_tokens: number | null;
   error: string | null;

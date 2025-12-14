@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2 } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaTodo } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateScript, generateUnderlordPrompt } from "@/lib/actions/ideas";
+import { toggleTodoComplete } from "@/lib/actions/idea-todos";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
+import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
@@ -41,48 +43,108 @@ interface IdeaDetailViewProps {
   projectSlug: string;
   projectChannels: DistributionChannel[];
   fullTemplate: ProjectTemplateWithChannels | null;
+  initialTodos: IdeaTodo[];
 }
 
-interface ChecklistTask {
-  id: string;
-  name: string;
-  estimatedMinutes: number | null;
-  completed: boolean;
-  details: string;
+// Helper to format time as "Xh Ymin"
+function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
-const PLACEHOLDER_TASKS: ChecklistTask[] = [
-  {
-    id: "1",
-    name: "Approve script",
-    estimatedMinutes: 5,
-    completed: false,
-    details: "Review the AI-generated script for accuracy, tone, and brand voice. Make any necessary edits before recording begins.",
-  },
-  {
-    id: "2",
-    name: "Record Andrew",
-    estimatedMinutes: 30,
-    completed: false,
-    details: "Schedule recording session with Andrew. Ensure proper lighting, audio setup, and have the script ready on a teleprompter or notes.",
-  },
-  {
-    id: "3",
-    name: "Create with Underlord",
-    estimatedMinutes: 2,
-    completed: false,
-    details: "Use the Underlord AI to generate the initial video edit from the recorded footage. Copy the prompt and paste it into Underlord.",
-  },
-  {
-    id: "4",
-    name: "Final Polish in Descript",
-    estimatedMinutes: 10,
-    completed: false,
-    details: "Import the Underlord output into Descript for final edits. Add captions, trim dead air, and apply any brand overlays or end cards.",
-  },
-];
+// Simple markdown renderer for todo details
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let currentList: string[] = [];
+  let isCheckbox = false;
 
-export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, fullTemplate }: IdeaDetailViewProps) {
+  const flushList = () => {
+    if (currentList.length > 0) {
+      elements.push(
+        <ul key={elements.length} className={cn("space-y-1 my-2", isCheckbox ? "list-none pl-0" : "list-disc pl-5")}>
+          {currentList.map((item, i) => {
+            if (isCheckbox) {
+              const checked = item.startsWith('[x]');
+              const text = item.replace(/^\[[ x]\]\s*/, '');
+              return (
+                <li key={i} className="flex items-start gap-2">
+                  <span className={cn(
+                    "flex-shrink-0 w-4 h-4 mt-0.5 rounded border",
+                    checked ? "bg-[var(--grey-800)] border-[var(--grey-800)]" : "border-[var(--grey-300)]"
+                  )}>
+                    {checked && <Check className="h-4 w-4 text-white p-0.5" />}
+                  </span>
+                  <span className={cn(checked && "line-through text-[var(--grey-400)]")}>{text}</span>
+                </li>
+              );
+            }
+            return <li key={i}>{item}</li>;
+          })}
+        </ul>
+      );
+      currentList = [];
+      isCheckbox = false;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Headers
+    if (line.startsWith('## ')) {
+      flushList();
+      elements.push(
+        <h3 key={elements.length} className="text-sm font-semibold text-[var(--grey-800)] mt-4 first:mt-0 mb-2">
+          {line.slice(3)}
+        </h3>
+      );
+      continue;
+    }
+    
+    // Checkbox items
+    if (line.match(/^- \[[ x]\]/)) {
+      if (currentList.length > 0 && !isCheckbox) flushList();
+      isCheckbox = true;
+      currentList.push(line.slice(2)); // Remove "- "
+      continue;
+    }
+    
+    // List items
+    if (line.startsWith('- ')) {
+      if (currentList.length > 0 && isCheckbox) flushList();
+      currentList.push(line.slice(2));
+      continue;
+    }
+    
+    // Empty lines
+    if (line.trim() === '') {
+      flushList();
+      continue;
+    }
+    
+    // Regular paragraphs (handle bold)
+    flushList();
+    const formatted = line.split(/(\*\*[^*]+\*\*)/).map((part, j) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+    elements.push(
+      <p key={elements.length} className="text-sm text-[var(--grey-600)] leading-relaxed my-2">
+        {formatted}
+      </p>
+    );
+  }
+  
+  flushList();
+  return elements;
+}
+
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, fullTemplate, initialTodos }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -96,8 +158,9 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [underlordModalOpen, setUnderlordModalOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [tasks, setTasks] = useState<ChecklistTask[]>(PLACEHOLDER_TASKS);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [todos, setTodos] = useState<IdeaTodo[]>(initialTodos);
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
+  const [copiedTodoDetails, setCopiedTodoDetails] = useState(false);
 
   // Edit modal state
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
@@ -105,30 +168,122 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [editingCharacter, setEditingCharacter] = useState<{ id: string; name: string; description?: string | null; image_url: string | null } | null>(null);
   const [editingChannel, setEditingChannel] = useState<DistributionChannel | null>(null);
 
-  // Derive selectedTask from tasks array to keep modal in sync
-  const selectedTask = selectedTaskId 
-    ? tasks.find(t => t.id === selectedTaskId) ?? null 
+  // Derive selectedTodo from todos array to keep modal in sync
+  const selectedTodo = selectedTodoId 
+    ? todos.find(t => t.id === selectedTodoId) ?? null 
     : null;
 
   const hasImage = !!idea.image_url;
   const showShimmer = isGeneratingThumbnail || !hasImage;
 
-  const toggleTask = (taskId: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+  const handleToggleTodo = async (todoId: string) => {
+    const todo = todos.find(t => t.id === todoId);
+    if (!todo) return;
+    
+    // Optimistic update
+    setTodos(prev => 
+      prev.map(t => 
+        t.id === todoId ? { ...t, is_complete: !t.is_complete } : t
       )
     );
+    
+    // Persist to database
+    const result = await toggleTodoComplete(todoId, !todo.is_complete);
+    if (!result.success) {
+      // Revert on error
+      setTodos(prev => 
+        prev.map(t => 
+          t.id === todoId ? { ...t, is_complete: todo.is_complete } : t
+        )
+      );
+      toast.error(result.error || "Failed to update todo");
+    }
   };
 
-  const totalEstimatedMinutes = tasks.reduce(
-    (sum, task) => sum + (task.estimatedMinutes || 0),
-    0
-  );
+  const remainingMinutes = todos
+    .filter(todo => !todo.is_complete)
+    .reduce((sum, todo) => sum + (todo.time_estimate_minutes || 0), 0);
 
-  const completedMinutes = tasks
-    .filter(task => task.completed)
-    .reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0);
+  // Helper to parse and format todo details (handles script_finalization JSON questions)
+  const formatTodoDetails = (todo: IdeaTodo): { questions?: string[]; details?: string; outcome?: string } => {
+    if (!todo.details) return {};
+    
+    // Check if details contains an outcome section (separated by ---)
+    const parts = todo.details.split('\n\n---\n\n');
+    
+    if (todo.type === 'script_finalization') {
+      try {
+        // First part should be JSON array of questions
+        const questions = JSON.parse(parts[0]);
+        if (Array.isArray(questions)) {
+          return {
+            questions,
+            outcome: parts[1] || undefined,
+          };
+        }
+      } catch {
+        // Not JSON, treat as regular details
+      }
+    }
+    
+    return {
+      details: parts[0],
+      outcome: parts[1] || undefined,
+    };
+  };
+
+  const handleCopyTodoDetails = async () => {
+    if (!selectedTodo?.details) return;
+    try {
+      await navigator.clipboard.writeText(selectedTodo.details);
+      setCopiedTodoDetails(true);
+      toast.success("Details copied to clipboard");
+      setTimeout(() => setCopiedTodoDetails(false), 2000);
+    } catch {
+      toast.error("Failed to copy details");
+    }
+  };
+
+  const handlePrintTodo = () => {
+    if (!selectedTodo) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const { questions, details, outcome } = formatTodoDetails(selectedTodo);
+    let content = `<h1>${selectedTodo.title}</h1>`;
+    if (selectedTodo.time_estimate_minutes) {
+      content += `<p><em>Estimated time: ${selectedTodo.time_estimate_minutes} minutes</em></p>`;
+    }
+    if (questions) {
+      content += '<h2>Questions</h2><ul>';
+      questions.forEach(q => { content += `<li>${q}</li>`; });
+      content += '</ul>';
+    }
+    if (details) {
+      content += `<div>${details.replace(/\n/g, '<br>')}</div>`;
+    }
+    if (outcome) {
+      content += `<h2>Outcome</h2><div>${outcome.replace(/\n/g, '<br>')}</div>`;
+    }
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${selectedTodo.title}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+            h1 { font-size: 1.5em; margin-bottom: 0.5em; }
+            h2 { font-size: 1.1em; margin-top: 1.5em; color: #666; }
+            ul { padding-left: 1.5em; }
+            li { margin: 0.5em 0; }
+          </style>
+        </head>
+        <body>${content}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   const handleGenerateThumbnail = async () => {
     if (isGeneratingThumbnail) return;
@@ -297,6 +452,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   <Play className="h-3.5 w-3.5" />
                   Publish
                 </DropdownMenuItem>
+                <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
                   onClick={handleCancel}
@@ -450,83 +606,74 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 )}
               </div>
 
-              {/* Production Checklist */}
+              {/* Prep List */}
               <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Checklist Header */}
+                {/* Prep List Header */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
                   <ListTodo className="h-4 w-4 text-[var(--grey-400)]" />
                   <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Production Checklist
+                    Prep List
                   </h4>
-                  <span className="ml-auto text-[10px] font-medium text-[var(--grey-400)] bg-[var(--grey-100)] px-2 py-0.5 rounded">
-                    Coming soon
-                  </span>
-                </div>
-
-                {/* Task List */}
-                <div className="p-3 space-y-1">
-                  {tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-3 p-2 rounded-md hover:bg-[var(--grey-50)] transition-colors cursor-pointer"
-                      onClick={() => setSelectedTaskId(task.id)}
-                    >
-                      {/* Checkbox */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTask(task.id);
-                        }}
-                        className={cn(
-                          "flex-shrink-0 w-4 h-4 rounded border transition-colors",
-                          task.completed
-                            ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
-                            : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
-                        )}
-                      >
-                        {task.completed && (
-                          <Check className="h-4 w-4 text-white p-0.5" />
-                        )}
-                      </button>
-
-                      {/* Task Name */}
-                      <span
-                        className={cn(
-                          "flex-1 text-sm transition-colors",
-                          task.completed
-                            ? "text-[var(--grey-400)] line-through"
-                            : "text-[var(--grey-800)]"
-                        )}
-                      >
-                        {task.name}
-                      </span>
-
-                      {/* Time Estimate */}
-                      {task.estimatedMinutes && (
-                        <span className="text-xs text-[var(--grey-400)] tabular-nums">
-                          {task.estimatedMinutes} min
-                        </span>
-                      )}
+                  {remainingMinutes > 0 && (
+                    <div className="flex items-center gap-1 ml-auto text-xs text-[var(--grey-500)]">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>{formatTime(remainingMinutes)}</span>
                     </div>
-                  ))}
+                  )}
                 </div>
 
-                {/* Total Time Footer */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--grey-50)]">
-                  <div className="flex items-center gap-1.5 text-xs text-[var(--grey-500)]">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>Total time</span>
-                  </div>
-                  <span className="text-xs font-medium text-[var(--grey-700)] tabular-nums">
-                    {completedMinutes > 0 && (
-                      <span className="text-[var(--grey-400)] line-through mr-1.5">
-                        {totalEstimatedMinutes} min
-                      </span>
-                    )}
-                    {completedMinutes > 0
-                      ? `${totalEstimatedMinutes - completedMinutes} min remaining`
-                      : `${totalEstimatedMinutes} min`}
-                  </span>
+                {/* Todo List - Scrollable */}
+                <div className="max-h-[240px] overflow-y-auto p-3 space-y-1">
+                  {todos.length === 0 ? (
+                    <p className="text-xs text-[var(--grey-400)] text-center py-4">
+                      No prep tasks yet
+                    </p>
+                  ) : (
+                    todos.map((todo) => (
+                      <div
+                        key={todo.id}
+                        className="group flex items-center gap-3 p-2 rounded-md hover:bg-[var(--grey-50)] transition-colors cursor-pointer"
+                        onClick={() => setSelectedTodoId(todo.id)}
+                      >
+                        {/* Checkbox */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTodo(todo.id);
+                          }}
+                          className={cn(
+                            "flex-shrink-0 w-4 h-4 rounded border transition-colors",
+                            todo.is_complete
+                              ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
+                              : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
+                          )}
+                        >
+                          {todo.is_complete && (
+                            <Check className="h-4 w-4 text-white p-0.5" />
+                          )}
+                        </button>
+
+                        {/* Todo Title */}
+                        <span
+                          className={cn(
+                            "flex-1 text-sm transition-colors",
+                            todo.is_complete
+                              ? "text-[var(--grey-400)] line-through"
+                              : "text-[var(--grey-800)]"
+                          )}
+                        >
+                          {todo.title}
+                        </span>
+
+                        {/* Time Estimate */}
+                        {todo.time_estimate_minutes && (
+                          <span className="text-xs text-[var(--grey-400)] tabular-nums">
+                            {todo.time_estimate_minutes}min
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -622,15 +769,30 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
               <ChatSidebar
                 ideaId={idea.id}
                 projectSlug={projectSlug}
+                scriptQuestions={(() => {
+                  // Get questions from incomplete script_finalization todo
+                  const scriptTodo = todos.find(t => t.type === 'script_finalization' && !t.is_complete);
+                  if (!scriptTodo?.details) return undefined;
+                  try {
+                    const questions = JSON.parse(scriptTodo.details.split('\n\n---\n\n')[0]);
+                    return Array.isArray(questions) ? questions : undefined;
+                  } catch {
+                    return undefined;
+                  }
+                })()}
                 onScriptUpdate={(script) => setCurrentScript(script)}
                 onIdeaRegenerate={() => router.refresh()}
                 onToolCallStart={(toolName) => {
                   if (toolName === "update_script") setIsScriptUpdating(true);
+                  if (toolName === "generate_script") setIsGeneratingScript(true);
                 }}
                 onToolCallEnd={(toolName) => {
                   // Add minimum delay so shimmer is visible
                   if (toolName === "update_script") {
                     setTimeout(() => setIsScriptUpdating(false), 800);
+                  }
+                  if (toolName === "generate_script") {
+                    setTimeout(() => setIsGeneratingScript(false), 800);
                   }
                 }}
               />
@@ -734,41 +896,114 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         </DialogContent>
       </Dialog>
 
-      {/* Task Details Modal */}
-      <Dialog open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTaskId(null)}>
-        <DialogContent className="sm:max-w-md">
+      {/* Todo Details Modal */}
+      <Dialog open={!!selectedTodo} onOpenChange={(open) => !open && setSelectedTodoId(null)}>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <button
-                onClick={() => selectedTask && toggleTask(selectedTask.id)}
+                onClick={() => selectedTodo && handleToggleTodo(selectedTodo.id)}
                 className={cn(
                   "flex-shrink-0 w-5 h-5 rounded border transition-colors",
-                  selectedTask?.completed
+                  selectedTodo?.is_complete
                     ? "bg-[var(--grey-800)] border-[var(--grey-800)]"
                     : "border-[var(--grey-300)] hover:border-[var(--grey-500)]"
                 )}
               >
-                {selectedTask?.completed && (
+                {selectedTodo?.is_complete && (
                   <Check className="h-5 w-5 text-white p-0.5" />
                 )}
               </button>
               <span className={cn(
-                selectedTask?.completed && "line-through text-[var(--grey-400)]"
+                selectedTodo?.is_complete && "line-through text-[var(--grey-400)]"
               )}>
-                {selectedTask?.name}
+                {selectedTodo?.title}
               </span>
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2 space-y-4">
-            {selectedTask?.estimatedMinutes && (
-              <div className="flex items-center gap-2 text-sm text-[var(--grey-500)]">
-                <Clock className="h-4 w-4" />
-                <span>Estimated time: {selectedTask.estimatedMinutes} minutes</span>
+            {/* Time estimate and actions row */}
+            <div className="flex items-center justify-between">
+              {selectedTodo?.time_estimate_minutes ? (
+                <div className="flex items-center gap-2 text-sm text-[var(--grey-500)]">
+                  <Clock className="h-4 w-4" />
+                  <span>Estimated time: {selectedTodo.time_estimate_minutes} minutes</span>
+                </div>
+              ) : <div />}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyTodoDetails}
+                  disabled={!selectedTodo?.details}
+                  className="h-8 px-2"
+                  title="Copy details"
+                >
+                  {copiedTodoDetails ? (
+                    <Check size={14} className="text-[#00975a]" />
+                  ) : (
+                    <Copy size={14} />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrintTodo}
+                  disabled={!selectedTodo}
+                  className="h-8 px-2"
+                  title="Print"
+                >
+                  <Printer size={14} />
+                </Button>
               </div>
-            )}
-            <p className="text-sm text-[var(--grey-600)] leading-relaxed">
-              {selectedTask?.details}
-            </p>
+            </div>
+            
+            {/* Details content - scrollable */}
+            <div className="max-h-[400px] overflow-y-auto">
+              {selectedTodo && (() => {
+                const { questions, details, outcome } = formatTodoDetails(selectedTodo);
+                return (
+                  <>
+                    {/* Questions for script_finalization todos */}
+                    {questions && questions.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
+                          Questions to Answer
+                        </h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {questions.map((q, i) => (
+                            <li key={i} className="text-sm text-[var(--grey-600)]">{q}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* Regular details (rendered as markdown) */}
+                    {details && (
+                      <div className="prose prose-sm max-w-none">
+                        {renderMarkdown(details)}
+                      </div>
+                    )}
+                    
+                    {/* Outcome section */}
+                    {outcome && (
+                      <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                        <div className="prose prose-sm max-w-none">
+                          {renderMarkdown(outcome)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Empty state */}
+                    {!questions && !details && !outcome && (
+                      <p className="text-sm text-[var(--grey-400)] italic">
+                        No additional details.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

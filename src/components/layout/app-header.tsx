@@ -206,20 +206,18 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
-                <DropdownMenuItem 
-                  onClick={() => router.push(`/${currentProject.slug}/settings`)}
-                  className="cursor-pointer"
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Project Settings
+                <DropdownMenuItem asChild>
+                  <Link href={`/${currentProject.slug}/settings`} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Project Settings
+                  </Link>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem 
-                  onClick={() => router.push(`/${currentProject.slug}/team`)}
-                  className="cursor-pointer"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Manage Team
+                <DropdownMenuItem asChild>
+                  <Link href={`/${currentProject.slug}/team`} className="cursor-pointer">
+                    <Users className="mr-2 h-4 w-4" />
+                    Manage Team
+                  </Link>
                 </DropdownMenuItem>
                 
                 <DropdownMenuSub>
@@ -253,12 +251,11 @@ export function AppHeader({ newCount = 0, createCount = 0 }: AppHeaderProps) {
                 
                 <DropdownMenuSeparator />
                 
-                <DropdownMenuItem 
-                  onClick={() => router.push("/logs")}
-                  className="cursor-pointer"
-                >
-                  <ScrollText className="mr-2 h-4 w-4" />
-                  Generation Logs
+                <DropdownMenuItem asChild>
+                  <Link href={`/logs/tools?project=${currentProject.id}`} className="cursor-pointer">
+                    <ScrollText className="mr-2 h-4 w-4" />
+                    AI Logs
+                  </Link>
                 </DropdownMenuItem>
                 
                 <DropdownMenuSeparator />

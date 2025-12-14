@@ -19,6 +19,7 @@ import { ChatModel, IdeaChat, IdeaChatMessage, CHAT_MODELS, MODEL_CONTEXT_LIMITS
 interface ChatSidebarProps {
   ideaId: string;
   projectSlug: string;
+  scriptQuestions?: string[];
   onScriptUpdate?: (script: string) => void;
   onIdeaRegenerate?: () => void;
   onToolCallStart?: (toolName: string) => void;
@@ -42,10 +43,15 @@ interface StreamingMessage {
   toolCallStartTime?: number;
 }
 
-export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
+export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Refs for preventing double-init in React Strict Mode
+  const initSentRef = useRef(false);
+  const loadingChatsRef = useRef(false);
+  const initChatIdRef = useRef<string | null>(null);
 
   // State
   const [chats, setChats] = useState<IdeaChat[]>([]);
@@ -85,6 +91,10 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
   }, [messages]);
 
   const loadChats = async () => {
+    // Prevent concurrent loads (React Strict Mode can double-call useEffect)
+    if (loadingChatsRef.current) return;
+    loadingChatsRef.current = true;
+    
     setIsLoading(true);
     const result = await listChats(ideaId);
     if (result.chats) {
@@ -102,12 +112,100 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
       }
     }
     setIsLoading(false);
+    loadingChatsRef.current = false;
   };
 
   const loadMessages = async (chatId: string) => {
+    // Skip if this is a stale call from a different chat (strict mode issue)
+    if (initChatIdRef.current && initChatIdRef.current !== chatId) {
+      return;
+    }
+    
     const result = await getChatMessages(chatId);
     if (result.messages) {
       setMessages(result.messages);
+      
+      // If no messages and we haven't sent init yet, send welcome message
+      if (result.messages.length === 0 && !initSentRef.current) {
+        initSentRef.current = true;
+        initChatIdRef.current = chatId;
+        sendInitMessage(chatId);
+      }
+    }
+  };
+  
+  // Send initial welcome message
+  const sendInitMessage = async (chatId: string) => {
+    setIsSending(true);
+    setStreamingMessage({ content: "" });
+    
+    try {
+      const response = await fetch(`/api/chat/${ideaId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId,
+          isInit: true,
+          scriptQuestions,
+          model: currentChat?.model || "gpt-5.1",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No reader available");
+
+      const decoder = new TextDecoder();
+      let streamContent = "";
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = buffer + decoder.decode(value);
+        const lines = chunk.split("\n");
+        
+        if (!chunk.endsWith("\n")) {
+          buffer = lines.pop() || "";
+        } else {
+          buffer = "";
+        }
+        
+        const dataLines = lines.filter((line) => line.startsWith("data: "));
+
+        for (const line of dataLines) {
+          const jsonStr = line.slice(6);
+          if (!jsonStr) continue;
+
+          try {
+            const data = JSON.parse(jsonStr);
+
+            if (data.type === "text") {
+              streamContent += data.content;
+              setStreamingMessage({ content: streamContent });
+            } else if (data.type === "error") {
+              throw new Error(data.error);
+            }
+          } catch (e) {
+            if (!(e instanceof SyntaxError)) {
+              throw e;
+            }
+          }
+        }
+      }
+
+      // Reload messages to get the saved welcome message
+      await loadMessages(chatId);
+    } catch (error) {
+      console.error("Init message error:", error);
+      // Don't show error toast for init - it's not user-initiated
+    } finally {
+      setIsSending(false);
+      setStreamingMessage(null);
     }
   };
 
@@ -126,6 +224,9 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
       setChats((prev) => prev.filter(c => c.id !== currentChat.id).concat(result.chat!));
       setCurrentChat(result.chat);
       setMessages([]);
+      // Reset init refs so new welcome message can be sent
+      initSentRef.current = false;
+      initChatIdRef.current = null;
       toast.success("Chat cleared");
     } else if (result.error) {
       toast.error(result.error);
@@ -154,10 +255,13 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
     setInputValue("");
     setIsSending(true);
 
+    // Use initChatIdRef if available to ensure we send to the same chat as the welcome message
+    const targetChatId = initChatIdRef.current || currentChat.id;
+
     // Optimistically add user message
     const tempUserMessage: IdeaChatMessage = {
       id: `temp-${Date.now()}`,
-      chat_id: currentChat.id,
+      chat_id: targetChatId,
       role: "user",
       content: userMessage,
       tool_calls: null,
@@ -175,9 +279,10 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chatId: currentChat.id,
+          chatId: targetChatId,
           message: userMessage,
           model: currentChat.model,
+          scriptQuestions, // Always pass questions so AI knows what to ask
         }),
       });
 
@@ -267,6 +372,12 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
                   if (scriptToolCall && scriptToolCall.arguments.script) {
                     onScriptUpdate?.(scriptToolCall.arguments.script as string);
                   }
+                } else if (data.name === "generate_script") {
+                  // Script is returned in the result for generate_script
+                  if (data.result.script) {
+                    onScriptUpdate?.(data.result.script as string);
+                  }
+                  router.refresh(); // Refresh to update todos
                 } else if (data.name === "regenerate_idea") {
                   onIdeaRegenerate?.();
                   router.refresh();
@@ -288,7 +399,7 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
       }
 
       // Reload messages to get the saved versions
-      await loadMessages(currentChat.id);
+      await loadMessages(targetChatId);
     } catch (error) {
       console.error("Chat error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to send message");
@@ -298,7 +409,7 @@ export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegener
       setIsSending(false);
       setStreamingMessage(null);
     }
-  }, [inputValue, currentChat, isSending, ideaId, router, onToolCallStart, onToolCallEnd, onScriptUpdate, onIdeaRegenerate]);
+  }, [inputValue, currentChat, isSending, ideaId, router, onToolCallStart, onToolCallEnd, onScriptUpdate, onIdeaRegenerate, scriptQuestions]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

@@ -7,6 +7,8 @@ import path from "path";
 import { ChatModel, ToolCall } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
+import { generateScript } from "@/lib/actions/ideas";
+import { completeScriptFinalization, refreshAssetTodos } from "@/lib/actions/idea-todos";
 import { after } from "next/server";
 
 // Tool definitions for the agent
@@ -25,6 +27,23 @@ const tools = [
           },
         },
         required: ["script"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "generate_script",
+      description: "Generate a complete script based on gathered information. Call this when you have collected enough information from the user to write the script, or when the user says to just use your best judgment.",
+      parameters: {
+        type: "object",
+        properties: {
+          context_summary: {
+            type: "string",
+            description: "A summary of the key decisions and information gathered from the user (e.g., 'Featured games: Catan, Wingspan, Ticket to Ride. Each chosen because...'). This will be saved for future reference.",
+          },
+        },
+        required: ["context_summary"],
       },
     },
   },
@@ -87,13 +106,15 @@ export async function POST(
   }
 
   // Parse request body
-  const { chatId, message, model } = (await request.json()) as {
+  const { chatId, message, model, isInit, scriptQuestions } = (await request.json()) as {
     chatId: string;
     message: string;
     model: ChatModel;
+    isInit?: boolean;
+    scriptQuestions?: string[];
   };
 
-  if (!chatId || !message) {
+  if (!chatId || (!message && !isInit)) {
     return new Response("Missing chatId or message", { status: 400 });
   }
 
@@ -190,7 +211,7 @@ export async function POST(
           .join(", ")
       : "No specific channels";
 
-  const systemPrompt = promptTemplate
+  let systemPrompt = promptTemplate
     .replace(/\{\{projectName\}\}/g, project.name || "Unnamed Project")
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
@@ -198,6 +219,53 @@ export async function POST(
     .replace("{{projectDescription}}", project.description || "No description provided.")
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", idea.script || "*No script generated yet*");
+
+  // Add script finalization questions to context (for Q&A flow)
+  if (scriptQuestions && scriptQuestions.length > 0) {
+    systemPrompt += `
+
+## Script Finalization Questions
+
+Before generating the script, you need to gather specific information from the user. Here are the questions to ask:
+
+${scriptQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+**Important Q&A Guidelines:**
+- Ask these questions ONE AT A TIME
+- Wait for the user to answer before asking the next question
+- Keep track of which questions have been answered in the conversation
+- Once all questions have been answered (or the user says to just proceed), call \`generate_script\` with a summary of their answers
+- If the user says "just pick" or "use your best judgment", make reasonable choices and proceed with \`generate_script\`
+`;
+  }
+
+  // For initial welcome message, add special instructions
+  if (isInit) {
+    let initInstructions = `
+
+## Welcome Message Instructions
+
+This is the user's first visit to this idea. Generate a brief, friendly welcome message to help them get started. DO NOT call any tools for this message.
+
+Guidelines for your welcome message:
+- Be concise (2-3 sentences max)
+- Don't repeat the video title - they can already see it
+- Focus on what YOU need from THEM to help create a great script
+`;
+    
+    if (scriptQuestions && scriptQuestions.length > 0) {
+      initInstructions += `
+Since you have questions to ask, start with the FIRST question from the list above.`;
+    } else if (!idea.script) {
+      initInstructions += `
+No script has been generated yet. Let them know you can help create one when they're ready.`;
+    } else {
+      initInstructions += `
+A script already exists. Offer to help them refine it, change the hook, adjust the CTA, or anything else.`;
+    }
+    
+    systemPrompt += initInstructions;
+  }
 
   // Build messages array for API
   const apiMessages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: ToolCall[] }> = [
@@ -226,20 +294,28 @@ export async function POST(
     }
   }
 
-  // Add new user message
-  apiMessages.push({ role: "user", content: message });
-
-  // Save user message to database
-  const estimatedUserTokens = Math.ceil(message.length / 4);
-  await supabase.from("idea_chat_messages").insert({
-    chat_id: chatId,
-    role: "user",
-    content: message,
-    token_count: estimatedUserTokens,
-  });
+  // Add new user message (or init trigger)
+  if (isInit) {
+    // For init, we use a hidden trigger message that won't be saved
+    apiMessages.push({ role: "user", content: "[SYSTEM: Generate welcome message]" });
+  } else {
+    apiMessages.push({ role: "user", content: message });
+    
+    // Save user message to database
+    const estimatedUserTokens = Math.ceil(message.length / 4);
+    await supabase.from("idea_chat_messages").insert({
+      chat_id: chatId,
+      role: "user",
+      content: message,
+      token_count: estimatedUserTokens,
+    });
+  }
 
   // Create streaming response
   const encoder = new TextEncoder();
+
+  // Track generation log IDs created during tool execution (keyed by tool call ID)
+  const generationLogIdMap: Record<string, string> = {};
 
   // Helper to handle tool execution
   const executeToolCall = async (toolCall: ToolCall): Promise<string> => {
@@ -253,11 +329,87 @@ export async function POST(
         .eq("id", ideaId);
 
       if (error) {
+        // Log the failed update
+        const { data: logData } = await supabase.from("generation_logs").insert({
+          project_id: idea.project_id,
+          type: "script_update",
+          prompt_sent: `Update script for idea: ${idea.title}`,
+          response_raw: script,
+          model: "chat-tool",
+          error: error.message,
+          idea_id: ideaId,
+        }).select("id").single();
+        
+        if (logData?.id) {
+          generationLogIdMap[toolCall.id] = logData.id;
+        }
+
         return JSON.stringify({ success: false, error: error.message });
+      }
+
+      // Log the successful update
+      const { data: logData } = await supabase.from("generation_logs").insert({
+        project_id: idea.project_id,
+        type: "script_update",
+        prompt_sent: `Update script for idea: ${idea.title}`,
+        response_raw: script,
+        model: "chat-tool",
+        idea_id: ideaId,
+      }).select("id").single();
+      
+      if (logData?.id) {
+        generationLogIdMap[toolCall.id] = logData.id;
       }
 
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
       return JSON.stringify({ success: true, message: "Script updated successfully" });
+    }
+
+    if (toolCall.function.name === "generate_script") {
+      const { context_summary } = args;
+      
+      // Generate the script with the conversation context
+      const result = await generateScript(ideaId, context_summary);
+      
+      // Track the generation log ID for linking
+      if (result.generationLogId) {
+        generationLogIdMap[toolCall.id] = result.generationLogId;
+      }
+
+      if (result.error) {
+        return JSON.stringify({ success: false, error: result.error });
+      }
+
+      // Save context to idea
+      const { error: contextError } = await supabase
+        .from("ideas")
+        .update({ script_context: context_summary })
+        .eq("id", ideaId);
+
+      if (contextError) {
+        console.error("Failed to save script context:", contextError);
+      }
+
+      // Mark script_finalization todo complete with context as outcome
+      await completeScriptFinalization(ideaId, context_summary);
+
+      // Refresh asset todos in background
+      if (result.script) {
+        after(async () => {
+          try {
+            await refreshAssetTodos(ideaId, result.script!);
+          } catch (err) {
+            console.error("Failed to refresh asset todos:", err);
+          }
+        });
+      }
+
+      revalidatePath(`/${project.slug}/ideas/${ideaId}`);
+      return JSON.stringify({ 
+        success: true, 
+        message: "Script generated successfully",
+        script: result.script 
+      });
     }
 
     if (toolCall.function.name === "regenerate_idea") {
@@ -292,7 +444,7 @@ export async function POST(
     const stream = new ReadableStream({
       async start(controller) {
         let fullResponse = "";
-        let toolCallsToExecute: ToolCall[] = [];
+        const toolCallsToExecute: ToolCall[] = [];
         let inputTokens = 0;
         let outputTokens = 0;
 
@@ -433,6 +585,7 @@ export async function POST(
             messages_sent: apiMessages,
             response_raw: fullResponse,
             tool_calls_made: toolCallsToExecute.length > 0 ? toolCallsToExecute : null,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             input_tokens: inputTokens || null,
             output_tokens: outputTokens || null,
           });
@@ -448,6 +601,7 @@ export async function POST(
             project_id: idea.project_id,
             model: DEFAULT_MODEL,
             messages_sent: apiMessages,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             error: errorMessage,
           });
 
@@ -545,7 +699,7 @@ export async function POST(
             },
           });
 
-          let toolCallsToExecute: ToolCall[] = [];
+          const toolCallsToExecute: ToolCall[] = [];
 
           for await (const chunk of response) {
             const text = chunk.text;
@@ -626,6 +780,7 @@ export async function POST(
             messages_sent: apiMessages,
             response_raw: fullResponse,
             tool_calls_made: toolCallsToExecute.length > 0 ? toolCallsToExecute : null,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
           });
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
@@ -638,6 +793,7 @@ export async function POST(
             project_id: idea.project_id,
             model: TEXT_MODEL,
             messages_sent: apiMessages,
+            generation_log_ids: Object.keys(generationLogIdMap).length > 0 ? generationLogIdMap : null,
             error: errorMessage,
           });
 

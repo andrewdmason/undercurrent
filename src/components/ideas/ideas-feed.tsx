@@ -46,11 +46,6 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
   });
 
   const handleCardClick = (idea: IdeaWithChannels) => {
-    // For queue items, navigate to the detail page
-    if (viewType === "queue" && projectSlug) {
-      router.push(`/${projectSlug}/ideas/${idea.id}`);
-      return;
-    }
     // For inbox (New), don't do anything on card click
     if (viewType === "inbox") {
       return;
@@ -79,6 +74,7 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
             idea={idea}
             projectId={projectId}
             projectSlug={projectSlug}
+            href={viewType === "queue" && projectSlug ? `/${projectSlug}/ideas/${idea.id}` : undefined}
             onClick={() => handleCardClick(idea)}
             isLoadingImage={!idea.image_url}
             viewType={viewType}
