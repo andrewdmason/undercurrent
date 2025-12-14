@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { IdeasFeed } from "@/components/ideas/ideas-feed";
-import { IdeaWithChannels } from "@/lib/types";
+import { KanbanBoard } from "@/components/ideas/kanban-board";
+import { ViewToggle, ViewMode } from "@/components/ideas/view-toggle";
+import { IdeaWithChannels, KANBAN_STATUSES } from "@/lib/types";
 import { ChannelFilter } from "@/components/ideas/channel-filter";
 import { GenerateIdeasButton } from "@/components/ideas/generate-ideas-button";
 import { NewIdeasSection } from "@/components/ideas/new-ideas-section";
@@ -13,13 +15,15 @@ interface IdeasPageProps {
   }>;
   searchParams: Promise<{
     channels?: string;
+    view?: string;
   }>;
 }
 
 export default async function IdeasPage({ params, searchParams }: IdeasPageProps) {
   const { slug } = await params;
-  const { channels: channelFilter } = await searchParams;
+  const { channels: channelFilter, view: viewParam } = await searchParams;
   const selectedSlugs = channelFilter ? channelFilter.split(",") : [];
+  const currentView: ViewMode = viewParam === "grid" ? "grid" : "kanban";
   const supabase = await createClient();
 
   // Verify user is authenticated
@@ -67,7 +71,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
       .eq("project_id", project.id)
       .order("created_at", { ascending: true }),
 
-    // ACCEPTED ideas for this project (production queue), newest first
+    // Production pipeline ideas (preproduction, production, postproduction) - published has its own tab
     supabase
       .from("ideas")
       .select(`
@@ -108,8 +112,8 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
         )
       `)
       .eq("project_id", project.id)
-      .eq("status", "accepted")
-      .order("created_at", { ascending: false }),
+      .in("status", KANBAN_STATUSES as unknown as string[])
+      .order("sort_order", { ascending: true }),
 
     // NEW ideas for the review modal
     supabase
@@ -243,6 +247,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <ViewToggle currentView={currentView} />
               {(distributionChannels?.length ?? 0) > 0 && (
                 <ChannelFilter
                   channels={distributionChannels || []}
@@ -271,7 +276,11 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasFeed ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} viewType="queue" />
+            currentView === "kanban" ? (
+              <KanbanBoard ideas={typedIdeas} projectSlug={project.slug} />
+            ) : (
+              <IdeasFeed ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} viewType="queue" />
+            )
           ) : (
             <IdeasEmptyState />
           )}

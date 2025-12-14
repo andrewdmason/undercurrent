@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaTodo } from "@/lib/types";
+import { IdeaWithChannels, IdeaTodo, PRODUCTION_STATUSES } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 
 interface IdeaDetailPageProps {
@@ -136,8 +136,8 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
-  // Only allow access to accepted ideas
-  if (idea.status !== "accepted") {
+  // Only allow access to ideas in production pipeline (preproduction, production, postproduction, published)
+  if (!PRODUCTION_STATUSES.includes(idea.status as typeof PRODUCTION_STATUSES[number])) {
     redirect(`/${slug}`);
   }
 

@@ -1,6 +1,21 @@
 // Database types
 
-export type IdeaStatus = "new" | "rejected" | "accepted" | "published" | "canceled";
+export type IdeaStatus = "new" | "rejected" | "preproduction" | "production" | "postproduction" | "published" | "canceled";
+
+// Production pipeline statuses (for kanban board - excludes published which has its own tab)
+export const KANBAN_STATUSES = ["preproduction", "production", "postproduction"] as const;
+export type KanbanStatus = (typeof KANBAN_STATUSES)[number];
+
+// All production statuses including published (for querying)
+export const PRODUCTION_STATUSES = ["preproduction", "production", "postproduction", "published"] as const;
+export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
+
+// Human-readable labels for kanban statuses
+export const KANBAN_STATUS_LABELS: Record<KanbanStatus, string> = {
+  preproduction: "Preparing Script",
+  production: "Preparing Assets",
+  postproduction: "Ready to Edit",
+};
 
 export interface Idea {
   id: string;
@@ -15,6 +30,7 @@ export interface Idea {
   reject_reason: string | null;
   generation_batch_id: string | null;
   template_id: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

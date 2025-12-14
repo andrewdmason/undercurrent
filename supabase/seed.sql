@@ -372,7 +372,7 @@ insert into public.project_channels (
 -- ============================================
 -- SAMPLE IDEAS FOR TESTING
 -- Ideas utilize characters and target specific distribution channels
--- Statuses: new (inbox), accepted (queue), published, rejected, canceled
+-- Statuses: new (inbox), preproduction/production/postproduction (kanban), published, rejected, canceled
 -- ============================================
 
 insert into public.ideas (
@@ -387,7 +387,8 @@ insert into public.ideas (
   reject_reason,
   generation_batch_id,
   created_at,
-  updated_at
+  updated_at,
+  sort_order
 ) values
   -- ===========================================
   -- PUBLISHED VIDEOS (completed and live)
@@ -404,7 +405,63 @@ insert into public.ideas (
     null,
     'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
     now() - interval '14 days',
-    now() - interval '7 days'
+    now() - interval '7 days',
+    0
+  ),
+
+  -- ===========================================
+  -- PRODUCTION PIPELINE (distributed across kanban columns)
+  -- ===========================================
+  
+  -- PREPRODUCTION (Preparing Script)
+  (
+    'd2e3f4a5-b6c7-8901-ef12-345678901bcd',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'The Board Game Cafe Revolution: Industry Deep Dive',
+    'Andrew and Nabeel discuss the rise of board game cafes, what makes them work, and their vision for Tabletop Library. Great for building authority and SEO.',
+    E'Create a 12-minute talking head video on the board game cafe industry.\n\n## On-Screen Talent\nAndrew Mason & Nabeel Hyatt - co-founders with deep industry knowledge\n\n## Tone\nThoughtful, insider perspective, passionate but not salesy\n\n## Structure\n1. Hook: "Board game cafes are having a moment" (30 sec)\n2. The history - from niche to mainstream (2 min)\n3. What makes a great board game cafe (3 min)\n4. Common mistakes cafe owners make (2 min)\n5. Why membership models work (2 min)\n6. Our vision for Tabletop Library (2 min)\n7. CTA: Subscribe + visit us (30 sec)\n\n## Production Notes\n- Two-shot conversation format\n- Film in the club with games visible behind\n- Can cut to B-roll of the space',
+    E'[INTRO - Andrew and Nabeel sitting together]\n\nAndrew: So Nabeel, we''ve been getting a lot of questions about board game cafes lately...\n\nNabeel: Yeah, it feels like everywhere you look, a new one is opening up. There''s definitely something happening here.\n\nAndrew: Let''s talk about it. Why now? What''s driving this?\n\n[THE HISTORY]\n\nNabeel: Well, if you look at the data, board game sales have been growing double digits for years now...\n\n[Continue with full conversation...]',
+    '/seed/ideas/cafe-revolution.jpg',
+    'preproduction',
+    null,
+    'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
+    now() - interval '5 days',
+    now() - interval '5 days',
+    0
+  ),
+
+  -- PRODUCTION (Preparing Assets)
+  (
+    'd5e6f7a8-b9c0-1234-b345-678901234ef0',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Games That Will End Friendships (Affectionately)',
+    'Nabeel counts down the most friendship-testing games in our collection. Funny, relatable content with high share potential.',
+    E'Create a 60-second countdown video.\n\n## On-Screen Talent\nNabeel Hyatt - dry humor, knows competitive gaming\n\n## Tone\nFunny, knowing, "we''ve all been there"\n\n## Structure\n1. Hook: "These games WILL cause arguments" (3 sec)\n2. #5: Monopoly (duh) (8 sec)\n3. #4: Risk (those alliances) (10 sec)\n4. #3: Diplomacy (literal backstabbing) (10 sec)\n5. #2: Cosmic Encounter (negotiation chaos) (10 sec)\n6. #1: The Resistance/Secret Hitler (trust no one) (12 sec)\n7. CTA: "Come test your friendships" (7 sec)\n\n## Production Notes\n- Quick cuts, show each game box\n- Nabeel deadpan delivery\n- Maybe dramatic music stings',
+    E'[Nabeel standing with arms crossed, deadpan]\n\nNabeel: These games WILL cause arguments. I''m not sorry.\n\n[Dramatic sting - holds up Monopoly]\n\nNabeel: Number 5: Monopoly. Obviously. Next.\n\n[Holds up Risk]\n\nNabeel: Number 4: Risk. "I thought we had an alliance." You thought wrong.\n\n[Holds up Diplomacy]\n\nNabeel: Number 3: Diplomacy. This game has literally ended real friendships. I''ve seen it.\n\n[Holds up Cosmic Encounter]\n\nNabeel: Number 2: Cosmic Encounter. The negotiation phase alone...\n\n[Holds up Secret Hitler]\n\nNabeel: And number 1: Secret Hitler. Or The Resistance. Either way, trust no one.\n\n[Nabeel shrugs]\n\nNabeel: Come test your friendships at Tabletop Library. We have tissues.\n\n[End card]',
+    '/seed/ideas/end-friendships.jpg',
+    'production',
+    null,
+    'f2a3b4c5-d6e7-8901-d567-890123456012',
+    now() - interval '3 days',
+    now() - interval '3 days',
+    0
+  ),
+
+  -- POSTPRODUCTION (Ready to Edit)
+  (
+    'd9a0b1c2-d3e4-5678-f789-012345678324',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'The AI Concierge Demo: Finding Your Perfect Game',
+    'Andrew demos our AI concierge feature that helps members find games. Shows off a unique differentiator.',
+    E'Create a 40-second product demo video.\n\n## On-Screen Talent\nAndrew Mason - can speak to the tech/product side\n\n## Tone\nExcited about tech, but accessible and not too salesy\n\n## Structure\n1. Hook: "We built an AI to help you find games" (5 sec)\n2. Show the interface on phone/tablet (5 sec)\n3. Demo: "I want a 2-player game under an hour" (10 sec)\n4. AI gives recommendations with reasons (10 sec)\n5. "It knows our entire 800+ game collection" (5 sec)\n6. CTA: "Come try it yourself" (5 sec)\n\n## Production Notes\n- Screen recording + Andrew talking\n- Show real recommendations\n- Keep it snappy',
+    E'[Andrew holding phone/tablet, standing in club]\n\nAndrew: We built an AI to help you find your next favorite game.\n\n[Shows screen to camera]\n\nAndrew: Watch this. "I want a 2-player game, under an hour, that''s not too competitive."\n\n[Types/speaks into interface]\n\n[AI response appears on screen]\n\nAndrew: And it says... Patchwork, 7 Wonders Duel, and Jaipur. All great picks.\n\n[Turns phone back]\n\nAndrew: It knows our entire 800-game collection. Player count, complexity, themes, everything.\n\n[Gestures around club]\n\nAndrew: Come try it yourself. It''s like having a game expert in your pocket.\n\n[End card: @tabletoplibrary]',
+    '/seed/ideas/ai-concierge.jpg',
+    'postproduction',
+    null,
+    'a1b2c3d4-e5f6-7890-abcd-111111111111',
+    now() - interval '12 hours',
+    now() - interval '12 hours',
+    0
   ),
   (
     'd3e4f5a6-b7c8-9012-f123-456789012cde',
@@ -414,57 +471,12 @@ insert into public.ideas (
     E'Create a 30-second POV video for TikTok/Reels.\n\n## On-Screen Talent\nVera Devera - natural on camera, great with customers\n\n## Tone\nFunny, relatable, slightly chaotic energy\n\n## Script Concept\nPOV: You ask me for a game recommendation\n"How many players?"\n"Do they like strategy or luck?"\n"How much time do you have?"\n"Are they competitive or chill?"\n"Have they played Catan?"\n*hands them perfect game*\n"Trust me."\n\n## Production Notes\n- Film from customer POV (camera is the customer)\n- Quick cuts between questions\n- End with satisfied smile and game box reveal\n- Use trending audio if applicable',
     E'[Camera is the customer''s POV - Vera faces camera directly]\n\n[Customer approaches]\n\nVera: [friendly] Hey! Looking for a game?\n\n[Quick cut]\n\nVera: Okay, how many players?\n\n[Quick cut]\n\nVera: Do they like strategy... or more luck-based?\n\n[Quick cut]\n\nVera: How much time do you have?\n\n[Quick cut]\n\nVera: Are they competitive or chill?\n\n[Quick cut]\n\nVera: [squinting slightly] Have they played Catan?\n\n[Quick cut - Vera grabs a game box confidently]\n\nVera: [handing over box with a knowing smile] Trust me.\n\n[End card: @tabletoplibrary]',
     '/seed/ideas/pov-recommendation.jpg',
-    'published',
+    'postproduction',
     null,
     'f2a3b4c5-d6e7-8901-d567-890123456012',
     now() - interval '10 days',
-    now() - interval '5 days'
-  ),
-
-  -- ===========================================
-  -- PRODUCTION QUEUE (accepted, ready to film)
-  -- ===========================================
-  (
-    'd2e3f4a5-b6c7-8901-ef12-345678901bcd',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'The Board Game Cafe Revolution: Industry Deep Dive',
-    'Andrew and Nabeel discuss the rise of board game cafes, what makes them work, and their vision for Tabletop Library. Great for building authority and SEO.',
-    E'Create a 12-minute talking head video on the board game cafe industry.\n\n## On-Screen Talent\nAndrew Mason & Nabeel Hyatt - co-founders with deep industry knowledge\n\n## Tone\nThoughtful, insider perspective, passionate but not salesy\n\n## Structure\n1. Hook: "Board game cafes are having a moment" (30 sec)\n2. The history - from niche to mainstream (2 min)\n3. What makes a great board game cafe (3 min)\n4. Common mistakes cafe owners make (2 min)\n5. Why membership models work (2 min)\n6. Our vision for Tabletop Library (2 min)\n7. CTA: Subscribe + visit us (30 sec)\n\n## Production Notes\n- Two-shot conversation format\n- Film in the club with games visible behind\n- Can cut to B-roll of the space',
-    E'[INTRO - Andrew and Nabeel sitting together]\n\nAndrew: So Nabeel, we''ve been getting a lot of questions about board game cafes lately...\n\nNabeel: Yeah, it feels like everywhere you look, a new one is opening up. There''s definitely something happening here.\n\nAndrew: Let''s talk about it. Why now? What''s driving this?\n\n[THE HISTORY]\n\nNabeel: Well, if you look at the data, board game sales have been growing double digits for years now...\n\n[Continue with full conversation...]',
-    '/seed/ideas/cafe-revolution.jpg',
-    'accepted',
-    null,
-    'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
     now() - interval '5 days',
-    now() - interval '5 days'
-  ),
-  (
-    'd5e6f7a8-b9c0-1234-b345-678901234ef0',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Games That Will End Friendships (Affectionately)',
-    'Nabeel counts down the most friendship-testing games in our collection. Funny, relatable content with high share potential.',
-    E'Create a 60-second countdown video.\n\n## On-Screen Talent\nNabeel Hyatt - dry humor, knows competitive gaming\n\n## Tone\nFunny, knowing, "we''ve all been there"\n\n## Structure\n1. Hook: "These games WILL cause arguments" (3 sec)\n2. #5: Monopoly (duh) (8 sec)\n3. #4: Risk (those alliances) (10 sec)\n4. #3: Diplomacy (literal backstabbing) (10 sec)\n5. #2: Cosmic Encounter (negotiation chaos) (10 sec)\n6. #1: The Resistance/Secret Hitler (trust no one) (12 sec)\n7. CTA: "Come test your friendships" (7 sec)\n\n## Production Notes\n- Quick cuts, show each game box\n- Nabeel deadpan delivery\n- Maybe dramatic music stings',
-    E'[Nabeel standing with arms crossed, deadpan]\n\nNabeel: These games WILL cause arguments. I''m not sorry.\n\n[Dramatic sting - holds up Monopoly]\n\nNabeel: Number 5: Monopoly. Obviously. Next.\n\n[Holds up Risk]\n\nNabeel: Number 4: Risk. "I thought we had an alliance." You thought wrong.\n\n[Holds up Diplomacy]\n\nNabeel: Number 3: Diplomacy. This game has literally ended real friendships. I''ve seen it.\n\n[Holds up Cosmic Encounter]\n\nNabeel: Number 2: Cosmic Encounter. The negotiation phase alone...\n\n[Holds up Secret Hitler]\n\nNabeel: And number 1: Secret Hitler. Or The Resistance. Either way, trust no one.\n\n[Nabeel shrugs]\n\nNabeel: Come test your friendships at Tabletop Library. We have tissues.\n\n[End card]',
-    '/seed/ideas/end-friendships.jpg',
-    'accepted',
-    null,
-    'f2a3b4c5-d6e7-8901-d567-890123456012',
-    now() - interval '3 days',
-    now() - interval '3 days'
-  ),
-  (
-    'd9a0b1c2-d3e4-5678-f789-012345678324',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'The AI Concierge Demo: Finding Your Perfect Game',
-    'Andrew demos our AI concierge feature that helps members find games. Shows off a unique differentiator.',
-    E'Create a 40-second product demo video.\n\n## On-Screen Talent\nAndrew Mason - can speak to the tech/product side\n\n## Tone\nExcited about tech, but accessible and not too salesy\n\n## Structure\n1. Hook: "We built an AI to help you find games" (5 sec)\n2. Show the interface on phone/tablet (5 sec)\n3. Demo: "I want a 2-player game under an hour" (10 sec)\n4. AI gives recommendations with reasons (10 sec)\n5. "It knows our entire 800+ game collection" (5 sec)\n6. CTA: "Come try it yourself" (5 sec)\n\n## Production Notes\n- Screen recording + Andrew talking\n- Show real recommendations\n- Keep it snappy',
-    E'[Andrew holding phone/tablet, standing in club]\n\nAndrew: We built an AI to help you find your next favorite game.\n\n[Shows screen to camera]\n\nAndrew: Watch this. "I want a 2-player game, under an hour, that''s not too competitive."\n\n[Types/speaks into interface]\n\n[AI response appears on screen]\n\nAndrew: And it says... Patchwork, 7 Wonders Duel, and Jaipur. All great picks.\n\n[Turns phone back]\n\nAndrew: It knows our entire 800-game collection. Player count, complexity, themes, everything.\n\n[Gestures around club]\n\nAndrew: Come try it yourself. It''s like having a game expert in your pocket.\n\n[End card: @tabletoplibrary]',
-    '/seed/ideas/ai-concierge.jpg',
-    'accepted',
-    null,
-    'a1b2c3d4-e5f6-7890-abcd-111111111111',
-    now() - interval '12 hours',
-    now() - interval '12 hours'
+    1
   ),
   
   -- ===========================================
@@ -482,7 +494,8 @@ insert into public.ideas (
     null,
     'f2a3b4c5-d6e7-8901-d567-890123456012',
     now() - interval '3 days',
-    now() - interval '3 days'
+    now() - interval '3 days',
+    0
   ),
   (
     'd6e7f8a9-b0c1-2345-c456-789012345f01',
@@ -496,7 +509,8 @@ insert into public.ideas (
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
-    now() - interval '1 day'
+    now() - interval '1 day',
+    0
   ),
   (
     'd7e8f9a0-b1c2-3456-d567-890123456102',
@@ -510,7 +524,8 @@ insert into public.ideas (
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
-    now() - interval '1 day'
+    now() - interval '1 day',
+    0
   ),
   (
     'dab1c2d3-e4f5-6789-a890-123456789435',
@@ -524,7 +539,8 @@ insert into public.ideas (
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '12 hours',
-    now() - interval '12 hours'
+    now() - interval '12 hours',
+    0
   ),
   
   -- ===========================================
@@ -542,7 +558,8 @@ insert into public.ideas (
     'We don''t have enough footage from events yet to make this work. Will revisit after launch.',
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
-    now() - interval '1 day'
+    now() - interval '1 day',
+    0
   );
 
 -- ============================================
