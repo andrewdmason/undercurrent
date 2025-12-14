@@ -321,7 +321,14 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
 
           {/* Feed */}
           {typedIdeas.length > 0 ? (
-            <IdeasView ideas={typedIdeas} projectId={project.id} projectSlug={project.slug} />
+            <IdeasView 
+              ideas={typedIdeas} 
+              projectId={project.id} 
+              projectSlug={project.slug}
+              characters={characters}
+              channels={distributionChannels || []}
+              templates={templates}
+            />
           ) : (
             <IdeasEmptyState />
           )}

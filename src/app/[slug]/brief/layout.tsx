@@ -1,16 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels } from "@/lib/types";
-import { OnboardingProvider } from "@/components/onboarding/onboarding-context";
-import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
+import { BriefNav } from "@/components/brief/brief-nav";
+import { BriefProvider } from "@/components/brief/brief-context";
 
-interface OnboardingPageProps {
+interface BriefLayoutProps {
+  children: React.ReactNode;
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function OnboardingPage({ params }: OnboardingPageProps) {
+export default async function BriefLayout({ children, params }: BriefLayoutProps) {
   const { slug } = await params;
   const supabase = await createClient();
 
@@ -31,10 +32,10 @@ export default async function OnboardingPage({ params }: OnboardingPageProps) {
     notFound();
   }
 
-  // Verify user has access to this project
+  // Verify user has access to this project and get their role
   const { data: membership } = await supabase
     .from("project_members")
-    .select("id")
+    .select("id, role")
     .eq("project_id", project.id)
     .eq("user_id", user.id)
     .single();
@@ -42,6 +43,8 @@ export default async function OnboardingPage({ params }: OnboardingPageProps) {
   if (!membership) {
     notFound();
   }
+
+  const userRole = (membership.role as ProjectRole) || "member";
 
   // Get characters for this project
   const { data: characters } = await supabase
@@ -103,21 +106,40 @@ export default async function OnboardingPage({ params }: OnboardingPageProps) {
   }));
 
   return (
-    <OnboardingProvider
-      project={typedProject}
-      characters={typedCharacters}
-      channels={typedChannels}
-      topics={typedTopics}
-      templates={typedTemplates}
-    >
-      <OnboardingWizard />
-    </OnboardingProvider>
+    <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
+      <div className="flex-1 overflow-y-auto">
+        <div className="pb-12">
+          {/* Header */}
+          <div>
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+              <h1 className="text-xl font-medium text-[var(--grey-800)] tracking-[-0.25px]">
+                Creative Brief
+              </h1>
+              <p className="text-sm text-[var(--grey-400)] mt-0.5">
+                Define your brand, audience, and video marketing strategy
+              </p>
+            </div>
+          </div>
+
+          {/* Nav */}
+          <BriefNav slug={slug} />
+
+          {/* Content */}
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+            <BriefProvider
+              project={typedProject}
+              characters={typedCharacters}
+              channels={typedChannels}
+              topics={typedTopics}
+              templates={typedTemplates}
+              userRole={userRole}
+            >
+              {children}
+            </BriefProvider>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
-
-
-
-
-
-
 

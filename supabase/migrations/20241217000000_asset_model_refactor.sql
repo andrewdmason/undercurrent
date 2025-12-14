@@ -95,3 +95,4 @@ alter table public.ideas drop column if exists script_context;
 
 drop table if exists public.idea_todos;
 
+

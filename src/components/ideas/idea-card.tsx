@@ -5,17 +5,24 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate, Clock, Loader2 } from "lucide-react";
+import { Instagram, Youtube, Linkedin, Facebook, Globe, RefreshCw, Check, X, Play, Ban, LayoutTemplate, Clock, Loader2, Trash2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { IdeaWithChannels, DISTRIBUTION_PLATFORMS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { acceptIdea, cancelIdea } from "@/lib/actions/ideas";
+import { acceptIdea, cancelIdea, deleteIdea } from "@/lib/actions/ideas";
 import { ImageShimmer } from "@/components/ui/shimmer";
-import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { ViewType } from "./ideas-feed";
 import { IdeaAsset } from "@/lib/types";
 
@@ -262,6 +269,29 @@ export function IdeaCard({
     onPublish?.();
   };
 
+  const handleDelete = async () => {
+    try {
+      const result = await deleteIdea(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Idea deleted");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to delete idea");
+      console.error(error);
+    }
+  };
+
+  const handleContextPublish = () => {
+    onPublish?.();
+  };
+
+  const handleContextRemix = () => {
+    onRemix?.();
+  };
+
   // Shared class names for card wrapper
   const baseCardClasses = cn(
     "group rounded-lg border border-[var(--border)] bg-[var(--grey-0)]",
@@ -314,16 +344,6 @@ export function IdeaCard({
               </span>
             ))}
           </div>
-        )}
-
-        {/* Expand image button - top left on hover */}
-        {hasImage && !showShimmer && (
-          <ImageExpandButton
-            onClick={(e) => {
-              e.stopPropagation();
-              setLightboxOpen(true);
-            }}
-          />
         )}
 
         {/* Generate/Regenerate button - hide for queue view */}
@@ -558,33 +578,82 @@ export function IdeaCard({
     </>
   );
 
+  // Context menu content
+  const contextMenuContent = (
+    <ContextMenuContent className="w-48">
+      <ContextMenuItem
+        onClick={handleContextRemix}
+        disabled={!onRemix}
+        className="cursor-default"
+      >
+        <Sparkles className="mr-2 h-4 w-4" />
+        Remix Idea
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleGenerateThumbnail}
+        disabled={isGenerating}
+        className="cursor-default"
+      >
+        <RefreshCw className={cn("mr-2 h-4 w-4", isGenerating && "animate-spin")} />
+        {hasImage ? "Regenerate Thumbnail" : "Generate Thumbnail"}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={handleContextPublish}
+        disabled={!onPublish}
+        className="cursor-default"
+      >
+        <Send className="mr-2 h-4 w-4" />
+        Mark as Published
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={handleDelete}
+        className="text-[#f72736] focus:text-[#f72736] cursor-default"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Delete Idea
+      </ContextMenuItem>
+    </ContextMenuContent>
+  );
+
   // Render as Link if href provided, otherwise as article
   if (href) {
     return (
-      <Link
-        href={href}
-        className={cn(baseCardClasses, "cursor-pointer hover:shadow-md block")}
-      >
-        {cardContent}
-      </Link>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Link
+            href={href}
+            className={cn(baseCardClasses, "cursor-default hover:shadow-md block")}
+          >
+            {cardContent}
+          </Link>
+        </ContextMenuTrigger>
+        {contextMenuContent}
+      </ContextMenu>
     );
   }
 
   return (
-    <article
-      onClick={isClickable ? onClick : undefined}
-      className={cn(baseCardClasses, isClickable && "cursor-pointer hover:shadow-md")}
-      tabIndex={isClickable ? 0 : undefined}
-      onKeyDown={isClickable ? (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.();
-        }
-      } : undefined}
-      role={isClickable ? "button" : undefined}
-      aria-label={isClickable ? `View details for ${idea.title}` : undefined}
-    >
-      {cardContent}
-    </article>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <article
+          onClick={isClickable ? onClick : undefined}
+          className={cn(baseCardClasses, isClickable && "cursor-default hover:shadow-md")}
+          tabIndex={isClickable ? 0 : undefined}
+          onKeyDown={isClickable ? (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onClick?.();
+            }
+          } : undefined}
+          role={isClickable ? "button" : undefined}
+          aria-label={isClickable ? `View details for ${idea.title}` : undefined}
+        >
+          {cardContent}
+        </article>
+      </ContextMenuTrigger>
+      {contextMenuContent}
+    </ContextMenu>
   );
 }

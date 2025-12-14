@@ -75,6 +75,30 @@ Semi-transparent variants (`grey-50-a`, `grey-100-a`) are used for hover states 
 
 ---
 
+## Cursor Behavior
+
+Use **`cursor-default`** (normal arrow pointer) for most interactive elements in the app:
+
+| Element | Cursor | Reason |
+|---------|--------|--------|
+| Navigation tabs | `cursor-default` | App navigation, not external links |
+| Dropdown menus & items | `cursor-default` | In-app actions |
+| Cards (clickable) | `cursor-default` | Internal navigation |
+| List items (selectable) | `cursor-default` | Selection, not navigation away |
+| Buttons | `cursor-default` | Actions within the app |
+| Form inputs | default browser | Standard form behavior |
+
+Use **`cursor-pointer`** (hand) sparingly:
+
+| Element | Cursor | Reason |
+|---------|--------|--------|
+| External links | `cursor-pointer` | Indicates leaving the app |
+| Text links in content | `cursor-pointer` | Traditional web convention for inline links |
+
+**Rationale:** The hand cursor historically indicates "this will take you somewhere else." In a modern app context, most interactions keep you within the application, so the default arrow provides a more consistent, less distracting experience.
+
+---
+
 ## Quick Rules
 
 - **Primary buttons are black**, not blue
@@ -84,6 +108,7 @@ Semi-transparent variants (`grey-50-a`, `grey-100-a`) are used for hover states 
 - **Cyan = focus rings** — nothing else
 - **Inter** is the only font
 - **8px radius** on buttons, cards, inputs, dialogs
+- **cursor-default** for in-app interactions, **cursor-pointer** for external links only
 
 ---
 

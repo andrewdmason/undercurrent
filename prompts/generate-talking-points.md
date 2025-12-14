@@ -141,3 +141,4 @@ For a "3 Common Mistakes" video:
 
 The creator should be able to glance at this outline and know exactly what content to cover, then deliver it naturally in their own words and style.
 
+

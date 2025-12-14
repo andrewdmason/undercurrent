@@ -203,6 +203,42 @@ export async function cancelIdea(ideaId: string) {
   return { success: true };
 }
 
+// Delete an idea permanently
+export async function deleteIdea(ideaId: string) {
+  const supabase = await createClient();
+
+  // Get idea to find project_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("project_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  // Delete related records first (cascade should handle this, but being explicit)
+  await supabase.from("idea_channels").delete().eq("idea_id", ideaId);
+  await supabase.from("idea_characters").delete().eq("idea_id", ideaId);
+  await supabase.from("idea_topics").delete().eq("idea_id", ideaId);
+  await supabase.from("idea_assets").delete().eq("idea_id", ideaId);
+
+  // Delete the idea
+  const { error } = await supabase
+    .from("ideas")
+    .delete()
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error deleting idea:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
 // Publish an idea with video URLs for each channel
 export async function publishIdea(
   ideaId: string, 

@@ -520,84 +520,15 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
               )}
 
               {/* Description Card with all metadata */}
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-4">
-                {idea.description && (
-                  <>
-                    <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
-                      Description
-                    </h4>
-                    <p className="text-sm text-[var(--grey-800)] leading-relaxed">
-                      {idea.description}
-                    </p>
-                  </>
-                )}
-                
-                {/* All Pills - Channels, Template, Characters, Topics */}
-                {((idea.channels?.length ?? 0) > 0 || idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
-                  <div className={cn("flex items-center gap-1.5 flex-wrap", idea.description && "mt-4 pt-4 border-t border-[var(--border)]")}>
-                    {/* Channel Pills */}
-                    {idea.channels?.map((channel) => {
-                      const fullChannel = projectChannels.find(c => c.id === channel.id);
-                      return (
-                        <button
-                          key={channel.id}
-                          onClick={() => fullChannel && setEditingChannel(fullChannel)}
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
-                        >
-                          <PlatformIcon platform={channel.platform} />
-                          {getChannelLabel(channel.platform, channel.custom_label)}
-                        </button>
-                      );
-                    })}
-                    {/* Template Pill */}
-                    {idea.template && fullTemplate && (
-                      <button
-                        onClick={() => setEditingTemplate(fullTemplate)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
-                      >
-                        <LayoutTemplate className="h-3 w-3" />
-                        {idea.template.name}
-                      </button>
-                    )}
-                    {/* Topic Pills */}
-                    {idea.topics?.map((topic) => (
-                      <button
-                        key={topic.id}
-                        onClick={() => setEditingTopic(topic)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
-                      >
-                        <Tag className="h-3 w-3" />
-                        {topic.name}
-                      </button>
-                    ))}
-                    {/* Character Avatars */}
-                    {idea.characters?.map((character) => (
-                      <button
-                        key={character.id}
-                        onClick={() => setEditingCharacter(character)}
-                        className="hover:ring-2 hover:ring-[var(--grey-300)] rounded-full transition-all cursor-pointer"
-                        title={character.name}
-                      >
-                        {character.image_url ? (
-                          <div className="w-5 h-5 rounded-full overflow-hidden">
-                            <Image
-                              src={character.image_url}
-                              alt={character.name}
-                              width={20}
-                              height={20}
-                              className="w-full h-full object-cover scale-125"
-                            />
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--grey-100)] text-[var(--grey-500)]">
-                            <User className="h-3 w-3" />
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <DescriptionCard 
+                idea={idea} 
+                projectChannels={projectChannels} 
+                fullTemplate={fullTemplate} 
+                setEditingChannel={setEditingChannel} 
+                setEditingTemplate={setEditingTemplate} 
+                setEditingTopic={setEditingTopic} 
+                setEditingCharacter={setEditingCharacter} 
+              />
 
               {/* Assets List - expands to fill remaining space */}
               <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
@@ -658,7 +589,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                 <div
                                   key={asset.id}
                                   className={cn(
-                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-pointer",
+                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
                                     selectedAssetId === asset.id
                                       ? "bg-[var(--grey-100)]"
                                       : "hover:bg-[var(--grey-50)]"
@@ -1051,6 +982,126 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         onClose={() => setEditingChannel(null)}
         onUpdate={() => router.refresh()}
       />
+    </div>
+  );
+}
+
+// ===========================================
+// Description Card with Truncation
+// ===========================================
+
+interface DescriptionCardProps {
+  idea: IdeaWithChannels;
+  projectChannels: DistributionChannel[];
+  fullTemplate: ProjectTemplateWithChannels | null;
+  setEditingChannel: (channel: DistributionChannel) => void;
+  setEditingTemplate: (template: ProjectTemplateWithChannels) => void;
+  setEditingTopic: (topic: { id: string; name: string; description?: string | null }) => void;
+  setEditingCharacter: (character: { id: string; name: string; description?: string | null; image_url: string | null }) => void;
+}
+
+function DescriptionCard({ 
+  idea, 
+  projectChannels, 
+  fullTemplate, 
+  setEditingChannel, 
+  setEditingTemplate, 
+  setEditingTopic, 
+  setEditingCharacter 
+}: DescriptionCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--grey-0)] p-4">
+      {idea.description && (
+        <>
+          <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider mb-2">
+            Description
+          </h4>
+          <div className="relative">
+            <p className={cn(
+              "text-sm text-[var(--grey-800)] leading-relaxed",
+              !isExpanded && "line-clamp-3"
+            )}>
+              {idea.description}
+            </p>
+            {!isExpanded && idea.description.length > 200 && (
+              <button
+                onClick={() => setIsExpanded(true)}
+                className="text-sm text-[var(--grey-500)] hover:text-[var(--grey-700)] mt-1 underline"
+              >
+                more
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      
+      {/* All Pills - Channels, Template, Characters, Topics */}
+      {((idea.channels?.length ?? 0) > 0 || idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
+        <div className={cn("flex items-center gap-1.5 flex-wrap", idea.description && "mt-4 pt-4 border-t border-[var(--border)]")}>
+          {/* Channel Pills */}
+          {idea.channels?.map((channel) => {
+            const fullChannel = projectChannels.find(c => c.id === channel.id);
+            return (
+              <button
+                key={channel.id}
+                onClick={() => fullChannel && setEditingChannel(fullChannel)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+              >
+                <PlatformIcon platform={channel.platform} />
+                {getChannelLabel(channel.platform, channel.custom_label)}
+              </button>
+            );
+          })}
+          {/* Template Pill */}
+          {idea.template && fullTemplate && (
+            <button
+              onClick={() => setEditingTemplate(fullTemplate)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+            >
+              <LayoutTemplate className="h-3 w-3" />
+              {idea.template.name}
+            </button>
+          )}
+          {/* Topic Pills */}
+          {idea.topics?.map((topic) => (
+            <button
+              key={topic.id}
+              onClick={() => setEditingTopic(topic)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+            >
+              <Tag className="h-3 w-3" />
+              {topic.name}
+            </button>
+          ))}
+          {/* Character Avatars */}
+          {idea.characters?.map((character) => (
+            <button
+              key={character.id}
+              onClick={() => setEditingCharacter(character)}
+              className="hover:ring-2 hover:ring-[var(--grey-300)] rounded-full transition-all cursor-pointer"
+              title={character.name}
+            >
+              {character.image_url ? (
+                <div className="w-5 h-5 rounded-full overflow-hidden">
+                  <Image
+                    src={character.image_url}
+                    alt={character.name}
+                    width={20}
+                    height={20}
+                    className="w-full h-full object-cover scale-125"
+                  />
+                </div>
+              ) : (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--grey-100)] text-[var(--grey-500)]">
+                  <User className="h-3 w-3" />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -7,27 +7,21 @@ import { updateProjectInfo, checkSlugAvailability } from "@/lib/actions/project"
 import { generateSlug } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn, normalizeUrl } from "@/lib/utils";
-import { useSettings } from "@/components/settings/settings-context";
+import { cn } from "@/lib/utils";
 
-interface ProjectInfoFormProps {
+interface ProjectSettingsFormProps {
   project: Project;
-  userRole?: ProjectRole; // Optional - will use context if not provided
+  userRole: ProjectRole;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type SlugStatus = "idle" | "checking" | "available" | "taken";
 
-export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfoFormProps) {
+export function ProjectSettingsForm({ project, userRole }: ProjectSettingsFormProps) {
   const router = useRouter();
-  const settings = useSettings();
-  const userRole = propUserRole ?? settings.userRole;
   const isAdmin = userRole === "admin";
   const [name, setName] = useState(project.name);
   const [slug, setSlug] = useState(project.slug);
-  const [url, setUrl] = useState(project.url || "");
-  const [description, setDescription] = useState(project.description || "");
-  const [businessObjectives, setBusinessObjectives] = useState(project.business_objectives || "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -69,7 +63,7 @@ export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfo
 
   // Debounced save function
   const saveChanges = useCallback(
-    async (data: { name?: string; slug?: string; url?: string; description?: string; business_objectives?: string }) => {
+    async (data: { name?: string; slug?: string }) => {
       // Don't save if slug is taken or empty
       if (data.slug !== project.slug) {
         if (!data.slug || slugStatus === "taken" || slugStatus === "checking") {
@@ -81,9 +75,6 @@ export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfo
       const result = await updateProjectInfo(project.id, {
         name: data.name,
         slug: data.slug,
-        url: normalizeUrl(data.url || "") || null,
-        description: data.description || null,
-        business_objectives: data.business_objectives || null,
       });
 
       if (result.error) {
@@ -111,56 +102,26 @@ export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfo
   useEffect(() => {
     if (name === project.name) return;
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug });
     }, 800);
     return () => clearTimeout(timer);
-  }, [name, slug, url, description, businessObjectives, project.name, saveChanges]);
+  }, [name, slug, project.name, saveChanges]);
 
   // Debounce effect for slug
   useEffect(() => {
     if (slug === project.slug) return;
     if (slugStatus !== "available") return; // Only save when slug is available
     const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
+      saveChanges({ name, slug });
     }, 800);
     return () => clearTimeout(timer);
-  }, [slug, name, url, description, businessObjectives, project.slug, slugStatus, saveChanges]);
-
-  // Debounce effect for url
-  useEffect(() => {
-    const originalUrl = project.url || "";
-    if (url === originalUrl) return;
-    const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [url, name, slug, description, businessObjectives, project.url, saveChanges]);
-
-  // Debounce effect for description
-  useEffect(() => {
-    const originalDesc = project.description || "";
-    if (description === originalDesc) return;
-    const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [description, name, slug, url, businessObjectives, project.description, saveChanges]);
-
-  // Debounce effect for business objectives
-  useEffect(() => {
-    const originalObjectives = project.business_objectives || "";
-    if (businessObjectives === originalObjectives) return;
-    const timer = setTimeout(() => {
-      saveChanges({ name, slug, url, description, business_objectives: businessObjectives });
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [businessObjectives, name, slug, url, description, project.business_objectives, saveChanges]);
+  }, [slug, name, project.slug, slugStatus, saveChanges]);
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-white p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-[var(--grey-800)]">
-          Project Info
+          Project Settings
         </h2>
         <SaveStatusIndicator status={saveStatus} />
       </div>
@@ -232,70 +193,6 @@ export function ProjectInfoForm({ project, userRole: propUserRole }: ProjectInfo
             </p>
           )}
         </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="url" className="text-xs text-[var(--grey-600)]">
-            Website URL
-            {!isAdmin && <span className="ml-1 text-[var(--grey-400)]">(admin only)</span>}
-          </Label>
-          <Input
-            id="url"
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="example.com"
-            disabled={!isAdmin}
-            className={cn(
-              "h-8 rounded-lg bg-black/[0.03] border-0 focus-visible:ring-2 focus-visible:ring-[#007bc2]",
-              !isAdmin && "opacity-60 cursor-not-allowed"
-            )}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="description"
-            className="text-xs text-[var(--grey-600)]"
-          >
-            Description
-          </Label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe your project..."
-            rows={3}
-            className={cn(
-              "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
-              "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
-              "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-              "resize-none"
-            )}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label
-            htmlFor="businessObjectives"
-            className="text-xs text-[var(--grey-600)]"
-          >
-            Business Objectives
-          </Label>
-          <textarea
-            id="businessObjectives"
-            value={businessObjectives}
-            onChange={(e) => setBusinessObjectives(e.target.value)}
-            placeholder="What are your goals for video marketing? (e.g., drive sign-ups, increase sales, build brand awareness)&#10;&#10;How will you measure success?&#10;&#10;Who is your target audience?"
-            rows={4}
-            className={cn(
-              "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
-              "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
-              "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-              "resize-none"
-            )}
-          />
-        </div>
-
       </div>
     </div>
   );
@@ -319,3 +216,4 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
     </span>
   );
 }
+

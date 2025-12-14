@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
-import { SettingsNav } from "@/components/settings/settings-nav";
-import { SettingsProvider } from "@/components/settings/settings-context";
+import { Project, ProjectRole } from "@/lib/types";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -44,66 +42,8 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
     notFound();
   }
 
-  const userRole = (membership.role as ProjectRole) || "member";
-
-  // Get characters for this project
-  const { data: characters } = await supabase
-    .from("project_characters")
-    .select("*")
-    .eq("project_id", project.id)
-    .order("created_at", { ascending: true });
-
-  // Get distribution channels for this project
-  const { data: distributionChannels } = await supabase
-    .from("project_channels")
-    .select("*")
-    .eq("project_id", project.id)
-    .order("created_at", { ascending: true });
-
-  // Get topics for this project
-  const { data: topics } = await supabase
-    .from("project_topics")
-    .select("*")
-    .eq("project_id", project.id)
-    .order("created_at", { ascending: true });
-
-  // Get templates for this project with their channel associations
-  const { data: templates } = await supabase
-    .from("project_templates")
-    .select(`
-      *,
-      template_channels (
-        channel_id,
-        project_channels (
-          id,
-          platform,
-          custom_label
-        )
-      )
-    `)
-    .eq("project_id", project.id)
-    .order("created_at", { ascending: false });
-
   const typedProject = project as Project;
-  const typedCharacters = (characters || []) as ProjectCharacter[];
-  const typedChannels = (distributionChannels || []) as DistributionChannel[];
-  const typedTopics = (topics || []) as ProjectTopic[];
-
-  // Transform templates to flatten channel info
-  const typedTemplates: ProjectTemplateWithChannels[] = (templates || []).map((template) => ({
-    ...template,
-    channels: (template.template_channels || [])
-      .map((tc: { channel_id: string; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => {
-        const channel = tc.project_channels;
-        return channel ? {
-          id: channel.id,
-          platform: channel.platform,
-          custom_label: channel.custom_label,
-        } : null;
-      })
-      .filter((c: unknown): c is { id: string; platform: string; custom_label: string | null } => c !== null),
-    template_channels: undefined,
-  }));
+  const userRole = (membership.role as ProjectRole) || "member";
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[var(--grey-25)]">
@@ -116,29 +56,46 @@ export default async function SettingsLayout({ children, params }: SettingsLayou
                 Project Settings
               </h1>
               <p className="text-sm text-[var(--grey-400)] mt-0.5">
-                Configure your project details and video marketing strategy
+                Manage your project name, permalink, and access
               </p>
             </div>
           </div>
 
-          {/* Nav */}
-          <SettingsNav slug={slug} />
-
           {/* Content */}
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-            <SettingsProvider
-              project={typedProject}
-              characters={typedCharacters}
-              channels={typedChannels}
-              topics={typedTopics}
-              templates={typedTemplates}
-              userRole={userRole}
-            >
+            {/* Pass data to children via a wrapper component or directly render */}
+            <SettingsContent project={typedProject} userRole={userRole}>
               {children}
-            </SettingsProvider>
+            </SettingsContent>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// Client wrapper to pass data via context
+import { SettingsProvider } from "@/components/settings/settings-context";
+
+function SettingsContent({ 
+  children, 
+  project, 
+  userRole 
+}: { 
+  children: React.ReactNode; 
+  project: Project; 
+  userRole: ProjectRole;
+}) {
+  return (
+    <SettingsProvider
+      project={project}
+      characters={[]}
+      channels={[]}
+      topics={[]}
+      templates={[]}
+      userRole={userRole}
+    >
+      {children}
+    </SettingsProvider>
   );
 }
