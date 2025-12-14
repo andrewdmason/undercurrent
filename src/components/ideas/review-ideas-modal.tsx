@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { IdeasStack } from "./ideas-stack";
+import { IdeaReviewer } from "./idea-reviewer";
 
 interface ReviewIdeasModalProps {
   open: boolean;
@@ -34,24 +34,25 @@ export function ReviewIdeasModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col p-0"
+        className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
         showCloseButton={true}
       >
-        <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogHeader>
           <DialogTitle>Review New Ideas</DialogTitle>
           <DialogDescription>
             Accept ideas to add them to your create queue, or reject to remove them.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <IdeasStack
+        <div className="flex-1 min-h-0">
+          <IdeaReviewer
             ideas={ideas}
             projectId={projectId}
             projectSlug={projectSlug}
             characters={characters}
             channels={channels}
             templates={templates}
+            onComplete={() => onOpenChange(false)}
           />
         </div>
       </DialogContent>

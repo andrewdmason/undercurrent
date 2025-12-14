@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IdeaWithChannels } from "@/lib/types";
 import { NewIdeasAlertBar } from "./new-ideas-alert-bar";
 import { ReviewIdeasModal } from "./review-ideas-modal";
@@ -26,6 +26,14 @@ export function NewIdeasSection({
 
   const totalNewIdeas = ideas.length;
   const readyCount = ideas.filter((idea) => idea.image_url !== null).length;
+  const isReadyForReview = totalNewIdeas > 0 && readyCount >= totalNewIdeas;
+
+  // Close modal if ideas are no longer ready for review (e.g., new generation started)
+  useEffect(() => {
+    if (!isReadyForReview && isModalOpen) {
+      setIsModalOpen(false);
+    }
+  }, [isReadyForReview, isModalOpen]);
 
   // Always render - the alert bar handles its own visibility
   // (it shows during pending generation even when ideas.length === 0)
@@ -37,7 +45,8 @@ export function NewIdeasSection({
         onReviewClick={() => setIsModalOpen(true)}
       />
 
-      {ideas.length > 0 && (
+      {/* Only render modal when ideas are ready for review (all thumbnails generated) */}
+      {isReadyForReview && (
         <ReviewIdeasModal
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
