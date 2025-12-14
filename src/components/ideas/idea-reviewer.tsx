@@ -211,14 +211,6 @@ export function IdeaReviewer({
       }
 
       await animationPromise;
-
-      toast.success("Idea accepted!", {
-        action: {
-          label: "Undo",
-          onClick: () => handleUndoAccept(ideaToAccept.id, ideaToAccept.title),
-        },
-      });
-
       isProcessingRef.current = false;
     } catch (error) {
       toast.error("Failed to accept idea");
@@ -262,13 +254,6 @@ export function IdeaReviewer({
           prev?.id === ideaToReject.id ? null : prev
         );
       }, 8000);
-
-      toast("Idea rejected", {
-        action: {
-          label: "Undo",
-          onClick: () => handleUndoReject(ideaToReject.id, ideaToReject.title),
-        },
-      });
 
       isProcessingRef.current = false;
     } catch (error) {

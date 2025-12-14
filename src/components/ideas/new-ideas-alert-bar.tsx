@@ -90,7 +90,7 @@ export function NewIdeasAlertBar({
       window.removeEventListener("ideas-generation-start", handleGenerationStart as EventListener);
       window.removeEventListener("ideas-generation-error", handleGenerationError as EventListener);
     };
-  }, []);
+  }, [totalNewIdeas]);
 
   // Poll for updates while generating
   const checkForUpdates = useCallback(async () => {

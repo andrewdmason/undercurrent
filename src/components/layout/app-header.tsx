@@ -111,7 +111,8 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
       name: "Ideas",
       href: `/${navSlug}`,
       count: ideasCount,
-      isActive: pathname === `/${navSlug}`,
+      // Match root and idea detail pages (e.g., /{slug}/ideas/{ideaId})
+      isActive: pathname === `/${navSlug}` || pathname?.startsWith(`/${navSlug}/ideas/`),
     },
     {
       name: "Published",
