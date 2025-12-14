@@ -386,12 +386,13 @@ insert into public.ideas (
   description,
   prompt,
   image_url,
-  status,
+  accepted_at,
+  published_at,
+  canceled_at,
   reject_reason,
   generation_batch_id,
   created_at,
   updated_at,
-  sort_order,
   recording_style
 ) values
   -- ===========================================
@@ -404,12 +405,13 @@ insert into public.ideas (
     'Vera walks through the complete rules of Wingspan in her signature welcoming teaching style. Perfect for members who want to learn before visiting.',
     E'Create an 8-minute complete tutorial for Wingspan.\n\n## On-Screen Talent\nVera Devera - she''s our expert game teacher and GM\n\n## Tone\nWarm, patient, encouraging - like learning from a friend\n\n## Structure\n1. Intro: Vera at a table with Wingspan set up (30 sec)\n2. Goal of the game explanation (1 min)\n3. Turn structure walkthrough (2 min)\n4. Bird powers and habitats (2 min)\n5. End-of-round scoring (1 min)\n6. Pro tips for first-time players (1 min)\n7. Outro: "Come play with us!" (30 sec)\n\n## Production Notes\n- Shoot at our best table with good lighting\n- Use top-down camera for board shots\n- Vera should have game pieces to demonstrate',
     '/seed/ideas/wingspan-tutorial.jpg',
-    'published',
+    now() - interval '14 days',
+    now() - interval '7 days',
+    null,
     null,
     'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
     now() - interval '14 days',
     now() - interval '7 days',
-    0,
     'scripted'
   ),
 
@@ -425,12 +427,13 @@ insert into public.ideas (
     'Andrew and Nabeel discuss the rise of board game cafes, what makes them work, and their vision for Tabletop Library. Great for building authority and SEO.',
     E'Create a 12-minute talking head video on the board game cafe industry.\n\n## On-Screen Talent\nAndrew Mason & Nabeel Hyatt - co-founders with deep industry knowledge\n\n## Tone\nThoughtful, insider perspective, passionate but not salesy\n\n## Structure\n1. Hook: "Board game cafes are having a moment" (30 sec)\n2. The history - from niche to mainstream (2 min)\n3. What makes a great board game cafe (3 min)\n4. Common mistakes cafe owners make (2 min)\n5. Why membership models work (2 min)\n6. Our vision for Tabletop Library (2 min)\n7. CTA: Subscribe + visit us (30 sec)\n\n## Production Notes\n- Two-shot conversation format\n- Film in the club with games visible behind\n- Can cut to B-roll of the space',
     '/seed/ideas/cafe-revolution.jpg',
-    'preproduction',
+    now() - interval '5 days',
+    null,
+    null,
     null,
     'e1f2a3b4-c5d6-7890-ef12-345678901bcd',
     now() - interval '5 days',
     now() - interval '5 days',
-    0,
     'talking_points'
   ),
 
@@ -442,12 +445,13 @@ insert into public.ideas (
     'Nabeel counts down the most friendship-testing games in our collection. Funny, relatable content with high share potential.',
     E'Create a 60-second countdown video.\n\n## On-Screen Talent\nNabeel Hyatt - dry humor, knows competitive gaming\n\n## Tone\nFunny, knowing, "we''ve all been there"\n\n## Structure\n1. Hook: "These games WILL cause arguments" (3 sec)\n2. #5: Monopoly (duh) (8 sec)\n3. #4: Risk (those alliances) (10 sec)\n4. #3: Diplomacy (literal backstabbing) (10 sec)\n5. #2: Cosmic Encounter (negotiation chaos) (10 sec)\n6. #1: The Resistance/Secret Hitler (trust no one) (12 sec)\n7. CTA: "Come test your friendships" (7 sec)\n\n## Production Notes\n- Quick cuts, show each game box\n- Nabeel deadpan delivery\n- Maybe dramatic music stings',
     '/seed/ideas/end-friendships.jpg',
-    'production',
+    now() - interval '3 days',
+    null,
+    null,
     null,
     'f2a3b4c5-d6e7-8901-d567-890123456012',
     now() - interval '3 days',
     now() - interval '3 days',
-    0,
     'scripted'
   ),
 
@@ -459,12 +463,13 @@ insert into public.ideas (
     'Andrew demos our AI concierge feature that helps members find games. Shows off a unique differentiator.',
     E'Create a 40-second product demo video.\n\n## On-Screen Talent\nAndrew Mason - can speak to the tech/product side\n\n## Tone\nExcited about tech, but accessible and not too salesy\n\n## Structure\n1. Hook: "We built an AI to help you find games" (5 sec)\n2. Show the interface on phone/tablet (5 sec)\n3. Demo: "I want a 2-player game under an hour" (10 sec)\n4. AI gives recommendations with reasons (10 sec)\n5. "It knows our entire 800+ game collection" (5 sec)\n6. CTA: "Come try it yourself" (5 sec)\n\n## Production Notes\n- Screen recording + Andrew talking\n- Show real recommendations\n- Keep it snappy',
     '/seed/ideas/ai-concierge.jpg',
-    'postproduction',
+    now() - interval '12 hours',
+    null,
+    null,
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '12 hours',
     now() - interval '12 hours',
-    0,
     'scripted'
   ),
   (
@@ -474,12 +479,13 @@ insert into public.ideas (
     'Vera does a trending POV format video where someone asks for a game rec and she rapid-fires questions back. Relatable and funny.',
     E'Create a 30-second POV video for TikTok/Reels.\n\n## On-Screen Talent\nVera Devera - natural on camera, great with customers\n\n## Tone\nFunny, relatable, slightly chaotic energy\n\n## Script Concept\nPOV: You ask me for a game recommendation\n"How many players?"\n"Do they like strategy or luck?"\n"How much time do you have?"\n"Are they competitive or chill?"\n"Have they played Catan?"\n*hands them perfect game*\n"Trust me."\n\n## Production Notes\n- Film from customer POV (camera is the customer)\n- Quick cuts between questions\n- End with satisfied smile and game box reveal\n- Use trending audio if applicable',
     '/seed/ideas/pov-recommendation.jpg',
-    'postproduction',
+    now() - interval '10 days',
+    null,
+    null,
     null,
     'f2a3b4c5-d6e7-8901-d567-890123456012',
     now() - interval '10 days',
     now() - interval '5 days',
-    1,
     'scripted'
   ),
   
@@ -493,12 +499,13 @@ insert into public.ideas (
     'Andrew does a quick unboxing of whatever is #1 on BoardGameGeek''s hotness list. Timely content that rides existing search interest.',
     E'Create a 45-second unboxing video.\n\n## On-Screen Talent\nAndrew Mason - brings entrepreneurial energy to unboxings\n\n## Tone\nExcited, ASMR-adjacent, builds anticipation\n\n## Structure\n1. Hook: "This is the #1 game on BoardGameGeek right now" (3 sec)\n2. Show the box, read the name (5 sec)\n3. Open the box, react to components (15 sec)\n4. Highlight 2-3 coolest pieces (15 sec)\n5. "Come play it at Tabletop Library" (7 sec)\n\n## Production Notes\n- Clean table, good lighting\n- ASMR-style audio (component sounds)\n- Andrew''s hands + voiceover, face optional',
     '/seed/ideas/unboxing-hotness.jpg',
-    'new',
+    null,
+    null,
+    null,
     null,
     'f2a3b4c5-d6e7-8901-d567-890123456012',
     now() - interval '3 days',
     now() - interval '3 days',
-    0,
     null
   ),
   (
@@ -508,12 +515,13 @@ insert into public.ideas (
     'Behind-the-scenes morning routine video showing Vera opening the club. Builds connection and shows the care that goes into the space.',
     E'Create a 45-second day-in-the-life video.\n\n## On-Screen Talent\nVera Devera - as GM, she opens the club\n\n## Tone\nCozy, authentic, satisfying routine content\n\n## Shot List\n1. Vera arriving, keys in hand (3 sec)\n2. Lights coming on, revealing game shelves (5 sec)\n3. Starting the coffee machine (5 sec)\n4. Straightening games on shelves (8 sec)\n5. Setting up the "new arrivals" display (8 sec)\n6. Flipping the sign to "Open" (5 sec)\n7. First members walking in (8 sec)\n8. Vera wave: "Come hang out" (3 sec)\n\n## Production Notes\n- Natural morning light\n- Cozy background music\n- Show the care and intention',
     '/seed/ideas/day-in-life.jpg',
-    'new',
+    null,
+    null,
+    null,
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
     now() - interval '1 day',
-    0,
     null
   ),
   (
@@ -523,12 +531,13 @@ insert into public.ideas (
     'Andrew rates popular games on a "teaching difficulty" scale. Useful content that helps people choose games for their groups.',
     E'Create a 50-second rating video.\n\n## On-Screen Talent\nAndrew Mason - experienced at teaching games to new players\n\n## Tone\nHelpful, honest, slightly self-deprecating\n\n## Structure\n1. Hook: "How hard is this game to teach?" (3 sec)\n2. Tier 1 - "Anyone can learn in 2 minutes": Azul, Codenames (10 sec)\n3. Tier 2 - "One practice round": Ticket to Ride, Carcassonne (10 sec)\n4. Tier 3 - "Watch a video first": Wingspan, Everdell (10 sec)\n5. Tier 4 - "Clear your afternoon": Terraforming Mars (10 sec)\n6. Tier 5 - "Just... good luck": Twilight Imperium (7 sec)\n\n## Production Notes\n- Show game boxes as rating\n- On-screen tier labels\n- Andrew can hold/gesture at games',
     '/seed/ideas/teaching-difficulty.jpg',
-    'new',
+    null,
+    null,
+    null,
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
     now() - interval '1 day',
-    0,
     null
   ),
   (
@@ -538,12 +547,13 @@ insert into public.ideas (
     'Nabeel shows off some rare/out-of-print games in our collection. Appeals to collectors and serious hobbyists.',
     E'Create a 60-second rare games showcase.\n\n## On-Screen Talent\nNabeel Hyatt - deep knowledge of game industry/history\n\n## Tone\nExcited collector energy, "you can''t get this anywhere else"\n\n## Structure\n1. Hook: "Games you literally can''t buy anymore" (5 sec)\n2. Game 1: Show box, why it''s special, current value (15 sec)\n3. Game 2: Show box, why it''s rare (15 sec)\n4. Game 3: The crown jewel (15 sec)\n5. "And you can just... play them here" (5 sec)\n6. CTA: "800+ games, including the ones money can''t buy" (5 sec)\n\n## Production Notes\n- Dramatic reveals\n- Show eBay prices if applicable\n- Nabeel should hold games reverently',
     '/seed/ideas/rare-games.jpg',
-    'new',
+    null,
+    null,
+    null,
     null,
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '12 hours',
     now() - interval '12 hours',
-    0,
     null
   ),
   
@@ -557,12 +567,13 @@ insert into public.ideas (
     'Quick montage of last Saturday''s game night energy. Shows the community vibe and FOMO-inducing moments.',
     E'Create a 30-second event montage.\n\n## On-Screen Talent\nNo specific host - community is the star\n\n## Tone\nEnergetic, joyful, FOMO-inducing\n\n## Shot List\n1. Wide shot of packed room (2 sec)\n2. Close-up: dice rolling (2 sec)\n3. Reaction: someone winning (3 sec)\n4. Group laughing at a table (3 sec)\n5. Close-up: game pieces/cards (2 sec)\n6. Two people high-fiving (2 sec)\n7. Vera explaining rules to a table (3 sec)\n8. Snacks and drinks (2 sec)\n9. End: "Every Saturday @ 7pm" text (5 sec)\n10. Logo + "Tabletop Library" (3 sec)\n\n## Production Notes\n- Upbeat music throughout\n- Quick cuts, high energy\n- Capture genuine moments',
     '/seed/ideas/game-night-recap.jpg',
-    'rejected',
+    null,
+    null,
+    null,
     'We don''t have enough footage from events yet to make this work. Will revisit after launch.',
     'a1b2c3d4-e5f6-7890-abcd-111111111111',
     now() - interval '1 day',
     now() - interval '1 day',
-    0,
     null
   );
 

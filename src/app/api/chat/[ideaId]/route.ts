@@ -7,11 +7,28 @@ import path from "path";
 import { ChatModel, ToolCall } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { generateScript, updateAssetContent, getIdeaAssets, generateProductionAssets } from "@/lib/actions/idea-assets";
+import { generateScript, generateTalkingPoints, updateAssetContent, getIdeaAssets, generateProductionAssets } from "@/lib/actions/idea-assets";
 import { after } from "next/server";
 
 // Tool definitions for the agent
 const tools = [
+  {
+    type: "function" as const,
+    function: {
+      name: "generate_talking_points",
+      description: "Generate talking points for the video based on gathered information. Call this when you have collected enough context from the user about their unique perspective, stories, examples, or key points they want to cover. The talking points will outline WHAT to cover, not HOW to say it.",
+      parameters: {
+        type: "object",
+        properties: {
+          context_summary: {
+            type: "string",
+            description: "A summary of the key information gathered from the user about their perspective on this video topic. Include their stories, examples, key points they want to make, and any specific details that will make the content uniquely theirs.",
+          },
+        },
+        required: ["context_summary"],
+      },
+    },
+  },
   {
     type: "function" as const,
     function: {
@@ -33,7 +50,7 @@ const tools = [
     type: "function" as const,
     function: {
       name: "generate_script",
-      description: "Generate a complete script based on gathered information. Call this when you have collected enough information from the user to write the script, or when the user says to just use your best judgment.",
+      description: "Generate a complete script based on the talking points. Call this when talking points exist and the user is ready for a full script, or when they ask to generate/create a script.",
       parameters: {
         type: "object",
         properties: {
@@ -105,12 +122,11 @@ export async function POST(
   }
 
   // Parse request body
-  const { chatId, message, model, isInit, scriptQuestions } = (await request.json()) as {
+  const { chatId, message, model, isInit } = (await request.json()) as {
     chatId: string;
     message: string;
     model: ChatModel;
     isInit?: boolean;
-    scriptQuestions?: string[];
   };
 
   if (!chatId || (!message && !isInit)) {
@@ -224,27 +240,12 @@ export async function POST(
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", currentScript || "*No script generated yet*");
 
-  // Add script finalization questions to context (for Q&A flow)
-  if (scriptQuestions && scriptQuestions.length > 0) {
-    systemPrompt += `
-
-## Script Finalization Questions
-
-Before generating the script, you need to gather specific information from the user. Here are the questions to ask:
-
-${scriptQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-
-**Important Q&A Guidelines:**
-- Ask these questions ONE AT A TIME
-- Wait for the user to answer before asking the next question
-- Keep track of which questions have been answered in the conversation
-- Once all questions have been answered (or the user says to just proceed), call \`generate_script\` with a summary of their answers
-- If the user says "just pick" or "use your best judgment", make reasonable choices and proceed with \`generate_script\`
-`;
-  }
 
   // For initial welcome message, add special instructions
   if (isInit) {
+    // Check if talking points have content
+    const hasTalkingPointsContent = talkingPointsAsset?.content_text;
+    
     let initInstructions = `
 
 ## Welcome Message Instructions
@@ -254,15 +255,22 @@ This is the user's first visit to this idea. Generate a brief, friendly welcome 
 Guidelines for your welcome message:
 - Be concise (2-3 sentences max)
 - Don't repeat the video title - they can already see it
-- Focus on what YOU need from THEM to help create a great script
 `;
     
-    if (scriptQuestions && scriptQuestions.length > 0) {
+    if (!hasTalkingPointsContent) {
+      // No talking points yet - focus on gathering their perspective
       initInstructions += `
-Since you have questions to ask, start with the FIRST question from the list above.`;
+**Talking points have not been created yet.** Your job is to gather their unique perspective on this video topic before generating talking points.
+
+Start by asking a question to understand what makes their take on this topic unique. For example:
+- What specific stories or experiences do they want to share?
+- What key points or insights do they want viewers to take away?
+- Are there specific examples, products, or details they want to highlight?
+
+Ask ONE opening question that's relevant to this specific video idea.`;
     } else if (!currentScript) {
       initInstructions += `
-No script has been generated yet. Let them know you can help create one when they're ready.`;
+Talking points exist but no script yet. Offer to help them generate a script from the talking points, or refine the talking points first if needed.`;
     } else {
       initInstructions += `
 A script already exists. Offer to help them refine it, change the hook, adjust the CTA, or anything else.`;
@@ -324,6 +332,24 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
   // Helper to handle tool execution
   const executeToolCall = async (toolCall: ToolCall): Promise<string> => {
     const args = JSON.parse(toolCall.function.arguments);
+
+    if (toolCall.function.name === "generate_talking_points") {
+      const { context_summary } = args;
+      
+      // Generate talking points using the gathered context
+      const result = await generateTalkingPoints(ideaId, context_summary);
+
+      if (result.error) {
+        return JSON.stringify({ success: false, error: result.error });
+      }
+
+      revalidatePath(`/${project.slug}/ideas/${ideaId}`);
+      return JSON.stringify({
+        success: true,
+        message: "Talking points generated successfully",
+        talkingPoints: result.asset?.content_text || ""
+      });
+    }
 
     if (toolCall.function.name === "update_script") {
       const { script } = args;
@@ -465,6 +491,30 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
         const toolCallsToExecute: ToolCall[] = [];
         let inputTokens = 0;
         let outputTokens = 0;
+        let isControllerClosed = false;
+
+        // Helper to safely enqueue data
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!isControllerClosed) {
+            try {
+              controller.enqueue(data);
+            } catch {
+              isControllerClosed = true;
+            }
+          }
+        };
+
+        // Helper to safely close controller
+        const safeClose = () => {
+          if (!isControllerClosed) {
+            try {
+              controller.close();
+              isControllerClosed = true;
+            } catch {
+              isControllerClosed = true;
+            }
+          }
+        };
 
         try {
           const completion = await openai.chat.completions.create({
@@ -489,7 +539,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             // Handle text content
             if (delta?.content) {
               fullResponse += delta.content;
-              controller.enqueue(
+              safeEnqueue(
                 encoder.encode(`data: ${JSON.stringify({ type: "text", content: delta.content })}\n\n`)
               );
             }
@@ -558,7 +608,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
 
             // Execute each tool call
             for (const toolCall of toolCallsToExecute) {
-              controller.enqueue(
+              safeEnqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({ 
                     type: "tool_call", 
@@ -579,7 +629,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
                 token_count: Math.ceil(result.length / 4),
               });
 
-              controller.enqueue(
+              safeEnqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({ type: "tool_result", name: toolCall.function.name, result: JSON.parse(result) })}\n\n`
                 )
@@ -608,7 +658,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             output_tokens: outputTokens || null,
           });
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
+          safeEnqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           console.error("OpenAI streaming error:", error);
@@ -623,12 +673,12 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             error: errorMessage,
           });
 
-          controller.enqueue(
+          safeEnqueue(
             encoder.encode(`data: ${JSON.stringify({ type: "error", error: errorMessage })}\n\n`)
           );
         }
 
-        controller.close();
+        safeClose();
       },
     });
 
