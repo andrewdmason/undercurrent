@@ -31,6 +31,7 @@ export interface ChannelOption {
 export interface TemplateOption {
   id: string;
   name: string;
+  channels?: Array<{ id: string; platform: string }>;
 }
 
 export interface TopicOption {
@@ -327,6 +328,7 @@ export function GenerateIdeasModal({
                 {/* Template chips */}
                 {templates.map((template) => {
                   const isSelected = selectedTemplateId === template.id;
+                  const templateChannels = template.channels || [];
                   return (
                     <button
                       key={template.id}
@@ -340,6 +342,17 @@ export function GenerateIdeasModal({
                           : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
                       )}
                     >
+                      {templateChannels.length > 0 && (
+                        <span className="flex items-center gap-0.5">
+                          {templateChannels.map((channel) => (
+                            <PlatformIcon
+                              key={channel.id}
+                              platform={channel.platform}
+                              className={cn("size-3", isSelected ? "text-white/70" : "text-[var(--grey-400)]")}
+                            />
+                          ))}
+                        </span>
+                      )}
                       <span>{template.name}</span>
                     </button>
                   );

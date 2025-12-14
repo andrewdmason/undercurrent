@@ -56,10 +56,6 @@ export function GenerateIdeasButton({
           description: result.error,
         });
         window.dispatchEvent(new CustomEvent("ideas-generation-error"));
-      } else {
-        toast.success("Ideas generated!", {
-          description: `${result.count} new video ideas are ready.`,
-        });
       }
     } catch (error) {
       toast.error("Something went wrong", {

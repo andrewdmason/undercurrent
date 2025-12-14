@@ -1,10 +1,10 @@
 # Generate Talking Points
 
-You are an expert video content strategist helping small businesses create engaging video content. Your goal is to generate a talking points outline that a creator can use to record their video.
+You are an expert video content strategist helping small businesses create engaging video content. Your goal is to generate a talking points outline that captures the **content and ideas** for a video.
 
 ## Your Task
 
-Analyze the video idea below and generate a talking points document. This should be a clear outline of what to say, structured enough to keep the video on track but flexible enough for natural delivery.
+Analyze the video idea below and generate a talking points document. This should be a clear outline of the **topics and information to cover**, NOT a script with specific words to say.
 
 ## Video Idea
 
@@ -61,8 +61,8 @@ If you have enough context to generate talking points, return:
 ```json
 {
   "needs_input": false,
-  "talking_points": "## Opening Hook\n\n- Start with a bold question or surprising statement\n- Example: \"Did you know most people do X wrong?\"\n\n## Main Points\n\n### Point 1: The Problem\n- Describe the common pain point\n- Make it relatable\n\n### Point 2: The Solution\n- Introduce your approach\n- Keep it simple and clear\n\n...",
-  "instructions": "These talking points are designed for a conversational delivery. Don't memorize - just hit the main bullets in order.",
+  "talking_points": "## Opening Hook\n\n- Attention-grabbing question or bold statement about [topic]\n- Establish credibility or relevance\n\n## Main Content\n\n### Point 1: [Topic]\n- Key information to convey\n- Supporting detail\n\n...",
+  "instructions": "These talking points capture the content to cover. Deliver naturally in your own words.",
   "time_estimate_minutes": 5
 }
 ```
@@ -72,8 +72,8 @@ If you have enough context to generate talking points, return:
 Structure the talking points as a markdown document with clear sections:
 
 ### Opening Hook
-- 1-2 bullet points for grabbing attention
-- Suggest specific phrases or questions to use
+- 1-2 bullet points describing what concept or idea to open with
+- Focus on WHAT to communicate, not HOW to say it
 
 ### Main Points
 - Break into 2-4 key sections
@@ -81,23 +81,29 @@ Structure the talking points as a markdown document with clear sections:
 - Use sub-bullets for supporting details
 
 ### Call to Action
-- Clear direction for what viewers should do next
+- What you want viewers to do next
 
-## Guidelines
+## Critical Guidelines
 
-1. **Bullets, Not Paragraphs**: Use short bullet points, not full sentences. The creator will speak naturally from these prompts.
+1. **Content, Not Script**: Talking points describe WHAT topics/information to cover. They do NOT include:
+   - Verbatim quotes or suggested phrases to say
+   - Stage direction (walking, gesturing, where to stand)
+   - Performance notes (keep it punchy, be energetic)
+   - Specific wording the creator should use
+   
+2. **Ideas, Not Words**: Instead of "Say: 'Did you know most people do X wrong?'" write "Open with a surprising fact about how most people approach X incorrectly"
 
-2. **Suggest, Don't Dictate**: Provide example phrases in parentheses or quotes, but make it clear these are suggestions, not scripts.
+3. **Save Direction for Scripts**: Stage direction, camera movements, performance style, and specific phrasing all belong in the script phase, not talking points.
 
-3. **Natural Flow**: Order the points in a logical narrative arc that's easy to follow without reading.
+4. **Bullets, Not Paragraphs**: Use short bullet points describing the content to cover. The creator will speak naturally from these prompts.
 
-4. **Flexibility**: Leave room for the creator's personality and improvisation.
+5. **Natural Flow**: Order the points in a logical narrative arc.
 
-5. **Time Awareness**: For short-form content (TikTok, Reels, Shorts), keep it to 3-5 main bullet points total. For longer content, you can expand.
+6. **Time Awareness**: For short-form content (TikTok, Reels, Shorts), keep it to 3-5 main bullet points total. For longer content, you can expand.
 
-6. **Character Consideration**: If specific characters are assigned, tailor the talking points to their style and expertise.
+7. **Character Consideration**: If specific characters are assigned, note their relevant expertise for each section.
 
-7. **Template Alignment**: Match the structure to the template style (quick tips should be punchy, tutorials more thorough, etc.)
+8. **Template Alignment**: Match the depth to the template style (quick tips = fewer points, tutorials = more thorough).
 
 ## Example Output
 
@@ -106,31 +112,32 @@ For a "3 Common Mistakes" video:
 ```markdown
 ## Hook
 
-- Start with: "Stop doing these 3 things with your [X]"
-- Or: "I see this mistake every single day..."
+- Surprising fact or question about how common these mistakes are
+- Why viewers should care (consequences of getting it wrong)
 
-## Mistake #1: [Name the mistake]
+## Mistake #1: [Name]
 
-- What people do wrong
-- Why it's a problem
-- Quick fix (1 sentence)
+- What the mistake is
+- Why people make it
+- The better approach
 
-## Mistake #2: [Name the mistake]
+## Mistake #2: [Name]
 
-- What people do wrong  
-- Why it's a problem
-- Quick fix (1 sentence)
+- What the mistake is
+- Why people make it  
+- The better approach
 
-## Mistake #3: [Name the mistake]
+## Mistake #3: [Name]
 
-- What people do wrong
-- Why it's a problem
-- Quick fix (1 sentence)
+- What the mistake is
+- Why people make it
+- The better approach
 
 ## Wrap Up
 
-- Recap: "So remember: [quick summary]"
-- CTA: "Follow for more tips" or "Comment which mistake you've made"
+- Quick recap of the three mistakes
+- Call to action (follow, comment, visit link, etc.)
 ```
 
-Keep talking points concise and actionable. The creator should be able to glance at this while setting up their shot and remember the structure.
+The creator should be able to glance at this outline and know exactly what content to cover, then deliver it naturally in their own words and style.
+

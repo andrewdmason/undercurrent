@@ -161,10 +161,19 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
       .eq("project_id", project.id)
       .order("created_at", { ascending: true }),
 
-    // Templates for generate modal and review modal
+    // Templates for generate modal and review modal (with their channels)
     supabase
       .from("project_templates")
-      .select("id, name")
+      .select(`
+        id, 
+        name,
+        template_channels (
+          distribution_channels:channel_id (
+            id,
+            platform
+          )
+        )
+      `)
       .eq("project_id", project.id)
       .order("created_at", { ascending: false }),
 
@@ -181,8 +190,23 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   const ideas = acceptedIdeasResult.data;
   const newIdeasRaw = newIdeasResult.data;
   const characters = charactersResult.data || [];
-  const templates = templatesResult.data || [];
+  const templatesRaw = templatesResult.data || [];
   const topics = topicsResult.data || [];
+
+  // Transform templates to flatten the nested channels structure
+  const templates = templatesRaw.map((t: {
+    id: string;
+    name: string;
+    template_channels: Array<{
+      distribution_channels: { id: string; platform: string } | null;
+    }>;
+  }) => ({
+    id: t.id,
+    name: t.name,
+    channels: (t.template_channels || [])
+      .map(tc => tc.distribution_channels)
+      .filter(Boolean) as Array<{ id: string; platform: string }>,
+  }));
 
   // Helper to transform idea data
   const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => {

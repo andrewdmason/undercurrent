@@ -100,12 +100,36 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     .eq("project_id", project.id)
     .order("created_at");
 
-  // Fetch all project templates for remix modal
-  const { data: projectTemplates } = await supabase
+  // Fetch all project templates for remix modal (with their channels)
+  const { data: projectTemplatesRaw } = await supabase
     .from("project_templates")
-    .select("id, name")
+    .select(`
+      id, 
+      name,
+      template_channels (
+        distribution_channels:channel_id (
+          id,
+          platform
+        )
+      )
+    `)
     .eq("project_id", project.id)
     .order("created_at");
+  
+  // Transform templates to flatten the nested channels structure
+  const projectTemplates = (projectTemplatesRaw || []).map((t: {
+    id: string;
+    name: string;
+    template_channels: Array<{
+      distribution_channels: { id: string; platform: string } | null;
+    }>;
+  }) => ({
+    id: t.id,
+    name: t.name,
+    channels: (t.template_channels || [])
+      .map(tc => tc.distribution_channels)
+      .filter(Boolean) as Array<{ id: string; platform: string }>,
+  }));
 
   // Fetch all project topics (included only) for remix modal
   const { data: projectTopics } = await supabase

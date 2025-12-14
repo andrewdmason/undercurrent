@@ -7,7 +7,7 @@ import path from "path";
 import { ChatModel, ToolCall } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { generateScript, updateAssetContent, getIdeaAssets } from "@/lib/actions/idea-assets";
+import { generateScript, updateAssetContent, getIdeaAssets, generateProductionAssets } from "@/lib/actions/idea-assets";
 import { after } from "next/server";
 
 // Tool definitions for the agent
@@ -407,21 +407,23 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
     if (toolCall.function.name === "generate_script") {
       // Generate the script from talking points
       const result = await generateScript(ideaId);
-      
-      // Track the generation log ID for linking
-      if (result.generationLogId) {
-        generationLogIdMap[toolCall.id] = result.generationLogId;
-      }
 
       if (result.error) {
         return JSON.stringify({ success: false, error: result.error });
       }
 
+      // Generate production assets in the background after script is created
+      after(async () => {
+        await generateProductionAssets(ideaId).catch(err => {
+          console.error(`Failed to generate production assets for idea ${ideaId}:`, err);
+        });
+      });
+
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
-      return JSON.stringify({ 
-        success: true, 
+      return JSON.stringify({
+        success: true,
         message: "Script generated successfully",
-        script: result.script 
+        script: result.asset?.content_text || ""
       });
     }
 

@@ -615,3 +615,4 @@ export async function deleteIdeaAssets(ideaId: string): Promise<{ success: boole
   await revalidateIdeaPaths(ideaId);
   return { success: true };
 }
+

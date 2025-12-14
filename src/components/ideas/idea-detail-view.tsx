@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
+import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
 import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload } from "lucide-react";
@@ -34,6 +35,7 @@ import { ImageLightbox, ImageExpandButton } from "@/components/ui/image-lightbox
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
+import { MarkdownDisplay } from "@/components/ui/markdown-display";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
@@ -45,7 +47,7 @@ interface IdeaDetailViewProps {
   projectSlug: string;
   projectChannels: DistributionChannel[];
   projectCharacters: Array<{ id: string; name: string; image_url: string | null }>;
-  projectTemplates: Array<{ id: string; name: string }>;
+  projectTemplates: Array<{ id: string; name: string; channels?: Array<{ id: string; platform: string }> }>;
   projectTopics: Array<{ id: string; name: string }>;
   fullTemplate: ProjectTemplateWithChannels | null;
   initialAssets: IdeaAsset[];
@@ -129,6 +131,22 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     pendingIdeaIds: hasImage ? [] : [idea.id],
     onUpdate: handleThumbnailUpdate,
     enabled: !hasImage,
+  });
+
+  // Check if assets are likely being generated (idea updated within last 60 seconds and no assets)
+  const isRecentlyUpdated = Date.now() - new Date(idea.updated_at).getTime() < 60000;
+  const assetsLikelyGenerating = assets.length === 0 && isRecentlyUpdated;
+
+  // Poll for asset updates when we think they're being generated
+  const handleAssetUpdate = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  usePollAssets({
+    ideaId: idea.id,
+    currentAssetCount: assets.length,
+    onUpdate: handleAssetUpdate,
+    enabled: assetsLikelyGenerating,
   });
 
   const handleCycleAssetStatus = async (assetId: string) => {
@@ -515,9 +533,20 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 {/* Assets List - Scrollable, Grouped by Stage */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-3">
                   {assets.length === 0 ? (
-                    <p className="text-xs text-[var(--grey-400)] text-center py-4">
-                      No assets yet
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-4 gap-2">
+                      {assetsLikelyGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
+                          <p className="text-xs text-[var(--grey-400)]">
+                            Generating assets...
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-[var(--grey-400)]">
+                          No assets yet
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <>
                       {/* Group assets by stage */}
@@ -656,7 +685,11 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                           "flex-1 min-h-0 overflow-auto p-4 relative",
                           isScriptUpdating && selectedAsset.type === "script" && "script-updating"
                         )}>
-                          <ScriptDisplay script={selectedAsset.content_text} />
+                          {selectedAsset.type === "talking_points" ? (
+                            <MarkdownDisplay content={selectedAsset.content_text} />
+                          ) : (
+                            <ScriptDisplay script={selectedAsset.content_text} />
+                          )}
                           {isScriptUpdating && selectedAsset.type === "script" && (
                             <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
                           )}
@@ -687,7 +720,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                               Instructions
                             </h5>
                             <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
-                              <ScriptDisplay script={selectedAsset.instructions} />
+                              <MarkdownDisplay content={selectedAsset.instructions} />
                             </div>
                           </div>
                         )}
@@ -712,15 +745,31 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 ) : (
                   // No asset selected - empty state
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                      <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                      No Asset Selected
-                    </h3>
-                    <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                      Select an asset from the list to view its content.
-                    </p>
+                    {assetsLikelyGenerating ? (
+                      <>
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                          <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+                        </div>
+                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                          Generating Assets
+                        </h3>
+                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                          Creating talking points and production assets...
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                          <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                        </div>
+                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                          No Asset Selected
+                        </h3>
+                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                          Select an asset from the list to view its content.
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
