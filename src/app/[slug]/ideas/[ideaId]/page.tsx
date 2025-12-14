@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaAsset, PRODUCTION_STATUSES } from "@/lib/types";
+import { IdeaWithChannels, IdeaAsset, AssetType } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
+import { calculateIdeaStatus } from "@/lib/utils";
 
 interface IdeaDetailPageProps {
   params: Promise<{
@@ -156,14 +157,27 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
-  // Only allow access to ideas in production pipeline (preproduction, production, postproduction, published)
-  if (!PRODUCTION_STATUSES.includes(idea.status as typeof PRODUCTION_STATUSES[number])) {
+  // Only allow access to ideas that have been accepted (in production pipeline or published)
+  if (!idea.accepted_at) {
     redirect(`/${slug}`);
   }
+
+  // Calculate status from timestamps and assets
+  const assets = (ideaAssets || []) as IdeaAsset[];
+  const status = calculateIdeaStatus(
+    {
+      accepted_at: idea.accepted_at,
+      published_at: idea.published_at,
+      canceled_at: idea.canceled_at,
+      reject_reason: idea.reject_reason,
+    },
+    assets.map(a => ({ type: a.type as AssetType, is_complete: a.is_complete }))
+  );
 
   // Transform the data to flatten related info
   const typedIdea: IdeaWithChannels = {
     ...idea,
+    status,
     channels: (idea.idea_channels || [])
       .map((ic: { video_url: string | null; project_channels: { id: string; platform: string; custom_label: string | null } | null }) => 
         ic.project_channels ? {
@@ -183,6 +197,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         it.project_topics
       )
       .filter(Boolean) as Array<{ id: string; name: string; description?: string | null }>,
+    assets,
   };
 
   // Build full template with channels if available

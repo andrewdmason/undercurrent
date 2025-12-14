@@ -1,17 +1,14 @@
 // Database types
 
+// Idea status - calculated from timestamps and asset completion, not stored
 export type IdeaStatus = "new" | "rejected" | "preproduction" | "production" | "postproduction" | "published" | "canceled";
 
-// Production pipeline statuses (for kanban board - excludes published which has its own tab)
-export const KANBAN_STATUSES = ["preproduction", "production", "postproduction"] as const;
-export type KanbanStatus = (typeof KANBAN_STATUSES)[number];
-
-// All production statuses including published (for querying)
-export const PRODUCTION_STATUSES = ["preproduction", "production", "postproduction", "published"] as const;
+// Production pipeline statuses (for filtering/display)
+export const PRODUCTION_STATUSES = ["preproduction", "production", "postproduction"] as const;
 export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
 
-// Human-readable labels for kanban statuses
-export const KANBAN_STATUS_LABELS: Record<KanbanStatus, string> = {
+// Human-readable labels for production statuses
+export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   preproduction: "Pre-Production",
   production: "Production",
   postproduction: "Post-Production",
@@ -27,12 +24,14 @@ export interface Idea {
   description: string | null;
   image_url: string | null;
   prompt: string | null;
-  status: IdeaStatus;
   reject_reason: string | null;
   generation_batch_id: string | null;
   template_id: string | null;
   recording_style: RecordingStyle | null;
-  sort_order: number;
+  // Timestamp fields for calculated status
+  accepted_at: string | null;
+  published_at: string | null;
+  canceled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,6 +160,8 @@ export interface ProjectTemplateWithChannels extends ProjectTemplate {
 
 // Extended Idea type with all related data for display
 export interface IdeaWithChannels extends Idea {
+  // Calculated status (derived from timestamps + assets)
+  status: IdeaStatus;
   channels: Array<{
     id: string;
     platform: string;
@@ -185,6 +186,8 @@ export interface IdeaWithChannels extends Idea {
     name: string;
     description?: string | null;
   }>;
+  // Asset data for status calculation
+  assets?: IdeaAsset[];
   prepTimeMinutes?: number; // Total remaining prep time in minutes
 }
 

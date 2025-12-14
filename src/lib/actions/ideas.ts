@@ -8,7 +8,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
 import { generateTalkingPoints } from "./idea-assets";
-import { IdeaStatus, PRODUCTION_STATUSES, ProductionStatus, RecordingStyle } from "@/lib/types";
+import { RecordingStyle } from "@/lib/types";
 
 interface GeneratedIdea {
   title: string;
@@ -36,7 +36,7 @@ async function revalidateProjectPaths(projectId: string) {
   return project?.slug;
 }
 
-// Accept an idea - move it to preproduction (start of production pipeline)
+// Accept an idea - set accepted_at timestamp (enters production pipeline)
 export async function acceptIdea(ideaId: string) {
   const supabase = await createClient();
 
@@ -51,23 +51,11 @@ export async function acceptIdea(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  // Get the max sort_order for preproduction ideas in this project
-  const { data: maxSortData } = await supabase
-    .from("ideas")
-    .select("sort_order")
-    .eq("project_id", idea.project_id)
-    .eq("status", "preproduction")
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .single();
-
-  const newSortOrder = (maxSortData?.sort_order ?? -1) + 1;
-
   const { error } = await supabase
     .from("ideas")
     .update({ 
-      status: "preproduction" as IdeaStatus,
-      sort_order: newSortOrder 
+      accepted_at: new Date().toISOString(),
+      reject_reason: null, // Clear any previous rejection
     })
     .eq("id", ideaId);
 
@@ -95,11 +83,11 @@ export async function rejectIdea(ideaId: string, reason?: string) {
     return { error: "Idea not found" };
   }
 
+  // Set reject_reason - status is calculated from this
   const { error } = await supabase
     .from("ideas")
     .update({ 
-      status: "rejected" as IdeaStatus,
-      reject_reason: reason || null,
+      reject_reason: reason || "Rejected",
     })
     .eq("id", ideaId);
 
@@ -112,14 +100,14 @@ export async function rejectIdea(ideaId: string, reason?: string) {
   return { success: true };
 }
 
-// Undo reject - move idea back to new status
+// Undo reject - clear reject_reason to return idea to inbox
 export async function undoRejectIdea(ideaId: string) {
   const supabase = await createClient();
 
-  // Get idea to find project_id
+  // Get idea to find project_id and check if rejected
   const { data: idea } = await supabase
     .from("ideas")
-    .select("project_id, status")
+    .select("project_id, reject_reason, accepted_at")
     .eq("id", ideaId)
     .single();
 
@@ -127,14 +115,14 @@ export async function undoRejectIdea(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  if (idea.status !== "rejected") {
+  // Can only undo reject if not accepted (rejected = has reject_reason but no accepted_at)
+  if (!idea.reject_reason || idea.accepted_at) {
     return { error: "Idea is not rejected" };
   }
 
   const { error } = await supabase
     .from("ideas")
     .update({ 
-      status: "new" as IdeaStatus,
       reject_reason: null,
     })
     .eq("id", ideaId);
@@ -148,14 +136,14 @@ export async function undoRejectIdea(ideaId: string) {
   return { success: true };
 }
 
-// Undo accept - move idea back to new status (from any production stage)
+// Undo accept - clear accepted_at to return idea to inbox
 export async function undoAcceptIdea(ideaId: string) {
   const supabase = await createClient();
 
-  // Get idea to find project_id
+  // Get idea to find project_id and check if accepted
   const { data: idea } = await supabase
     .from("ideas")
-    .select("project_id, status")
+    .select("project_id, accepted_at, published_at")
     .eq("id", ideaId)
     .single();
 
@@ -163,15 +151,18 @@ export async function undoAcceptIdea(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  // Check if idea is in any production stage (preproduction, production, postproduction)
-  const productionStages: string[] = ["preproduction", "production", "postproduction"];
-  if (!productionStages.includes(idea.status)) {
+  // Can only undo accept if accepted but not published
+  if (!idea.accepted_at) {
     return { error: "Idea is not in a production stage" };
+  }
+
+  if (idea.published_at) {
+    return { error: "Cannot undo accept for published ideas" };
   }
 
   const { error } = await supabase
     .from("ideas")
-    .update({ status: "new" as IdeaStatus })
+    .update({ accepted_at: null })
     .eq("id", ideaId);
 
   if (error) {
@@ -200,7 +191,7 @@ export async function cancelIdea(ideaId: string) {
 
   const { error } = await supabase
     .from("ideas")
-    .update({ status: "canceled" as IdeaStatus })
+    .update({ canceled_at: new Date().toISOString() })
     .eq("id", ideaId);
 
   if (error) {
@@ -209,122 +200,6 @@ export async function cancelIdea(ideaId: string) {
   }
 
   await revalidateProjectPaths(idea.project_id);
-  return { success: true };
-}
-
-// Update idea status (for kanban drag-and-drop)
-export async function updateIdeaStatus(ideaId: string, newStatus: ProductionStatus) {
-  const supabase = await createClient();
-
-  // Validate the status is a valid production status
-  if (!PRODUCTION_STATUSES.includes(newStatus)) {
-    return { error: `Invalid status: ${newStatus}` };
-  }
-
-  // Get idea to find project_id
-  const { data: idea } = await supabase
-    .from("ideas")
-    .select("project_id")
-    .eq("id", ideaId)
-    .single();
-
-  if (!idea) {
-    return { error: "Idea not found" };
-  }
-
-  const { error } = await supabase
-    .from("ideas")
-    .update({ status: newStatus as IdeaStatus })
-    .eq("id", ideaId);
-
-  if (error) {
-    console.error("Error updating idea status:", error);
-    return { error: error.message };
-  }
-
-  await revalidateProjectPaths(idea.project_id);
-  return { success: true };
-}
-
-// Update idea status and sort order (for kanban drag-and-drop between columns)
-export async function updateIdeaStatusAndOrder(
-  ideaId: string, 
-  newStatus: ProductionStatus, 
-  sortOrder: number
-) {
-  const supabase = await createClient();
-
-  // Validate the status is a valid production status
-  if (!PRODUCTION_STATUSES.includes(newStatus)) {
-    return { error: `Invalid status: ${newStatus}` };
-  }
-
-  // Get idea to find project_id
-  const { data: idea } = await supabase
-    .from("ideas")
-    .select("project_id")
-    .eq("id", ideaId)
-    .single();
-
-  if (!idea) {
-    return { error: "Idea not found" };
-  }
-
-  const { error } = await supabase
-    .from("ideas")
-    .update({ 
-      status: newStatus as IdeaStatus,
-      sort_order: sortOrder 
-    })
-    .eq("id", ideaId);
-
-  if (error) {
-    console.error("Error updating idea status and order:", error);
-    return { error: error.message };
-  }
-
-  await revalidateProjectPaths(idea.project_id);
-  return { success: true };
-}
-
-// Batch update sort orders for ideas (for within-column reordering)
-export async function updateIdeaSortOrders(
-  updates: Array<{ id: string; sort_order: number }>
-) {
-  const supabase = await createClient();
-
-  if (updates.length === 0) {
-    return { success: true };
-  }
-
-  // Get project_id from first idea for revalidation
-  const { data: firstIdea } = await supabase
-    .from("ideas")
-    .select("project_id")
-    .eq("id", updates[0].id)
-    .single();
-
-  if (!firstIdea) {
-    return { error: "Idea not found" };
-  }
-
-  // Update each idea's sort_order
-  const promises = updates.map(({ id, sort_order }) =>
-    supabase
-      .from("ideas")
-      .update({ sort_order })
-      .eq("id", id)
-  );
-
-  const results = await Promise.all(promises);
-  const error = results.find((r) => r.error)?.error;
-
-  if (error) {
-    console.error("Error updating sort orders:", error);
-    return { error: error.message };
-  }
-
-  await revalidateProjectPaths(firstIdea.project_id);
   return { success: true };
 }
 
@@ -346,10 +221,10 @@ export async function publishIdea(
     return { error: "Idea not found" };
   }
 
-  // Update idea status to published
+  // Set published_at timestamp
   const { error: statusError } = await supabase
     .from("ideas")
-    .update({ status: "published" as IdeaStatus })
+    .update({ published_at: new Date().toISOString() })
     .eq("id", ideaId);
 
   if (statusError) {
@@ -481,7 +356,7 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
   // Fetch last 20 ideas for context (include rejected ones with reasons for learning)
   const { data: pastIdeas } = await supabase
     .from("ideas")
-    .select("title, status, reject_reason")
+    .select("title, accepted_at, published_at, reject_reason")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -548,19 +423,22 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
           .join("\n")
       : "No distribution channels configured.";
 
-  // Format past ideas section - now using status instead of rating
+  // Format past ideas section - using timestamps to determine status
   const pastIdeasSection =
     pastIdeas && pastIdeas.length > 0
       ? pastIdeas
           .map((idea) => {
             let line = `- "${idea.title}"`;
-            // Check for any production status (preproduction, production, postproduction, published)
-            const productionStatuses = ["preproduction", "production", "postproduction", "published"];
-            if (productionStatuses.includes(idea.status)) {
-              line += " [✓ accepted]";
-            } else if (idea.status === "rejected") {
+            // Check if accepted (in production pipeline or published)
+            if (idea.accepted_at) {
+              if (idea.published_at) {
+                line += " [✓ published]";
+              } else {
+                line += " [✓ accepted]";
+              }
+            } else if (idea.reject_reason) {
               line += " [✗ rejected]";
-              if (idea.reject_reason) line += ` "${idea.reject_reason}"`;
+              line += ` "${idea.reject_reason}"`;
             }
             return line;
           })
@@ -910,7 +788,7 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
       id,
       title,
       description,
-      status,
+      accepted_at,
       project_id,
       template_id,
       idea_channels (
@@ -1176,14 +1054,14 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
     let resultIdeaId: string;
 
     if (saveAsCopy) {
-      // Create a new idea with the same status as the original
+      // Create a new idea with the same accepted state as the original
       const { data: newIdea, error: insertError } = await supabase
         .from("ideas")
         .insert({
           project_id: projectId,
           title: parsed.title,
           description: parsed.description,
-          status: originalIdea.status as IdeaStatus,
+          accepted_at: originalIdea.accepted_at, // Preserve accepted state
           template_id: validTemplateId,
         })
         .select("id")
