@@ -24,9 +24,11 @@ interface IdeaCardProps {
   href?: string;
   onClick?: () => void;
   isLoadingImage?: boolean;
+  isRemixing?: boolean;
   viewType: ViewType;
   onReject?: () => void;
   onPublish?: () => void;
+  onRemix?: () => void;
 }
 
 // Platform icons
@@ -101,9 +103,11 @@ export function IdeaCard({
   href,
   onClick,
   isLoadingImage = false,
+  isRemixing = false,
   viewType,
   onReject,
   onPublish,
+  onRemix,
 }: IdeaCardProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -114,7 +118,7 @@ export function IdeaCard({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const hasImage = !!idea.image_url;
-  const showShimmer = isLoadingImage || isGenerating || !hasImage;
+  const showShimmer = isLoadingImage || isGenerating || isRemixing || !hasImage;
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
   
   // Check if description is truncated
@@ -392,6 +396,26 @@ export function IdeaCard({
                       <p>Shift+click to accept & open</p>
                     </TooltipContent>
                   </Tooltip>
+                  {onRemix && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemix();
+                          }}
+                          className="text-[var(--grey-600)] border-[var(--grey-200)] hover:bg-[var(--grey-50)]"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Remix this idea</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </>
               )}
               {viewType === "published" && (

@@ -2,11 +2,14 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { IdeaWithChannels } from "@/lib/types";
+import { remixIdea } from "@/lib/actions/ideas";
 import { IdeaCard } from "./idea-card";
 import { IdeaDetailPanel } from "./idea-detail-panel";
 import { RejectIdeaModal } from "./reject-idea-modal";
 import { PublishIdeaModal } from "./publish-idea-modal";
+import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 
@@ -17,9 +20,23 @@ interface IdeasFeedProps {
   projectId: string;
   projectSlug?: string;
   viewType: ViewType;
+  // Project options for remix modal (only needed for inbox view)
+  characters?: Array<{ id: string; name: string; image_url: string | null }>;
+  channels?: Array<{ id: string; platform: string; custom_label: string | null }>;
+  templates?: Array<{ id: string; name: string }>;
+  topics?: Array<{ id: string; name: string }>;
 }
 
-export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeedProps) {
+export function IdeasFeed({ 
+  ideas, 
+  projectId, 
+  projectSlug, 
+  viewType,
+  characters = [],
+  channels = [],
+  templates = [],
+  topics = [],
+}: IdeasFeedProps) {
   const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -27,6 +44,8 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
   // Modal states
   const [rejectModalIdea, setRejectModalIdea] = useState<IdeaWithChannels | null>(null);
   const [publishModalIdea, setPublishModalIdea] = useState<IdeaWithChannels | null>(null);
+  const [remixModalIdea, setRemixModalIdea] = useState<IdeaWithChannels | null>(null);
+  const [isRemixing, setIsRemixing] = useState(false);
 
   // Find ideas that are missing thumbnails
   const pendingIdeaIds = useMemo(
@@ -61,6 +80,39 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
     setTimeout(() => setSelectedIdea(null), 300);
   };
 
+  const handleRemix = async (options: RemixOptions) => {
+    if (isRemixing || !remixModalIdea) return;
+
+    setIsRemixing(true);
+    try {
+      const result = await remixIdea(remixModalIdea.id, {
+        characterIds: options.characterIds,
+        channelIds: options.channelIds,
+        templateId: options.templateId,
+        topicId: options.topicId,
+        customInstructions: options.customInstructions,
+        saveAsCopy: options.saveAsCopy,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setRemixModalIdea(null);
+        if (result.isCopy) {
+          toast.success(`Created remix: "${result.title}"`);
+        } else {
+          toast.success("Idea remixed successfully");
+        }
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to remix idea");
+      console.error(error);
+    } finally {
+      setIsRemixing(false);
+    }
+  };
+
   return (
     <>
       {/* Feed - Grid for queue, single column for others */}
@@ -77,9 +129,11 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
             href={viewType === "queue" && projectSlug ? `/${projectSlug}/ideas/${idea.id}` : undefined}
             onClick={() => handleCardClick(idea)}
             isLoadingImage={!idea.image_url}
+            isRemixing={isRemixing && remixModalIdea?.id === idea.id}
             viewType={viewType}
             onReject={() => setRejectModalIdea(idea)}
             onPublish={() => setPublishModalIdea(idea)}
+            onRemix={viewType === "inbox" ? () => setRemixModalIdea(idea) : undefined}
           />
         ))}
       </div>
@@ -127,6 +181,29 @@ export function IdeasFeed({ ideas, projectId, projectSlug, viewType }: IdeasFeed
           onOpenChange={(open) => {
             if (!open) setPublishModalIdea(null);
           }}
+        />
+      )}
+
+      {/* Remix Modal */}
+      {remixModalIdea && (
+        <RemixIdeaModal
+          open={!!remixModalIdea}
+          onOpenChange={(open) => {
+            if (!open) setRemixModalIdea(null);
+          }}
+          onRemix={handleRemix}
+          isRemixing={isRemixing}
+          ideaTitle={remixModalIdea.title}
+          currentSelections={{
+            channelIds: remixModalIdea.channels?.map(c => c.id) || [],
+            characterIds: remixModalIdea.characters?.map(c => c.id) || [],
+            templateId: remixModalIdea.template?.id || null,
+            topicId: remixModalIdea.topics?.[0]?.id || null,
+          }}
+          characters={characters}
+          channels={channels}
+          templates={templates}
+          topics={topics}
         />
       )}
     </>

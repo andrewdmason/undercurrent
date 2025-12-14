@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import Image from "next/image";
 import Link from "next/link";
 import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Printer } from "lucide-react";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaTodo } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { cancelIdea, generateScript, generateUnderlordPrompt } from "@/lib/actions/ideas";
+import { cancelIdea, generateScript, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
 import { toggleTodoComplete } from "@/lib/actions/idea-todos";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
@@ -36,12 +37,16 @@ import { ScriptDisplay } from "./script-display";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
+import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
   projectId: string;
   projectSlug: string;
   projectChannels: DistributionChannel[];
+  projectCharacters: Array<{ id: string; name: string; image_url: string | null }>;
+  projectTemplates: Array<{ id: string; name: string }>;
+  projectTopics: Array<{ id: string; name: string }>;
   fullTemplate: ProjectTemplateWithChannels | null;
   initialTodos: IdeaTodo[];
 }
@@ -144,7 +149,7 @@ function renderMarkdown(text: string): React.ReactNode {
   return elements;
 }
 
-export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, fullTemplate, initialTodos }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, fullTemplate, initialTodos }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -157,6 +162,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [isCanceling, setIsCanceling] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [underlordModalOpen, setUnderlordModalOpen] = useState(false);
+  const [remixModalOpen, setRemixModalOpen] = useState(false);
+  const [isRemixing, setIsRemixing] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [todos, setTodos] = useState<IdeaTodo[]>(initialTodos);
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
@@ -174,7 +181,18 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     : null;
 
   const hasImage = !!idea.image_url;
-  const showShimmer = isGeneratingThumbnail || !hasImage;
+  const showShimmer = isGeneratingThumbnail || isRemixing || !hasImage;
+
+  // Poll for thumbnail updates when image is missing
+  const handleThumbnailUpdate = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  usePollThumbnails({
+    pendingIdeaIds: hasImage ? [] : [idea.id],
+    onUpdate: handleThumbnailUpdate,
+    enabled: !hasImage,
+  });
 
   const handleToggleTodo = async (todoId: string) => {
     const todo = todos.find(t => t.id === todoId);
@@ -400,6 +418,44 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
   };
 
+  const handleRemix = async (options: RemixOptions) => {
+    if (isRemixing) return;
+
+    setIsRemixing(true);
+    try {
+      const result = await remixIdea(idea.id, {
+        characterIds: options.characterIds,
+        channelIds: options.channelIds,
+        templateId: options.templateId,
+        topicId: options.topicId,
+        customInstructions: options.customInstructions,
+        saveAsCopy: options.saveAsCopy,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setRemixModalOpen(false);
+        if (result.isCopy) {
+          toast.success(`Created remix: "${result.title}"`, {
+            action: {
+              label: "View",
+              onClick: () => router.push(`/${projectSlug}/ideas/${result.ideaId}`),
+            },
+          });
+        } else {
+          toast.success("Idea remixed successfully");
+        }
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to remix idea");
+      console.error(error);
+    } finally {
+      setIsRemixing(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[var(--grey-25)] min-h-0">
       {/* Back Navigation & Title Bar */}
@@ -418,6 +474,13 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
             </h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setRemixModalOpen(true)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg transition-all border border-[var(--border)] bg-[var(--grey-0)] text-[var(--grey-600)] hover:bg-[var(--grey-50)] hover:text-[var(--grey-800)]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Remix
+            </button>
             <button
               onClick={handleOpenUnderlordModal}
               disabled={!currentScript}
@@ -808,6 +871,29 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         channels={idea.channels}
         open={publishModalOpen}
         onOpenChange={setPublishModalOpen}
+      />
+
+      {/* Remix Modal */}
+      <RemixIdeaModal
+        open={remixModalOpen}
+        onOpenChange={setRemixModalOpen}
+        onRemix={handleRemix}
+        isRemixing={isRemixing}
+        ideaTitle={idea.title}
+        currentSelections={{
+          channelIds: idea.channels?.map(c => c.id) || [],
+          characterIds: idea.characters?.map(c => c.id) || [],
+          templateId: idea.template?.id || null,
+          topicId: idea.topics?.[0]?.id || null,
+        }}
+        characters={projectCharacters}
+        channels={projectChannels.map(c => ({
+          id: c.id,
+          platform: c.platform,
+          custom_label: c.custom_label,
+        }))}
+        templates={projectTemplates}
+        topics={projectTopics}
       />
 
       {/* Underlord Prompt Modal */}
