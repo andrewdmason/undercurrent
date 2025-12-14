@@ -406,8 +406,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success("Idea removed from Create");
-        router.push(`/${projectSlug}/create`);
+        toast.success("Idea removed");
+        router.push(`/${projectSlug}`);
         router.refresh();
       }
     } catch (error) {
@@ -461,9 +461,9 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       <div className="border-b border-[var(--border)] bg-[var(--grey-0)]">
         <div className="px-6 py-3 flex items-center gap-4">
           <Link
-            href={`/${projectSlug}/create`}
+            href={`/${projectSlug}`}
             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[var(--grey-500)] hover:text-[var(--grey-800)] hover:bg-[var(--grey-50)] transition-colors flex-shrink-0"
-            aria-label="Back to Create"
+            aria-label="Back to Ideas"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>

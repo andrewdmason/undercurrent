@@ -10,6 +10,7 @@ import { IdeaDetailPanel } from "./idea-detail-panel";
 import { RejectIdeaModal } from "./reject-idea-modal";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
+import { GenerateIdeasButton } from "./generate-ideas-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 
@@ -228,7 +229,21 @@ export function IdeasFeedSkeleton() {
 }
 
 // Empty state
-export function IdeasEmptyState() {
+interface IdeasEmptyStateProps {
+  projectId?: string;
+  characters?: Array<{ id: string; name: string; image_url: string | null }>;
+  channels?: Array<{ id: string; platform: string; custom_label: string | null }>;
+  templates?: Array<{ id: string; name: string }>;
+  topics?: Array<{ id: string; name: string }>;
+}
+
+export function IdeasEmptyState({
+  projectId,
+  characters = [],
+  channels = [],
+  templates = [],
+  topics = [],
+}: IdeasEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--grey-50)] mb-6">
@@ -251,9 +266,18 @@ export function IdeasEmptyState() {
       <h3 className="text-lg font-normal text-[var(--grey-800)] mb-2">
         No ideas yet
       </h3>
-      <p className="text-sm text-[var(--grey-400)] text-center max-w-sm">
-        Click &quot;Generate Ideas&quot; to create your first batch of video ideas.
+      <p className="text-sm text-[var(--grey-400)] text-center max-w-sm mb-6">
+        Generate your first batch of video ideas to get started.
       </p>
+      {projectId && (
+        <GenerateIdeasButton
+          projectId={projectId}
+          characters={characters}
+          channels={channels}
+          templates={templates}
+          topics={topics}
+        />
+      )}
     </div>
   );
 }

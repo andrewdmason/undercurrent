@@ -36,6 +36,11 @@ export function GenerateIdeasButton({
     setIsGenerating(true);
     setIsModalOpen(false);
 
+    // Dispatch event immediately so alert bar shows generating state
+    window.dispatchEvent(new CustomEvent("ideas-generation-start", { 
+      detail: { count: options.count } 
+    }));
+
     try {
       const result = await generateIdeas(projectId, {
         count: options.count,
@@ -50,6 +55,7 @@ export function GenerateIdeasButton({
         toast.error("Failed to generate ideas", {
           description: result.error,
         });
+        window.dispatchEvent(new CustomEvent("ideas-generation-error"));
       } else {
         toast.success("Ideas generated!", {
           description: `${result.count} new video ideas are ready.`,
@@ -60,6 +66,7 @@ export function GenerateIdeasButton({
         description:
           error instanceof Error ? error.message : "Please try again.",
       });
+      window.dispatchEvent(new CustomEvent("ideas-generation-error"));
     } finally {
       setIsGenerating(false);
     }
