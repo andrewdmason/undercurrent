@@ -14,9 +14,12 @@ interface IdeasViewProps {
   ideas: IdeaWithChannels[];
   projectId: string;
   projectSlug: string;
+  characters?: Array<{ id: string; name: string; image_url: string | null }>;
+  channels?: Array<{ id: string; platform: string; custom_label: string | null }>;
+  templates?: Array<{ id: string; name: string }>;
 }
 
-export function IdeasView({ ideas, projectId, projectSlug }: IdeasViewProps) {
+export function IdeasView({ ideas, projectId, projectSlug, characters = [], channels = [], templates = [] }: IdeasViewProps) {
   const [currentView, setCurrentView] = useState<ViewMode>("grid");
   const [mounted, setMounted] = useState(false);
 
@@ -44,7 +47,14 @@ export function IdeasView({ ideas, projectId, projectSlug }: IdeasViewProps) {
   return (
     <>
       {displayView === "columns" ? (
-        <StatusColumns ideas={ideas} projectSlug={projectSlug} />
+        <StatusColumns 
+          ideas={ideas} 
+          projectSlug={projectSlug} 
+          projectId={projectId}
+          characters={characters}
+          channels={channels}
+          templates={templates}
+        />
       ) : (
         <IdeasFeed ideas={ideas} projectId={projectId} projectSlug={projectSlug} viewType="queue" />
       )}
@@ -109,3 +119,4 @@ export function ViewToggle() {
     </div>
   );
 }
+

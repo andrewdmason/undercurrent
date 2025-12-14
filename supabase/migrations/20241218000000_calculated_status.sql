@@ -59,3 +59,4 @@ ALTER TABLE ideas DROP COLUMN IF EXISTS status;
 
 -- Note: The idea_status enum type will remain in the database but is no longer used.
 -- PostgreSQL doesn't easily allow dropping enum types that may have been used.
+

@@ -142,3 +142,4 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
     </div>
   );
 }
+

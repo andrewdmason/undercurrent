@@ -48,3 +48,4 @@ export function BriefNav({ slug }: BriefNavProps) {
     </div>
   );
 }
+

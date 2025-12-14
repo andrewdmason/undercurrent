@@ -8,3 +8,4 @@ export default function BriefTopicsPage() {
 
   return <TopicsSection projectId={project.id} topics={topics} />;
 }
+

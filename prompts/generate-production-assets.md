@@ -157,3 +157,4 @@ Return a JSON object with an `assets` array:
 
 Always include at least A-roll and Thumbnail. Add B-roll types only when the content genuinely needs them.
 
+
