@@ -12,24 +12,26 @@ export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
 
 // Human-readable labels for kanban statuses
 export const KANBAN_STATUS_LABELS: Record<KanbanStatus, string> = {
-  preproduction: "Preparing Script",
-  production: "Preparing Assets",
-  postproduction: "Ready to Edit",
+  preproduction: "Pre-Production",
+  production: "Production",
+  postproduction: "Post-Production",
 };
+
+// Recording style - how the creator will record their content
+export type RecordingStyle = "scripted" | "talking_points";
 
 export interface Idea {
   id: string;
   project_id: string;
   title: string;
   description: string | null;
-  script: string | null;
-  script_context: string | null;
   image_url: string | null;
   prompt: string | null;
   status: IdeaStatus;
   reject_reason: string | null;
   generation_batch_id: string | null;
   template_id: string | null;
+  recording_style: RecordingStyle | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -71,7 +73,7 @@ export interface Profile {
 
 export type ProjectRole = "admin" | "member";
 
-export type GenerationLogType = "idea_generation" | "ai_character" | "thumbnail" | "script_generation" | "script_update" | "todo_generation" | "todo_refresh" | "other";
+export type GenerationLogType = "idea_generation" | "idea_remix" | "ai_character" | "thumbnail" | "talking_points_generation" | "script_generation" | "script_update" | "asset_generation" | "other";
 
 export interface GenerationLog {
   id: string;
@@ -202,30 +204,67 @@ export const DISTRIBUTION_PLATFORMS = [
 export type DistributionPlatform = (typeof DISTRIBUTION_PLATFORMS)[number]["value"];
 
 // ============================================
-// Idea Todo Types (Prep List)
+// Idea Asset Types (Video Production Assets)
 // ============================================
 
-export type IdeaTodoType = "script_finalization" | "asset" | "physical_prep";
+export const ASSET_TYPES = [
+  "talking_points",
+  "script",
+  "a_roll",
+  "b_roll_footage",
+  "b_roll_screen_recording",
+  "thumbnail",
+] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
 
-export interface IdeaTodo {
+export const ASSET_STATUSES = ["pending", "in_progress", "ready"] as const;
+export type AssetStatus = (typeof ASSET_STATUSES)[number];
+
+// Map asset types to their production stage (derived, not stored)
+export const ASSET_STAGE_MAP: Record<AssetType, "preproduction" | "production" | "postproduction"> = {
+  talking_points: "preproduction",
+  script: "preproduction",
+  a_roll: "production",
+  b_roll_footage: "production",
+  b_roll_screen_recording: "production",
+  thumbnail: "postproduction",
+};
+
+// Human-readable labels for asset types
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  talking_points: "Talking Points",
+  script: "Script",
+  a_roll: "A-Roll Recording",
+  b_roll_footage: "B-Roll Footage",
+  b_roll_screen_recording: "Screen Recording",
+  thumbnail: "Thumbnail",
+};
+
+export interface IdeaAsset {
   id: string;
   idea_id: string;
-  type: IdeaTodoType;
+  type: AssetType;
+  status: AssetStatus;
   title: string;
-  details: string | null;
+  instructions: string | null;
   time_estimate_minutes: number | null;
-  is_complete: boolean;
+  is_ai_generatable: boolean;
+  assigned_to: string | null;
+  content_text: string | null;
+  content_url: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface GeneratedTodo {
-  type: IdeaTodoType;
+// For AI-generated assets
+export interface GeneratedAsset {
+  type: AssetType;
   title: string;
-  questions?: string[]; // only for script_finalization
-  details?: string; // markdown for asset/physical_prep
-  time_estimate_minutes: number;
+  instructions?: string;
+  time_estimate_minutes?: number;
+  is_ai_generatable?: boolean;
+  questions?: string[]; // for talking_points that need user input
 }
 
 // ============================================

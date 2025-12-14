@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useId } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -62,6 +62,7 @@ const kanbanCollisionDetection: CollisionDetection = (args) => {
 
 export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
   const router = useRouter();
+  const dndContextId = useId();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [originalStatus, setOriginalStatus] = useState<KanbanStatus | null>(null);
   const [localIdeas, setLocalIdeas] = useState(ideas);
@@ -248,6 +249,7 @@ export function KanbanBoard({ ideas, projectSlug }: KanbanBoardProps) {
 
   return (
     <DndContext
+      id={dndContextId}
       sensors={sensors}
       collisionDetection={kanbanCollisionDetection}
       onDragStart={handleDragStart}

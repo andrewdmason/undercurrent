@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaTodo, PRODUCTION_STATUSES } from "@/lib/types";
+import { IdeaWithChannels, IdeaAsset, PRODUCTION_STATUSES } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 
 interface IdeaDetailPageProps {
@@ -125,9 +125,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     templateChannels = tc?.map(t => t.channel_id) || [];
   }
 
-  // Fetch idea todos (prep list)
-  const { data: ideaTodos } = await supabase
-    .from("idea_todos")
+  // Fetch idea assets
+  const { data: ideaAssets } = await supabase
+    .from("idea_assets")
     .select("*")
     .eq("idea_id", ideaId)
     .order("sort_order", { ascending: true });
@@ -187,7 +187,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       projectTemplates={projectTemplates || []}
       projectTopics={projectTopics || []}
       fullTemplate={fullTemplate}
-      initialTodos={(ideaTodos || []) as IdeaTodo[]}
+      initialAssets={(ideaAssets || []) as IdeaAsset[]}
     />
   );
 }

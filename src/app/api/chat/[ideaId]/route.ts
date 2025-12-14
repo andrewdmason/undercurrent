@@ -7,8 +7,7 @@ import path from "path";
 import { ChatModel, ToolCall } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
-import { generateScript } from "@/lib/actions/ideas";
-import { completeScriptFinalization, refreshAssetTodos } from "@/lib/actions/idea-todos";
+import { generateScript, updateAssetContent, getIdeaAssets } from "@/lib/actions/idea-assets";
 import { after } from "next/server";
 
 // Tool definitions for the agent
@@ -125,7 +124,6 @@ export async function POST(
       id,
       title,
       description,
-      script,
       project_id,
       idea_channels (
         channel_id,
@@ -141,6 +139,12 @@ export async function POST(
   if (ideaError || !idea) {
     return new Response("Idea not found", { status: 404 });
   }
+
+  // Fetch current script/talking points from assets
+  const { data: assets } = await getIdeaAssets(ideaId);
+  const scriptAsset = assets?.find(a => a.type === "script");
+  const talkingPointsAsset = assets?.find(a => a.type === "talking_points");
+  const currentScript = scriptAsset?.content_text || talkingPointsAsset?.content_text || null;
 
   // Verify user has access to this project
   const { data: membership } = await supabase
@@ -218,7 +222,7 @@ export async function POST(
     .replace("{{channels}}", channelsSection)
     .replace("{{projectDescription}}", project.description || "No description provided.")
     .replace("{{characters}}", charactersSection)
-    .replace("{{currentScript}}", idea.script || "*No script generated yet*");
+    .replace("{{currentScript}}", currentScript || "*No script generated yet*");
 
   // Add script finalization questions to context (for Q&A flow)
   if (scriptQuestions && scriptQuestions.length > 0) {
@@ -256,7 +260,7 @@ Guidelines for your welcome message:
     if (scriptQuestions && scriptQuestions.length > 0) {
       initInstructions += `
 Since you have questions to ask, start with the FIRST question from the list above.`;
-    } else if (!idea.script) {
+    } else if (!currentScript) {
       initInstructions += `
 No script has been generated yet. Let them know you can help create one when they're ready.`;
     } else {
@@ -323,28 +327,63 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
 
     if (toolCall.function.name === "update_script") {
       const { script } = args;
-      const { error } = await supabase
-        .from("ideas")
-        .update({ script })
-        .eq("id", ideaId);
-
-      if (error) {
-        // Log the failed update
-        const { data: logData } = await supabase.from("generation_logs").insert({
-          project_id: idea.project_id,
-          type: "script_update",
-          prompt_sent: `Update script for idea: ${idea.title}`,
-          response_raw: script,
-          model: "chat-tool",
-          error: error.message,
-          idea_id: ideaId,
-        }).select("id").single();
+      
+      // Find or create the script asset
+      const { data: currentAssets } = await getIdeaAssets(ideaId);
+      let targetAsset = currentAssets?.find(a => a.type === "script");
+      
+      if (!targetAsset) {
+        // Create a script asset if one doesn't exist
+        const { data: newAsset, error: createError } = await supabase
+          .from("idea_assets")
+          .insert({
+            idea_id: ideaId,
+            type: "script",
+            status: "ready",
+            title: "Script",
+            content_text: script,
+            is_ai_generatable: true,
+            sort_order: 1,
+          })
+          .select()
+          .single();
         
-        if (logData?.id) {
-          generationLogIdMap[toolCall.id] = logData.id;
+        if (createError) {
+          const { data: logData } = await supabase.from("generation_logs").insert({
+            project_id: idea.project_id,
+            type: "script_update",
+            prompt_sent: `Update script for idea: ${idea.title}`,
+            response_raw: script,
+            model: "chat-tool",
+            error: createError.message,
+            idea_id: ideaId,
+          }).select("id").single();
+          
+          if (logData?.id) {
+            generationLogIdMap[toolCall.id] = logData.id;
+          }
+          return JSON.stringify({ success: false, error: createError.message });
         }
-
-        return JSON.stringify({ success: false, error: error.message });
+        targetAsset = newAsset;
+      } else {
+        // Update existing script asset
+        const result = await updateAssetContent(targetAsset.id, script);
+        if (result.error) {
+          const { data: logData } = await supabase.from("generation_logs").insert({
+            project_id: idea.project_id,
+            type: "script_update",
+            prompt_sent: `Update script for idea: ${idea.title}`,
+            response_raw: script,
+            model: "chat-tool",
+            error: result.error,
+            idea_id: ideaId,
+          }).select("id").single();
+          
+          if (logData?.id) {
+            generationLogIdMap[toolCall.id] = logData.id;
+          }
+          return JSON.stringify({ success: false, error: result.error });
+        }
       }
 
       // Log the successful update
@@ -366,10 +405,8 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
     }
 
     if (toolCall.function.name === "generate_script") {
-      const { context_summary } = args;
-      
-      // Generate the script with the conversation context
-      const result = await generateScript(ideaId, context_summary);
+      // Generate the script from talking points
+      const result = await generateScript(ideaId);
       
       // Track the generation log ID for linking
       if (result.generationLogId) {
@@ -378,30 +415,6 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
 
       if (result.error) {
         return JSON.stringify({ success: false, error: result.error });
-      }
-
-      // Save context to idea
-      const { error: contextError } = await supabase
-        .from("ideas")
-        .update({ script_context: context_summary })
-        .eq("id", ideaId);
-
-      if (contextError) {
-        console.error("Failed to save script context:", contextError);
-      }
-
-      // Mark script_finalization todo complete with context as outcome
-      await completeScriptFinalization(ideaId, context_summary);
-
-      // Refresh asset todos in background
-      if (result.script) {
-        after(async () => {
-          try {
-            await refreshAssetTodos(ideaId, result.script!);
-          } catch (err) {
-            console.error("Failed to refresh asset todos:", err);
-          }
-        });
       }
 
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
@@ -416,12 +429,15 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
       const { title, description } = args;
       const { error } = await supabase
         .from("ideas")
-        .update({ title, description, script: null })
+        .update({ title, description })
         .eq("id", ideaId);
 
       if (error) {
         return JSON.stringify({ success: false, error: error.message });
       }
+
+      // Delete existing assets since we're regenerating
+      await supabase.from("idea_assets").delete().eq("idea_id", ideaId);
 
       // Generate new thumbnail in background
       after(async () => {

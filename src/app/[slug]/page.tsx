@@ -105,9 +105,9 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
           name,
           description
         ),
-        idea_todos (
+        idea_assets (
           id,
-          is_complete,
+          status,
           time_estimate_minutes
         )
       `)
@@ -186,11 +186,11 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
 
   // Helper to transform idea data
   const transformIdea = (idea: typeof ideas extends (infer T)[] | null ? T : never): IdeaWithChannels => {
-    // Calculate remaining prep time from todos
-    const prepTimeMinutes = (idea.idea_todos || [])
-      .filter((todo: { is_complete: boolean }) => !todo.is_complete)
-      .reduce((sum: number, todo: { time_estimate_minutes: number | null }) => 
-        sum + (todo.time_estimate_minutes || 0), 0);
+    // Calculate remaining prep time from assets (status !== "ready")
+    const prepTimeMinutes = (idea.idea_assets || [])
+      .filter((asset: { status: string }) => asset.status !== "ready")
+      .reduce((sum: number, asset: { time_estimate_minutes: number | null }) => 
+        sum + (asset.time_estimate_minutes || 0), 0);
 
     return {
       ...idea,
