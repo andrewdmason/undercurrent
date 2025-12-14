@@ -194,17 +194,13 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   const topics = topicsResult.data || [];
 
   // Transform templates to flatten the nested channels structure
-  const templates = templatesRaw.map((t: {
-    id: string;
-    name: string;
-    template_channels: Array<{
-      distribution_channels: { id: string; platform: string } | null;
-    }>;
-  }) => ({
-    id: t.id,
-    name: t.name,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const templates = templatesRaw.map((t: any) => ({
+    id: t.id as string,
+    name: t.name as string,
     channels: (t.template_channels || [])
-      .map(tc => tc.distribution_channels)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((tc: any) => tc.distribution_channels)
       .filter(Boolean) as Array<{ id: string; platform: string }>,
   }));
 

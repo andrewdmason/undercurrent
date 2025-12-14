@@ -43,7 +43,7 @@ export interface IdeaSelections {
 
 export interface RemixOptions {
   characterIds: string[];
-  channelIds: string[];
+  channelIds?: string[]; // undefined means preserve original channels
   templateId: string | null;
   customInstructions?: string;
   saveAsCopy: boolean;
@@ -93,9 +93,11 @@ export function RemixIdeaModal({
   }, [open, currentSelections]);
 
   const handleRemix = () => {
-    // Derive channels from selected template
+    // Derive channels from selected template, or undefined to preserve original
     const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-    const channelIds = selectedTemplate?.channels?.map(c => c.id) || [];
+    const channelIds = selectedTemplate?.channels?.length 
+      ? selectedTemplate.channels.map(c => c.id) 
+      : undefined;
     
     onRemix({
       characterIds: selectedCharacterIds,

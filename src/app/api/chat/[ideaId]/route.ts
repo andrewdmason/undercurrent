@@ -42,7 +42,7 @@ const tools = [
             description: "A summary of the key decisions and information gathered from the user (e.g., 'Featured games: Catan, Wingspan, Ticket to Ride. Each chosen because...'). This will be saved for future reference.",
           },
         },
-        required: ["context_summary"],
+        required: [],
       },
     },
   },
@@ -339,10 +339,10 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
           .insert({
             idea_id: ideaId,
             type: "script",
-            status: "ready",
             title: "Script",
             content_text: script,
             is_ai_generatable: true,
+            is_complete: true,
             sort_order: 1,
           })
           .select()

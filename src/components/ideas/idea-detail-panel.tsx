@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { ImageShimmer } from "@/components/ui/shimmer";
 import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { ViewType } from "./ideas-feed";
-import { ScriptDisplay } from "./script-display";
 
 interface IdeaDetailPanelProps {
   idea: IdeaWithChannels | null;
@@ -46,7 +45,6 @@ export function IdeaDetailPanel({
 }: IdeaDetailPanelProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [copiedScript, setCopiedScript] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -85,18 +83,6 @@ export function IdeaDetailPanel({
       setTimeout(() => setCopiedPrompt(false), 2000);
     } catch {
       toast.error("Failed to copy prompt");
-    }
-  };
-
-  const handleCopyScript = async () => {
-    if (!idea.script) return;
-    try {
-      await navigator.clipboard.writeText(idea.script);
-      setCopiedScript(true);
-      toast.success("Script copied to clipboard");
-      setTimeout(() => setCopiedScript(false), 2000);
-    } catch {
-      toast.error("Failed to copy script");
     }
   };
 
@@ -336,35 +322,8 @@ export function IdeaDetailPanel({
             </div>
           </div>
 
-          {/* Right column - Script & Underlord Prompt */}
+          {/* Right column - Underlord Prompt */}
           <div className="w-1/2 p-6 flex flex-col gap-4 min-h-0">
-            {/* Script */}
-            {idea.script && (
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Script
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyScript}
-                    className="h-6 w-6 p-0"
-                    title={copiedScript ? "Copied" : "Copy"}
-                  >
-                    {copiedScript ? (
-                      <Check size={14} className="text-[#00975a]" />
-                    ) : (
-                      <Copy size={14} />
-                    )}
-                  </Button>
-                </div>
-                <div className="flex-1 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] p-4 overflow-auto min-h-0">
-                  <ScriptDisplay script={idea.script} />
-                </div>
-              </div>
-            )}
-
             {/* Underlord Prompt */}
             {idea.prompt && (
               <div className="flex-1 flex flex-col min-h-0">

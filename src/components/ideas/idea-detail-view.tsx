@@ -26,7 +26,7 @@ import {
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [remixModalOpen, setRemixModalOpen] = useState(false);
   const [isRemixing, setIsRemixing] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [isGeneratingTalkingPoints, setIsGeneratingTalkingPoints] = useState(false);
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(() => {
     // Will be properly initialized in useEffect (can't access localStorage during SSR)
@@ -196,6 +198,54 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       console.error(error);
     } finally {
       setIsGeneratingThumbnail(false);
+    }
+  };
+
+  const handleGenerateTalkingPoints = async () => {
+    if (isGeneratingTalkingPoints) return;
+    
+    setIsGeneratingTalkingPoints(true);
+    try {
+      const result = await generateTalkingPoints(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Talking points generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate talking points");
+      console.error(error);
+    } finally {
+      setIsGeneratingTalkingPoints(false);
+    }
+  };
+
+  const handleGenerateScript = async () => {
+    if (isGeneratingScript) return;
+    
+    // Check if talking points exist
+    if (!talkingPointsAsset?.content_text) {
+      toast.error("Generate talking points first before creating a script");
+      return;
+    }
+    
+    setIsGeneratingScript(true);
+    try {
+      const result = await generateScript(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Script generated");
+        // Also generate production assets in background
+        generateProductionAssets(idea.id).catch(console.error);
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate script");
+      console.error(error);
+    } finally {
+      setIsGeneratingScript(false);
     }
   };
 
@@ -357,6 +407,44 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   <Play className="h-3.5 w-3.5" />
                   Publish
                 </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
+                <DropdownMenuItem
+                  onClick={handleGenerateTalkingPoints}
+                  disabled={isGeneratingTalkingPoints}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingTalkingPoints ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {talkingPointsAsset?.content_text ? "Regenerate Talking Points" : "Generate Talking Points"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleGenerateScript}
+                  disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingScript ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {scriptAsset?.content_text ? "Regenerate Script" : "Generate Script"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleGenerateThumbnail}
+                  disabled={isGeneratingThumbnail}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingThumbnail ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate Thumbnail
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
