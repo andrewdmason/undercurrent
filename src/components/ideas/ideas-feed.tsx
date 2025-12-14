@@ -24,7 +24,6 @@ interface IdeasFeedProps {
   characters?: Array<{ id: string; name: string; image_url: string | null }>;
   channels?: Array<{ id: string; platform: string; custom_label: string | null }>;
   templates?: Array<{ id: string; name: string }>;
-  topics?: Array<{ id: string; name: string }>;
 }
 
 export function IdeasFeed({ 
@@ -35,7 +34,6 @@ export function IdeasFeed({
   characters = [],
   channels = [],
   templates = [],
-  topics = [],
 }: IdeasFeedProps) {
   const router = useRouter();
   const [selectedIdea, setSelectedIdea] = useState<IdeaWithChannels | null>(null);
@@ -89,7 +87,6 @@ export function IdeasFeed({
         characterIds: options.characterIds,
         channelIds: options.channelIds,
         templateId: options.templateId,
-        topicId: options.topicId,
         customInstructions: options.customInstructions,
         saveAsCopy: options.saveAsCopy,
       });
@@ -198,12 +195,10 @@ export function IdeasFeed({
             channelIds: remixModalIdea.channels?.map(c => c.id) || [],
             characterIds: remixModalIdea.characters?.map(c => c.id) || [],
             templateId: remixModalIdea.template?.id || null,
-            topicId: remixModalIdea.topics?.[0]?.id || null,
           }}
           characters={characters}
           channels={channels}
           templates={templates}
-          topics={topics}
         />
       )}
     </>

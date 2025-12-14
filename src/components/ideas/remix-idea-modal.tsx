@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { RefreshCw, Loader2, Shuffle, Copy } from "lucide-react";
 import {
   Dialog,
@@ -76,16 +76,21 @@ export function RemixIdeaModal({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
   const [saveAsCopy, setSaveAsCopy] = useState(false);
+  
+  // Track previous open state to only reset when modal first opens
+  const wasOpen = useRef(false);
 
-  // Pre-populate with current idea's selections when modal opens
+  // Pre-populate with current idea's selections when modal opens (not on every render)
   useEffect(() => {
-    if (open) {
+    // Only reset when transitioning from closed to open
+    if (open && !wasOpen.current) {
       setSelectedCharacterIds(currentSelections.characterIds);
       setSelectedChannelIds(currentSelections.channelIds);
       setSelectedTemplateId(currentSelections.templateId);
       setCustomInstructions("");
       setSaveAsCopy(false);
     }
+    wasOpen.current = open;
   }, [open, currentSelections]);
 
   const handleRemix = () => {

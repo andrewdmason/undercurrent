@@ -427,7 +427,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         characterIds: options.characterIds,
         channelIds: options.channelIds,
         templateId: options.templateId,
-        topicId: options.topicId,
         customInstructions: options.customInstructions,
         saveAsCopy: options.saveAsCopy,
       });
@@ -884,7 +883,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
           channelIds: idea.channels?.map(c => c.id) || [],
           characterIds: idea.characters?.map(c => c.id) || [],
           templateId: idea.template?.id || null,
-          topicId: idea.topics?.[0]?.id || null,
         }}
         characters={projectCharacters}
         channels={projectChannels.map(c => ({
@@ -893,7 +891,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
           custom_label: c.custom_label,
         }))}
         templates={projectTemplates}
-        topics={projectTopics}
       />
 
       {/* Underlord Prompt Modal */}

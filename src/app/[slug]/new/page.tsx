@@ -184,7 +184,6 @@ export default async function NewIdeasPage({ params }: NewIdeasPageProps) {
               characters={characters}
               channels={channels}
               templates={templates}
-              topics={topics}
             />
           ) : (
             <IdeasEmptyState />
