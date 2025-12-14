@@ -1,10 +1,10 @@
 "use client";
 
 import { CharactersSection } from "@/components/strategy/characters-section";
-import { useSettings } from "@/components/settings/settings-context";
+import { useBrief } from "@/components/brief/brief-context";
 
-export default function SettingsCharactersPage() {
-  const { project, characters } = useSettings();
+export default function BriefCharactersPage() {
+  const { project, characters } = useBrief();
 
   return <CharactersSection projectId={project.id} characters={characters} />;
 }

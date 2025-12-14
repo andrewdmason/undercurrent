@@ -122,6 +122,17 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
     },
   ] : [];
 
+  // Creative Brief dropdown items
+  const briefItems = navSlug ? [
+    { name: "Business Info", href: `/${navSlug}/brief` },
+    { name: "Topics", href: `/${navSlug}/brief/topics` },
+    { name: "Channels", href: `/${navSlug}/brief/channels` },
+    { name: "Characters", href: `/${navSlug}/brief/characters` },
+    { name: "Style Templates", href: `/${navSlug}/brief/templates` },
+  ] : [];
+
+  const isBriefActive = pathname?.startsWith(`/${navSlug}/brief`);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--grey-0)]">
       <div className="flex h-14 items-center px-4 gap-6">
@@ -154,7 +165,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 key={tab.name}
                 href={tab.href}
                 className={cn(
-                  "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-default",
                   "hover:bg-[var(--grey-50-a)]",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
                   tab.isActive
@@ -177,6 +188,34 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 )}
               </Link>
             ))}
+
+            {/* Creative Brief Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "relative flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-default",
+                    "hover:bg-[var(--grey-50-a)]",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
+                    isBriefActive
+                      ? "text-[var(--grey-800)]"
+                      : "text-[var(--grey-400)]"
+                  )}
+                >
+                  Creative Brief
+                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[180px]">
+                {briefItems.map((item) => (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <Link href={item.href} className="cursor-default">
+                      {item.name}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         )}
 
@@ -194,14 +233,14 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
                 <DropdownMenuItem asChild>
-                  <Link href={`/${currentProject.slug}/settings`} className="cursor-pointer">
+                  <Link href={`/${currentProject.slug}/settings`} className="cursor-default">
                     <Settings className="mr-2 h-4 w-4" />
                     Project Settings
                   </Link>
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem asChild>
-                  <Link href={`/${currentProject.slug}/team`} className="cursor-pointer">
+                  <Link href={`/${currentProject.slug}/team`} className="cursor-default">
                     <Users className="mr-2 h-4 w-4" />
                     Manage Team
                   </Link>
@@ -217,7 +256,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                       <DropdownMenuItem
                         key={project.id}
                         onClick={() => handleSelectProject(project)}
-                        className="cursor-pointer"
+                        className="cursor-default"
                       >
                         <span className="truncate flex-1">{project.name}</span>
                         {project.slug === currentProject.slug && (
@@ -228,7 +267,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={handleCreateProject}
-                      className="cursor-pointer"
+                      className="cursor-default"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Add Project
@@ -239,7 +278,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuItem asChild>
-                  <Link href={`/logs/tools?project=${currentProject.id}`} className="cursor-pointer">
+                  <Link href={`/logs/tools?project=${currentProject.id}`} className="cursor-default">
                     <ScrollText className="mr-2 h-4 w-4" />
                     AI Logs
                   </Link>
@@ -249,7 +288,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 
                 <DropdownMenuItem 
                   onClick={handleSignOut}
-                  className="cursor-pointer"
+                  className="cursor-default"
                   variant="destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />

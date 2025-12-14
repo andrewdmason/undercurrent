@@ -1,10 +1,10 @@
 "use client";
 
 import { TemplatesSection } from "@/components/strategy/templates-section";
-import { useSettings } from "@/components/settings/settings-context";
+import { useBrief } from "@/components/brief/brief-context";
 
-export default function SettingsTemplatesPage() {
-  const { project, templates, channels } = useSettings();
+export default function BriefTemplatesPage() {
+  const { project, templates, channels } = useBrief();
 
   return (
     <TemplatesSection

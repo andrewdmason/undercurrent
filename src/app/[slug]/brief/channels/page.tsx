@@ -1,10 +1,10 @@
 "use client";
 
 import { DistributionChannelsSection } from "@/components/strategy/distribution-channels-section";
-import { useSettings } from "@/components/settings/settings-context";
+import { useBrief } from "@/components/brief/brief-context";
 
-export default function SettingsChannelsPage() {
-  const { project, channels } = useSettings();
+export default function BriefChannelsPage() {
+  const { project, channels } = useBrief();
 
   return <DistributionChannelsSection projectId={project.id} channels={channels} />;
 }
