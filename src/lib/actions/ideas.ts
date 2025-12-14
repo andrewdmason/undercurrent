@@ -8,7 +8,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
 import { generateIdeaTodos } from "./idea-todos";
-import { IdeaStatus } from "@/lib/types";
+import { IdeaStatus, PRODUCTION_STATUSES, ProductionStatus } from "@/lib/types";
 
 interface GeneratedIdea {
   title: string;
@@ -36,7 +36,7 @@ async function revalidateProjectPaths(projectId: string) {
   return project?.slug;
 }
 
-// Accept an idea - move it to the production queue
+// Accept an idea - move it to preproduction (start of production pipeline)
 export async function acceptIdea(ideaId: string) {
   const supabase = await createClient();
 
@@ -51,9 +51,24 @@ export async function acceptIdea(ideaId: string) {
     return { error: "Idea not found" };
   }
 
+  // Get the max sort_order for preproduction ideas in this project
+  const { data: maxSortData } = await supabase
+    .from("ideas")
+    .select("sort_order")
+    .eq("project_id", idea.project_id)
+    .eq("status", "preproduction")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .single();
+
+  const newSortOrder = (maxSortData?.sort_order ?? -1) + 1;
+
   const { error } = await supabase
     .from("ideas")
-    .update({ status: "accepted" as IdeaStatus })
+    .update({ 
+      status: "preproduction" as IdeaStatus,
+      sort_order: newSortOrder 
+    })
     .eq("id", ideaId);
 
   if (error) {
@@ -133,7 +148,7 @@ export async function undoRejectIdea(ideaId: string) {
   return { success: true };
 }
 
-// Undo accept - move idea back to new status
+// Undo accept - move idea back to new status (from any production stage)
 export async function undoAcceptIdea(ideaId: string) {
   const supabase = await createClient();
 
@@ -148,8 +163,10 @@ export async function undoAcceptIdea(ideaId: string) {
     return { error: "Idea not found" };
   }
 
-  if (idea.status !== "accepted") {
-    return { error: "Idea is not accepted" };
+  // Check if idea is in any production stage (preproduction, production, postproduction)
+  const productionStages: string[] = ["preproduction", "production", "postproduction"];
+  if (!productionStages.includes(idea.status)) {
+    return { error: "Idea is not in a production stage" };
   }
 
   const { error } = await supabase
@@ -192,6 +209,122 @@ export async function cancelIdea(ideaId: string) {
   }
 
   await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
+// Update idea status (for kanban drag-and-drop)
+export async function updateIdeaStatus(ideaId: string, newStatus: ProductionStatus) {
+  const supabase = await createClient();
+
+  // Validate the status is a valid production status
+  if (!PRODUCTION_STATUSES.includes(newStatus)) {
+    return { error: `Invalid status: ${newStatus}` };
+  }
+
+  // Get idea to find project_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("project_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  const { error } = await supabase
+    .from("ideas")
+    .update({ status: newStatus as IdeaStatus })
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error updating idea status:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
+// Update idea status and sort order (for kanban drag-and-drop between columns)
+export async function updateIdeaStatusAndOrder(
+  ideaId: string, 
+  newStatus: ProductionStatus, 
+  sortOrder: number
+) {
+  const supabase = await createClient();
+
+  // Validate the status is a valid production status
+  if (!PRODUCTION_STATUSES.includes(newStatus)) {
+    return { error: `Invalid status: ${newStatus}` };
+  }
+
+  // Get idea to find project_id
+  const { data: idea } = await supabase
+    .from("ideas")
+    .select("project_id")
+    .eq("id", ideaId)
+    .single();
+
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+
+  const { error } = await supabase
+    .from("ideas")
+    .update({ 
+      status: newStatus as IdeaStatus,
+      sort_order: sortOrder 
+    })
+    .eq("id", ideaId);
+
+  if (error) {
+    console.error("Error updating idea status and order:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(idea.project_id);
+  return { success: true };
+}
+
+// Batch update sort orders for ideas (for within-column reordering)
+export async function updateIdeaSortOrders(
+  updates: Array<{ id: string; sort_order: number }>
+) {
+  const supabase = await createClient();
+
+  if (updates.length === 0) {
+    return { success: true };
+  }
+
+  // Get project_id from first idea for revalidation
+  const { data: firstIdea } = await supabase
+    .from("ideas")
+    .select("project_id")
+    .eq("id", updates[0].id)
+    .single();
+
+  if (!firstIdea) {
+    return { error: "Idea not found" };
+  }
+
+  // Update each idea's sort_order
+  const promises = updates.map(({ id, sort_order }) =>
+    supabase
+      .from("ideas")
+      .update({ sort_order })
+      .eq("id", id)
+  );
+
+  const results = await Promise.all(promises);
+  const error = results.find((r) => r.error)?.error;
+
+  if (error) {
+    console.error("Error updating sort orders:", error);
+    return { error: error.message };
+  }
+
+  await revalidateProjectPaths(firstIdea.project_id);
   return { success: true };
 }
 
@@ -421,7 +554,9 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       ? pastIdeas
           .map((idea) => {
             let line = `- "${idea.title}"`;
-            if (idea.status === "accepted" || idea.status === "published") {
+            // Check for any production status (preproduction, production, postproduction, published)
+            const productionStatuses = ["preproduction", "production", "postproduction", "published"];
+            if (productionStatuses.includes(idea.status)) {
               line += " [✓ accepted]";
             } else if (idea.status === "rejected") {
               line += " [✗ rejected]";
