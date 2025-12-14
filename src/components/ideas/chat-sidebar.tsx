@@ -253,6 +253,8 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
 
     const userMessage = inputValue.trim();
     setInputValue("");
+    // Maintain focus on input so user can compose next message while AI responds
+    inputRef.current?.focus();
     setIsSending(true);
 
     // Use initChatIdRef if available to ensure we send to the same chat as the welcome message
@@ -568,12 +570,8 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask AI to refine the script..."
-            disabled={isSending}
             rows={1}
-            className={cn(
-              "flex-1 bg-transparent text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)] outline-none resize-none min-h-[18px] max-h-[100px]",
-              isSending && "opacity-50"
-            )}
+            className="flex-1 bg-transparent text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)] outline-none resize-none min-h-[18px] max-h-[100px]"
             style={{ height: "auto" }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
