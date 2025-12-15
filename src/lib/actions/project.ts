@@ -11,6 +11,7 @@ export async function updateProjectInfo(
     url?: string | null;
     description?: string | null;
     business_objectives?: string | null;
+    content_preferences?: string | null;
   }
 ) {
   const supabase = await createClient();

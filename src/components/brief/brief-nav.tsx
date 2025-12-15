@@ -10,7 +10,7 @@ interface BriefNavProps {
 
 const tabs = [
   { label: "Business Info", href: "" },
-  { label: "Topics", href: "/topics" },
+  { label: "Content Preferences", href: "/content" },
   { label: "Channels", href: "/channels" },
   { label: "Characters", href: "/characters" },
   { label: "Style Templates", href: "/templates" },
@@ -48,4 +48,5 @@ export function BriefNav({ slug }: BriefNavProps) {
     </div>
   );
 }
+
 

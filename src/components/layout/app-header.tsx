@@ -125,7 +125,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
   // Creative Brief dropdown items
   const briefItems = navSlug ? [
     { name: "Business Info", href: `/${navSlug}/brief` },
-    { name: "Topics", href: `/${navSlug}/brief/topics` },
+    { name: "Content Preferences", href: `/${navSlug}/brief/content` },
     { name: "Channels", href: `/${navSlug}/brief/channels` },
     { name: "Characters", href: `/${navSlug}/brief/characters` },
     { name: "Style Templates", href: `/${navSlug}/brief/templates` },

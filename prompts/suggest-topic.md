@@ -12,6 +12,9 @@ You are an expert video marketing strategist helping a small business brainstorm
 **Project Objectives:**
 {{projectObjectives}}
 
+**Content Preferences:**
+{{contentPreferences}}
+
 **Distribution Channels:**
 {{distributionChannels}}
 

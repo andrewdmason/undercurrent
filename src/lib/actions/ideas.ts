@@ -519,6 +519,10 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       "{{projectObjectives}}",
       project.business_objectives || "No business objectives defined yet."
     )
+    .replace(
+      "{{contentPreferences}}",
+      project.content_preferences || "No specific content preferences."
+    )
     .replace("{{topics}}", topicsSection)
     .replace("{{excludedTopics}}", excludedTopicsSection)
     .replace("{{characters}}", charactersSection)

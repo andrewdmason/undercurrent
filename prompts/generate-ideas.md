@@ -18,6 +18,9 @@ Generate exactly **{{ideaCount}}** unique video ideas based on the context below
 **Project Objectives:**
 {{projectObjectives}}
 
+**Content Preferences:**
+{{contentPreferences}}
+
 **Topics:**
 {{topics}}
 
