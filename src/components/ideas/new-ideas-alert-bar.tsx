@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const POLL_INTERVAL = 2000; // 2 seconds
+const GENERATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes - expire stale generation state
 
 interface NewIdeasAlertBarProps {
   /** Project ID to filter ideas by */
@@ -22,23 +23,41 @@ interface NewIdeasAlertBarProps {
 // Storage key for persisting generation state across remounts
 const GENERATION_STATE_KEY = "undercurrent-generating-ideas";
 
-function getStoredGenerationState(): { isPending: boolean; count: number; baselineCount: number } {
-  if (typeof window === "undefined") return { isPending: false, count: 0, baselineCount: 0 };
+function getStoredGenerationState(): { isPending: boolean; count: number; baselineCount: number; startedAt: number } {
+  if (typeof window === "undefined") return { isPending: false, count: 0, baselineCount: 0, startedAt: 0 };
   try {
     const stored = sessionStorage.getItem(GENERATION_STATE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { isPending: parsed.isPending || false, count: parsed.count || 0, baselineCount: parsed.baselineCount || 0 };
+      const startedAt = parsed.startedAt || 0;
+      
+      // Check if the generation state has expired (stale from a previous session)
+      if (startedAt && Date.now() - startedAt > GENERATION_TIMEOUT) {
+        sessionStorage.removeItem(GENERATION_STATE_KEY);
+        return { isPending: false, count: 0, baselineCount: 0, startedAt: 0 };
+      }
+      
+      return { 
+        isPending: parsed.isPending || false, 
+        count: parsed.count || 0, 
+        baselineCount: parsed.baselineCount || 0,
+        startedAt 
+      };
     }
   } catch {}
-  return { isPending: false, count: 0, baselineCount: 0 };
+  return { isPending: false, count: 0, baselineCount: 0, startedAt: 0 };
 }
 
 function setStoredGenerationState(isPending: boolean, count: number, baselineCount?: number) {
   if (typeof window === "undefined") return;
   try {
     if (isPending) {
-      sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify({ isPending, count, baselineCount: baselineCount ?? 0 }));
+      sessionStorage.setItem(GENERATION_STATE_KEY, JSON.stringify({ 
+        isPending, 
+        count, 
+        baselineCount: baselineCount ?? 0,
+        startedAt: Date.now() 
+      }));
     } else {
       sessionStorage.removeItem(GENERATION_STATE_KEY);
     }
@@ -67,8 +86,10 @@ export function NewIdeasAlertBar({
     }
   }, []);
 
-  const isGenerating = isPendingGeneration || (totalNewIdeas > 0 && readyCount < totalNewIdeas);
-  const isReadyForReview = !isPendingGeneration && totalNewIdeas > 0 && readyCount >= totalNewIdeas;
+  // Only show "generating" if there's an explicit pending generation (user clicked Generate)
+  // Don't fallback to checking incomplete thumbnails - that catches old ideas with failed thumbnails
+  const isGenerating = isPendingGeneration;
+  const isReadyForReview = !isPendingGeneration && totalNewIdeas > 0;
 
   // Listen for generation start event from GenerateIdeasButton
   useEffect(() => {
@@ -159,11 +180,10 @@ export function NewIdeasAlertBar({
 
   // Check sessionStorage on every render to catch pending state that survived remount
   // This is needed because useEffect may not re-run during Next.js revalidation
-  const storedState = typeof window !== "undefined" ? getStoredGenerationState() : { isPending: false, count: 0, baselineCount: 0 };
+  const storedState = typeof window !== "undefined" ? getStoredGenerationState() : { isPending: false, count: 0, baselineCount: 0, startedAt: 0 };
   
-  // Don't consider it pending if all thumbnails are already ready
-  const allThumbnailsReady = totalNewIdeas > 0 && readyCount >= totalNewIdeas;
-  const effectiveIsPending = (isPendingGeneration || storedState.isPending) && !allThumbnailsReady;
+  // Only consider it pending if there's explicit pending state (from clicking Generate)
+  const effectiveIsPending = isPendingGeneration || storedState.isPending;
   const effectivePendingCount = isPendingGeneration ? pendingCount : storedState.count;
 
   // Show bar if we have new ideas OR if generation is pending
@@ -175,8 +195,9 @@ export function NewIdeasAlertBar({
   }
 
   // Recalculate isGenerating and isReadyForReview with effective values
-  const effectiveIsGenerating = effectiveIsPending || (totalNewIdeas > 0 && readyCount < totalNewIdeas);
-  const effectiveIsReadyForReview = !effectiveIsPending && totalNewIdeas > 0 && readyCount >= totalNewIdeas;
+  // Only show "generating" if there's explicit pending state - not for old incomplete thumbnails
+  const effectiveIsGenerating = effectiveIsPending;
+  const effectiveIsReadyForReview = !effectiveIsPending && totalNewIdeas > 0;
 
   const content = (
     <>
