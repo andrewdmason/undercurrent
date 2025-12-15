@@ -26,7 +26,9 @@ export function NewIdeasSection({
 
   const totalNewIdeas = ideas.length;
   const readyCount = ideas.filter((idea) => idea.image_url !== null).length;
-  const isReadyForReview = totalNewIdeas > 0 && readyCount >= totalNewIdeas;
+  // Allow review as long as there are ideas - don't require ALL thumbnails to be ready
+  // (some old ideas may have failed thumbnail generation)
+  const isReadyForReview = totalNewIdeas > 0;
 
   // Close modal if ideas are no longer ready for review (e.g., new generation started)
   useEffect(() => {
@@ -46,7 +48,7 @@ export function NewIdeasSection({
         onReviewClick={() => setIsModalOpen(true)}
       />
 
-      {/* Only render modal when ideas are ready for review (all thumbnails generated) */}
+      {/* Render modal when there are ideas to review */}
       {isReadyForReview && (
         <ReviewIdeasModal
           open={isModalOpen}
