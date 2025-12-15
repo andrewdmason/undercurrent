@@ -10,6 +10,7 @@ import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal,
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -23,10 +24,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, deleteAsset } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -65,6 +72,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
   const [isGeneratingUnderlordPrompt, setIsGeneratingUnderlordPrompt] = useState(false);
   const [isScriptUpdating, setIsScriptUpdating] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState<string | null>(idea.prompt);
@@ -76,6 +84,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isGeneratingTalkingPoints, setIsGeneratingTalkingPoints] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
+  const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(() => {
     // Will be properly initialized in useEffect (can't access localStorage during SSR)
@@ -204,13 +214,36 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
   };
 
-  const handleGenerateTalkingPoints = async () => {
+  const handleGenerateAssets = async () => {
+    if (isGeneratingAssets) return;
+
+    setIsGeneratingAssets(true);
+    try {
+      const result = await generateProductionAssets(idea.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Production assets generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate production assets");
+      console.error(error);
+    } finally {
+      setIsGeneratingAssets(false);
+    }
+  };
+
+  const handleGenerateTalkingPoints = async (notes?: string) => {
     if (isGeneratingTalkingPoints) return;
     
     setIsGeneratingTalkingPoints(true);
+    setRegenerateDialogOpen(null);
+    setRegenerateNotes("");
     
     try {
-      const result = await generateTalkingPoints(idea.id);
+      // Pass notes as regenerationNotes (third param), not userContext (second param)
+      const result = await generateTalkingPoints(idea.id, undefined, notes?.trim() || undefined);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -225,7 +258,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
   };
 
-  const handleGenerateScript = async () => {
+  const handleGenerateScript = async (notes?: string) => {
     if (isGeneratingScript) return;
     
     // Check if talking points exist
@@ -235,9 +268,11 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
     
     setIsGeneratingScript(true);
+    setRegenerateDialogOpen(null);
+    setRegenerateNotes("");
     
     try {
-      const result = await generateScript(idea.id);
+      const result = await generateScript(idea.id, notes?.trim() || undefined);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -414,7 +449,13 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
-                  onClick={handleGenerateTalkingPoints}
+                  onClick={() => {
+                    if (talkingPointsAsset?.content_text) {
+                      setRegenerateDialogOpen("talking_points");
+                    } else {
+                      handleGenerateTalkingPoints();
+                    }
+                  }}
                   disabled={isGeneratingTalkingPoints}
                   className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
                 >
@@ -426,7 +467,13 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   {talkingPointsAsset?.content_text ? "Regenerate Talking Points" : "Generate Talking Points"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleGenerateScript}
+                  onClick={() => {
+                    if (scriptAsset?.content_text) {
+                      setRegenerateDialogOpen("script");
+                    } else {
+                      handleGenerateScript();
+                    }
+                  }}
                   disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
                   className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
                 >
@@ -448,6 +495,18 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                     <Sparkles className="h-3.5 w-3.5" />
                   )}
                   Regenerate Thumbnail
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleGenerateAssets}
+                  disabled={isGeneratingAssets || !scriptAsset?.content_text}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingAssets ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate Assets
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
@@ -527,12 +586,10 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
               {/* Description Card with all metadata */}
               <DescriptionCard 
                 idea={idea} 
-                projectChannels={projectChannels} 
                 fullTemplate={fullTemplate} 
-                setEditingChannel={setEditingChannel} 
                 setEditingTemplate={setEditingTemplate} 
                 setEditingTopic={setEditingTopic} 
-                setEditingCharacter={setEditingCharacter} 
+                setEditingCharacter={setEditingCharacter}
               />
 
               {/* Assets List - expands to fill remaining space */}
@@ -591,59 +648,84 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             {/* Assets in this stage */}
                             <div className="space-y-0.5">
                               {stageAssets.map((asset) => (
-                                <div
-                                  key={asset.id}
-                                  className={cn(
-                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
-                                    selectedAssetId === asset.id
-                                      ? "bg-[var(--grey-100)]"
-                                      : "hover:bg-[var(--grey-50)]"
-                                  )}
-                                  onClick={() => setSelectedAssetId(asset.id)}
-                                >
-                                  {/* Checkbox */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleAssetComplete(asset.id);
-                                    }}
-                                    className={cn(
-                                      "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
-                                      asset.is_complete
-                                        ? "bg-[#00975a] border-[#00975a] text-white"
-                                        : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
-                                    )}
-                                    title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
-                                  >
-                                    {asset.is_complete && <Check className="h-3 w-3" />}
-                                  </button>
+                                <ContextMenu key={asset.id}>
+                                  <ContextMenuTrigger asChild>
+                                    <div
+                                      className={cn(
+                                        "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
+                                        selectedAssetId === asset.id
+                                          ? "bg-[var(--grey-100)]"
+                                          : "hover:bg-[var(--grey-50)]"
+                                      )}
+                                      onClick={() => setSelectedAssetId(asset.id)}
+                                    >
+                                      {/* Checkbox */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleAssetComplete(asset.id);
+                                        }}
+                                        className={cn(
+                                          "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
+                                          asset.is_complete
+                                            ? "bg-[#00975a] border-[#00975a] text-white"
+                                            : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
+                                        )}
+                                        title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
+                                      >
+                                        {asset.is_complete && <Check className="h-3 w-3" />}
+                                      </button>
 
-                                  {/* Asset Type Icon */}
-                                  <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
-                                    {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
-                                    {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
-                                    {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
-                                    {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
-                                    {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
-                                  </span>
+                                      {/* Asset Type Icon */}
+                                      <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
+                                        {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
+                                        {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
+                                        {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
+                                        {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
+                                        {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
+                                      </span>
 
-                                  {/* AI sparkles next to icon */}
-                                  {asset.is_ai_generatable && (
-                                    <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
-                                  )}
+                                      {/* AI sparkles next to icon */}
+                                      {asset.is_ai_generatable && (
+                                        <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
+                                      )}
 
-                                  {/* Asset Title */}
-                                  <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
-                                    {asset.title}
-                                  </span>
+                                      {/* Asset Title */}
+                                      <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
+                                        {asset.title}
+                                      </span>
 
-                                  {/* Time Estimate */}
-                                  {asset.time_estimate_minutes && (
-                                    <span className="text-xs text-[var(--grey-400)] tabular-nums">
-                                      {asset.time_estimate_minutes}min
-                                    </span>
-                                  )}
-                                </div>
+                                      {/* Time Estimate */}
+                                      {asset.time_estimate_minutes && (
+                                        <span className="text-xs text-[var(--grey-400)] tabular-nums">
+                                          {asset.time_estimate_minutes}min
+                                        </span>
+                                      )}
+                                    </div>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent>
+                                    <ContextMenuItem
+                                      onClick={async () => {
+                                        const result = await deleteAsset(asset.id);
+                                        if (result.success) {
+                                          toast.success("Asset deleted");
+                                          // If we deleted the selected asset, select the first remaining one
+                                          if (selectedAssetId === asset.id) {
+                                            const remainingAssets = assets.filter(a => a.id !== asset.id);
+                                            setSelectedAssetId(remainingAssets[0]?.id || null);
+                                          }
+                                          router.refresh();
+                                        } else {
+                                          toast.error(result.error || "Failed to delete asset");
+                                        }
+                                      }}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
                               ))}
                             </div>
                           </div>
@@ -704,29 +786,37 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                           </Button>
                         )}
                         
-                        {/* Regenerate buttons for AI-generated assets */}
-                        {selectedAsset.type === "talking_points" && selectedAsset.content_text && (
+                        {/* Generate/Regenerate buttons for AI-generated assets */}
+                        {selectedAsset.type === "talking_points" && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={handleGenerateTalkingPoints}
+                            onClick={() => {
+                              if (selectedAsset.content_text) {
+                                setRegenerateDialogOpen("talking_points");
+                              } else {
+                                handleGenerateTalkingPoints();
+                              }
+                            }}
                             disabled={isGeneratingTalkingPoints}
                             className="h-7 px-2 gap-1.5"
-                            title="Regenerate Talking Points"
+                            title={selectedAsset.content_text ? "Regenerate Talking Points" : "Generate Talking Points"}
                           >
                             {isGeneratingTalkingPoints ? (
                               <Loader2 size={14} className="animate-spin" />
-                            ) : (
+                            ) : selectedAsset.content_text ? (
                               <RefreshCw size={14} />
+                            ) : (
+                              <Sparkles size={14} />
                             )}
-                            <span className="text-xs">Regenerate</span>
+                            <span className="text-xs">{selectedAsset.content_text ? "Regenerate" : "Generate"}</span>
                           </Button>
                         )}
                         {selectedAsset.type === "script" && selectedAsset.content_text && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={handleGenerateScript}
+                            onClick={() => setRegenerateDialogOpen("script")}
                             disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
                             className="h-7 px-2 gap-1.5"
                             title="Regenerate Script"
@@ -837,7 +927,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={handleGenerateScript}
+                                  onClick={() => handleGenerateScript()}
                                   disabled={isGeneratingScript}
                                   className="gap-2"
                                 >
@@ -1105,6 +1195,72 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         onClose={() => setEditingChannel(null)}
         onUpdate={() => router.refresh()}
       />
+
+      {/* Regenerate Dialog */}
+      <Dialog 
+        open={regenerateDialogOpen !== null} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setRegenerateDialogOpen(null);
+            setRegenerateNotes("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {regenerateDialogOpen === "talking_points" ? "Regenerate Talking Points" : "Regenerate Script"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[var(--grey-700)]">
+                Notes for regeneration <span className="text-[var(--grey-400)] font-normal">(optional)</span>
+              </label>
+              <Textarea
+                placeholder="e.g., Make it more conversational, focus more on the benefits, shorter intro..."
+                value={regenerateNotes}
+                onChange={(e) => setRegenerateNotes(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+              <p className="text-xs text-[var(--grey-500)]">
+                Add any specific instructions or changes you want in the regenerated content.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRegenerateDialogOpen(null);
+                  setRegenerateNotes("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (regenerateDialogOpen === "talking_points") {
+                    handleGenerateTalkingPoints(regenerateNotes);
+                  } else {
+                    handleGenerateScript(regenerateNotes);
+                  }
+                }}
+                disabled={isGeneratingTalkingPoints || isGeneratingScript}
+              >
+                {(isGeneratingTalkingPoints || isGeneratingScript) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  "Regenerate"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1115,9 +1271,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
 
 interface DescriptionCardProps {
   idea: IdeaWithChannels;
-  projectChannels: DistributionChannel[];
   fullTemplate: ProjectTemplateWithChannels | null;
-  setEditingChannel: (channel: DistributionChannel) => void;
   setEditingTemplate: (template: ProjectTemplateWithChannels) => void;
   setEditingTopic: (topic: { id: string; name: string; description?: string | null }) => void;
   setEditingCharacter: (character: { id: string; name: string; description?: string | null; image_url: string | null }) => void;
@@ -1125,9 +1279,7 @@ interface DescriptionCardProps {
 
 function DescriptionCard({ 
   idea, 
-  projectChannels, 
   fullTemplate, 
-  setEditingChannel, 
   setEditingTemplate, 
   setEditingTopic, 
   setEditingCharacter 
@@ -1160,30 +1312,26 @@ function DescriptionCard({
         </>
       )}
       
-      {/* All Pills - Channels, Template, Characters, Topics */}
-      {((idea.channels?.length ?? 0) > 0 || idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
+      {/* All Pills - Template (with channel icons), Characters, Topics */}
+      {(idea.template || (idea.characters?.length ?? 0) > 0 || (idea.topics?.length ?? 0) > 0) && (
         <div className={cn("flex items-center gap-1.5 flex-wrap", idea.description && "mt-4 pt-4 border-t border-[var(--border)]")}>
-          {/* Channel Pills */}
-          {idea.channels?.map((channel) => {
-            const fullChannel = projectChannels.find(c => c.id === channel.id);
-            return (
-              <button
-                key={channel.id}
-                onClick={() => fullChannel && setEditingChannel(fullChannel)}
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
-              >
-                <PlatformIcon platform={channel.platform} />
-                {getChannelLabel(channel.platform, channel.custom_label)}
-              </button>
-            );
-          })}
-          {/* Template Pill */}
+          {/* Template Pill with embedded channel icons */}
           {idea.template && fullTemplate && (
             <button
               onClick={() => setEditingTemplate(fullTemplate)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)] hover:bg-[var(--grey-100)] transition-colors cursor-pointer"
             >
-              <LayoutTemplate className="h-3 w-3" />
+              {fullTemplate.channels.length > 0 && (
+                <span className="flex items-center gap-0.5">
+                  {fullTemplate.channels.map((channel) => (
+                    <PlatformIcon
+                      key={channel.id}
+                      platform={channel.platform}
+                      className="size-3 text-[var(--grey-400)]"
+                    />
+                  ))}
+                </span>
+              )}
               {idea.template.name}
             </button>
           )}

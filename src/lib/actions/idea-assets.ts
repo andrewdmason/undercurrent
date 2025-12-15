@@ -179,7 +179,8 @@ async function fetchIdeaWithContext(ideaId: string) {
       ),
       project_templates (
         name,
-        description
+        description,
+        target_duration_seconds
       )
     `)
     .eq("id", ideaId)
@@ -202,6 +203,19 @@ async function fetchIdeaWithContext(ideaId: string) {
   return { idea, project, error: null };
 }
 
+// Helper to format duration in human-readable form
+function formatDuration(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds} seconds`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (remainingSeconds === 0) {
+    return minutes === 1 ? "1 minute" : `${minutes} minutes`;
+  }
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 // Extract and format context from idea data
 function formatIdeaContext(idea: {
   title: string | null;
@@ -222,7 +236,11 @@ function formatIdeaContext(idea: {
     .map(it => it.project_topics)
     .filter(Boolean) as Array<{ name: string; description: string | null }>;
 
-  const template = idea.project_templates as { name: string; description: string | null } | null;
+  const template = idea.project_templates as { 
+    name: string; 
+    description: string | null;
+    target_duration_seconds: number | null;
+  } | null;
 
   const charactersSection = characters.length > 0
     ? characters.map((c) => `- **${c.name}**: ${c.description || "No description"}`).join("\n")
@@ -236,13 +254,21 @@ function formatIdeaContext(idea: {
     ? `**Template:** ${template.name}\n${template.description || ""}`
     : "No specific template assigned.";
 
+  // Format target duration - this is critical for content length
+  const targetDurationSeconds = template?.target_duration_seconds;
+  const targetDurationSection = targetDurationSeconds
+    ? `**Target Duration:** ${formatDuration(targetDurationSeconds)} (${targetDurationSeconds} seconds)\n\n⚠️ **CRITICAL**: The content MUST fit within this time limit. This is not a suggestion — the video cannot exceed ${formatDuration(targetDurationSeconds)}.`
+    : "No specific duration target.";
+
   return {
     characters,
     topics,
     template,
+    targetDurationSeconds,
     charactersSection,
     topicsSection,
     templateSection,
+    targetDurationSection,
     ideaTitle: idea.title || "Untitled",
     ideaDescription: idea.description || "No description",
     projectName: project.name || "Unnamed Project",
@@ -293,10 +319,11 @@ export async function createTalkingPointsPlaceholder(
 }
 
 // Generate talking points for an idea using AI
-// This is called from the chat interface after gathering user context
+// This is called from the chat interface after gathering user context, or from regenerate dialog
 export async function generateTalkingPoints(
   ideaId: string,
-  userContext?: string
+  userContext?: string,
+  regenerationNotes?: string
 ): Promise<{ success: boolean; asset?: IdeaAsset; error?: string }> {
   const supabase = await createClient();
 
@@ -317,14 +344,20 @@ export async function generateTalkingPoints(
     .replace("{{ideaTitle}}", context.ideaTitle)
     .replace("{{ideaDescription}}", context.ideaDescription)
     .replace("{{template}}", context.templateSection)
+    .replace("{{targetDuration}}", context.targetDurationSection)
     .replace("{{topics}}", context.topicsSection)
     .replace("{{characters}}", context.charactersSection)
     .replace("{{projectName}}", context.projectName)
     .replace("{{projectDescription}}", context.projectDescription);
 
-  // If user context was provided from chat, append it
+  // If user context was provided from chat (initial generation), append it
   if (userContext) {
     prompt += `\n\n## User's Perspective and Context\n\nThe user has provided the following information about their unique perspective on this video:\n\n${userContext}\n\n**Important:** Use this context to make the talking points specific and personalized. Do NOT return needs_input: true — generate the talking points directly using the context above.`;
+  }
+
+  // If regeneration notes were provided (regeneration), append them
+  if (regenerationNotes?.trim()) {
+    prompt += `\n\n## Regeneration Notes\n\nThe user has requested specific changes or considerations for this regeneration:\n\n${regenerationNotes.trim()}`;
   }
 
   try {
@@ -421,7 +454,8 @@ export async function generateTalkingPoints(
 
 // Generate script from talking points
 export async function generateScript(
-  ideaId: string
+  ideaId: string,
+  userNotes?: string
 ): Promise<{ success: boolean; asset?: IdeaAsset; error?: string }> {
   const supabase = await createClient();
 
@@ -450,15 +484,21 @@ export async function generateScript(
     "utf-8"
   );
 
-  const prompt = promptTemplate
+  let prompt = promptTemplate
     .replace("{{ideaTitle}}", context.ideaTitle)
     .replace("{{ideaDescription}}", context.ideaDescription)
     .replace("{{talkingPoints}}", talkingPointsAsset.content_text)
     .replace("{{template}}", context.templateSection)
+    .replace("{{targetDuration}}", context.targetDurationSection)
     .replace("{{topics}}", context.topicsSection)
     .replace("{{characters}}", context.charactersSection)
     .replace("{{projectName}}", context.projectName)
     .replace("{{projectDescription}}", context.projectDescription);
+
+  // Append user notes if provided
+  if (userNotes?.trim()) {
+    prompt += `\n\n## Regeneration Notes\n\nThe user has requested specific changes or considerations for this regeneration:\n\n${userNotes.trim()}`;
+  }
 
   try {
     const completion = await openai.chat.completions.create({
@@ -676,6 +716,35 @@ export async function generateProductionAssets(
 
     return { success: false, error: errorMessage };
   }
+}
+
+// Delete a single asset
+export async function deleteAsset(assetId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  // First get the idea_id for revalidation
+  const { data: asset, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select("idea_id")
+    .eq("id", assetId)
+    .single();
+
+  if (fetchError || !asset) {
+    return { success: false, error: "Asset not found" };
+  }
+
+  const { error } = await supabase
+    .from("idea_assets")
+    .delete()
+    .eq("id", assetId);
+
+  if (error) {
+    console.error("Error deleting asset:", error);
+    return { success: false, error: error.message };
+  }
+
+  await revalidateIdeaPaths(asset.idea_id);
+  return { success: true };
 }
 
 // Delete all assets for an idea (for regeneration)

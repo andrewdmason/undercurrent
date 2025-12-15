@@ -128,7 +128,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
     { name: "Content Preferences", href: `/${navSlug}/brief/content` },
     { name: "Channels", href: `/${navSlug}/brief/channels` },
     { name: "Characters", href: `/${navSlug}/brief/characters` },
-    { name: "Style Templates", href: `/${navSlug}/brief/templates` },
+    { name: "Templates", href: `/${navSlug}/brief/templates` },
   ] : [];
 
   const isBriefActive = pathname?.startsWith(`/${navSlug}/brief`);
@@ -165,7 +165,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 key={tab.name}
                 href={tab.href}
                 className={cn(
-                  "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-default",
+                  "relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer",
                   "hover:bg-[var(--grey-50-a)]",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
                   tab.isActive
@@ -194,7 +194,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <button
                   className={cn(
-                    "relative flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-default",
+                    "relative flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer",
                     "hover:bg-[var(--grey-50-a)]",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan-600)]",
                     isBriefActive
@@ -209,7 +209,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
               <DropdownMenuContent align="start" className="w-[180px]">
                 {briefItems.map((item) => (
                   <DropdownMenuItem key={item.href} asChild>
-                    <Link href={item.href} className="cursor-default">
+                    <Link href={item.href} className="cursor-pointer">
                       {item.name}
                     </Link>
                   </DropdownMenuItem>
@@ -233,14 +233,14 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[220px]">
                 <DropdownMenuItem asChild>
-                  <Link href={`/${currentProject.slug}/settings`} className="cursor-default">
+                  <Link href={`/${currentProject.slug}/settings`} className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     Project Settings
                   </Link>
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem asChild>
-                  <Link href={`/${currentProject.slug}/team`} className="cursor-default">
+                  <Link href={`/${currentProject.slug}/team`} className="cursor-pointer">
                     <Users className="mr-2 h-4 w-4" />
                     Manage Team
                   </Link>
@@ -256,7 +256,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                       <DropdownMenuItem
                         key={project.id}
                         onClick={() => handleSelectProject(project)}
-                        className="cursor-default"
+                        className="cursor-pointer"
                       >
                         <span className="truncate flex-1">{project.name}</span>
                         {project.slug === currentProject.slug && (
@@ -267,7 +267,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={handleCreateProject}
-                      className="cursor-default"
+                      className="cursor-pointer"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Add Project
@@ -278,7 +278,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 <DropdownMenuSeparator />
                 
                 <DropdownMenuItem asChild>
-                  <Link href={`/logs/tools?project=${currentProject.id}`} className="cursor-default">
+                  <Link href={`/logs/tools?project=${currentProject.id}`} className="cursor-pointer">
                     <ScrollText className="mr-2 h-4 w-4" />
                     AI Logs
                   </Link>
@@ -288,7 +288,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
                 
                 <DropdownMenuItem 
                   onClick={handleSignOut}
-                  className="cursor-default"
+                  className="cursor-pointer"
                   variant="destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />

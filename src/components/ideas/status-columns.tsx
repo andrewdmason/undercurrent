@@ -234,7 +234,7 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
       <ContextMenuTrigger asChild>
         <Link
           href={`/${projectSlug}/ideas/${idea.id}`}
-          className="group block bg-white rounded-lg border border-[var(--border)] shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-default"
+          className="group block bg-white rounded-lg border border-[var(--border)] shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
         >
           {/* Thumbnail */}
           {idea.image_url && (
@@ -282,27 +282,27 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
         </Link>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
-        <ContextMenuItem onClick={onRemix} className="cursor-default">
+        <ContextMenuItem onClick={onRemix} className="cursor-pointer">
           <Sparkles className="mr-2 h-4 w-4" />
           Remix Idea
         </ContextMenuItem>
         <ContextMenuItem
           onClick={handleGenerateThumbnail}
           disabled={isGenerating}
-          className="cursor-default"
+          className="cursor-pointer"
         >
           <RefreshCw className={cn("mr-2 h-4 w-4", isGenerating && "animate-spin")} />
           {hasImage ? "Regenerate Thumbnail" : "Generate Thumbnail"}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={onPublish} className="cursor-default">
+        <ContextMenuItem onClick={onPublish} className="cursor-pointer">
           <Send className="mr-2 h-4 w-4" />
           Mark as Published
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem
           onClick={handleDelete}
-          className="text-[#f72736] focus:text-[#f72736] cursor-default"
+          className="text-[#f72736] focus:text-[#f72736] cursor-pointer"
         >
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Idea
@@ -311,4 +311,5 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
     </ContextMenu>
   );
 }
+
 

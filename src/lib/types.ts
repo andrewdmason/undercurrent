@@ -132,6 +132,9 @@ export interface ProjectTopic {
   updated_at: string;
 }
 
+// Template orientation - determines which channels can be associated
+export type TemplateOrientation = "vertical" | "horizontal";
+
 export interface ProjectTemplate {
   id: string;
   project_id: string;
@@ -139,6 +142,8 @@ export interface ProjectTemplate {
   description: string | null;
   source_video_url: string | null;
   image_url: string | null;
+  orientation: TemplateOrientation;
+  target_duration_seconds: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -175,6 +180,8 @@ export interface IdeaWithChannels extends Idea {
     description: string | null;
     image_url?: string | null;
     source_video_url?: string | null;
+    orientation?: TemplateOrientation;
+    target_duration_seconds?: number | null;
   } | null;
   characters?: Array<{
     id: string;
@@ -206,6 +213,55 @@ export const DISTRIBUTION_PLATFORMS = [
 ] as const;
 
 export type DistributionPlatform = (typeof DISTRIBUTION_PLATFORMS)[number]["value"];
+
+// ============================================
+// Platform Orientation Configuration
+// ============================================
+// Maps each platform to which orientations it supports
+
+export const PLATFORM_ORIENTATIONS: Record<DistributionPlatform, TemplateOrientation[]> = {
+  tiktok: ["vertical"],
+  instagram_reels: ["vertical"],
+  youtube_shorts: ["vertical"],
+  snapchat_spotlight: ["vertical"],
+  youtube: ["horizontal"],
+  linkedin: ["vertical", "horizontal"],
+  facebook: ["vertical", "horizontal"],
+  x: ["vertical", "horizontal"],
+  custom: ["vertical", "horizontal"],
+};
+
+// Default target durations per platform (in seconds)
+// Used to auto-suggest target duration when channels are selected
+export const PLATFORM_TARGET_DURATIONS: Record<DistributionPlatform, number | null> = {
+  snapchat_spotlight: 60,  // Hard platform limit
+  instagram_reels: 90,     // Platform limit
+  x: 140,                  // Platform limit for most accounts
+  youtube_shorts: 180,     // 3 min limit (extended Oct 2024)
+  tiktok: 180,             // 3 min sweet spot (allows up to 10 min)
+  linkedin: 600,           // 10 min platform limit
+  facebook: 600,           // Matching LinkedIn
+  youtube: null,           // No default - user should specify
+  custom: null,            // No constraint
+};
+
+// Helper to check if a platform supports a given orientation
+export function platformSupportsOrientation(
+  platform: DistributionPlatform,
+  orientation: TemplateOrientation
+): boolean {
+  return PLATFORM_ORIENTATIONS[platform].includes(orientation);
+}
+
+// Helper to get the minimum target duration from a list of platforms
+export function getMinTargetDuration(platforms: DistributionPlatform[]): number | null {
+  const durations = platforms
+    .map((p) => PLATFORM_TARGET_DURATIONS[p])
+    .filter((d): d is number => d !== null);
+  
+  if (durations.length === 0) return null;
+  return Math.min(...durations);
+}
 
 // ============================================
 // Idea Asset Types (Video Production Assets)
