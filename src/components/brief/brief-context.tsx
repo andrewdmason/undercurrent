@@ -3,12 +3,22 @@
 import { createContext, useContext } from "react";
 import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
 
+// Simplified rejected idea type for the brief context
+export interface RejectedIdea {
+  id: string;
+  title: string;
+  reject_reason: string;
+  image_url: string | null;
+  created_at: string;
+}
+
 interface BriefContextValue {
   project: Project;
   characters: ProjectCharacter[];
   channels: DistributionChannel[];
   topics: ProjectTopic[];
   templates: ProjectTemplateWithChannels[];
+  rejectedIdeas: RejectedIdea[];
   userRole: ProjectRole;
 }
 
@@ -21,6 +31,7 @@ interface BriefProviderProps {
   channels: DistributionChannel[];
   topics: ProjectTopic[];
   templates: ProjectTemplateWithChannels[];
+  rejectedIdeas: RejectedIdea[];
   userRole: ProjectRole;
 }
 
@@ -31,10 +42,11 @@ export function BriefProvider({
   channels,
   topics,
   templates,
+  rejectedIdeas,
   userRole,
 }: BriefProviderProps) {
   return (
-    <BriefContext.Provider value={{ project, characters, channels, topics, templates, userRole }}>
+    <BriefContext.Provider value={{ project, characters, channels, topics, templates, rejectedIdeas, userRole }}>
       {children}
     </BriefContext.Provider>
   );
@@ -47,4 +59,5 @@ export function useBrief() {
   }
   return context;
 }
+
 

@@ -67,6 +67,15 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
     .eq("project_id", project.id)
     .order("created_at", { ascending: true });
 
+  // Get rejected ideas for this project (has reject_reason, not accepted)
+  const { data: rejectedIdeas } = await supabase
+    .from("ideas")
+    .select("id, title, reject_reason, image_url, created_at")
+    .eq("project_id", project.id)
+    .not("reject_reason", "is", null)
+    .is("accepted_at", null)
+    .order("created_at", { ascending: false });
+
   // Get templates for this project with their channel associations
   const { data: templates } = await supabase
     .from("project_templates")
@@ -88,6 +97,13 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
   const typedCharacters = (characters || []) as ProjectCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
   const typedTopics = (topics || []) as ProjectTopic[];
+  const typedRejectedIdeas = (rejectedIdeas || []).map((idea) => ({
+    id: idea.id,
+    title: idea.title,
+    reject_reason: idea.reject_reason || "Rejected",
+    image_url: idea.image_url,
+    created_at: idea.created_at,
+  }));
 
   // Transform templates to flatten channel info
   const typedTemplates: ProjectTemplateWithChannels[] = (templates || []).map((template) => ({
@@ -132,6 +148,7 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
               channels={typedChannels}
               topics={typedTopics}
               templates={typedTemplates}
+              rejectedIdeas={typedRejectedIdeas}
               userRole={userRole}
             >
               {children}
@@ -142,4 +159,5 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
     </div>
   );
 }
+
 
