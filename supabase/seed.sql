@@ -1060,11 +1060,10 @@ insert into public.template_channels (template_id, channel_id) values
   ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
   ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
   ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', '8152a239-e09f-414b-a765-ee6d641b5b13'),
-  -- Tabletop Library: Instagram (B-Roll Style) -> Instagram Reels, YouTube Shorts, X, YouTube
+  -- Tabletop Library: Instagram (B-Roll Style) -> Instagram Reels, YouTube Shorts, X (vertical only - no YouTube)
   ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
   ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
   ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', '8152a239-e09f-414b-a765-ee6d641b5b13'),
-  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
   -- Tabletop Library: YouTube -> YouTube
   ('a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
   -- Tabletop Library: Instagram Voiceover -> Instagram Reels, YouTube Shorts, X

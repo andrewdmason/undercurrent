@@ -242,7 +242,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     setRegenerateNotes("");
     
     try {
-      const result = await generateTalkingPoints(idea.id, notes?.trim() || undefined);
+      // Pass notes as regenerationNotes (third param), not userContext (second param)
+      const result = await generateTalkingPoints(idea.id, undefined, notes?.trim() || undefined);
       if (result.error) {
         toast.error(result.error);
       } else {

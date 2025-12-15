@@ -319,10 +319,11 @@ export async function createTalkingPointsPlaceholder(
 }
 
 // Generate talking points for an idea using AI
-// This is called from the chat interface after gathering user context
+// This is called from the chat interface after gathering user context, or from regenerate dialog
 export async function generateTalkingPoints(
   ideaId: string,
-  userContext?: string
+  userContext?: string,
+  regenerationNotes?: string
 ): Promise<{ success: boolean; asset?: IdeaAsset; error?: string }> {
   const supabase = await createClient();
 
@@ -349,9 +350,14 @@ export async function generateTalkingPoints(
     .replace("{{projectName}}", context.projectName)
     .replace("{{projectDescription}}", context.projectDescription);
 
-  // If user context was provided from chat, append it
+  // If user context was provided from chat (initial generation), append it
   if (userContext) {
     prompt += `\n\n## User's Perspective and Context\n\nThe user has provided the following information about their unique perspective on this video:\n\n${userContext}\n\n**Important:** Use this context to make the talking points specific and personalized. Do NOT return needs_input: true — generate the talking points directly using the context above.`;
+  }
+
+  // If regeneration notes were provided (regeneration), append them
+  if (regenerationNotes?.trim()) {
+    prompt += `\n\n## Regeneration Notes\n\nThe user has requested specific changes or considerations for this regeneration:\n\n${regenerationNotes.trim()}`;
   }
 
   try {
