@@ -60,7 +60,7 @@ export function TemplatesSection({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold text-[var(--grey-800)]">
-              Style Templates
+              Templates
             </h2>
             <p className="text-xs text-[var(--grey-400)] mt-0.5">
               Production styles for your video ideas
@@ -121,14 +121,21 @@ function TemplateCard({
   onEdit,
   onDelete,
 }: TemplateCardProps) {
+  const isVertical = template.orientation === "vertical";
+  
   return (
     <div
       className="rounded-lg border border-[var(--border)] bg-[var(--grey-50)] p-4 group cursor-pointer transition-colors hover:border-[var(--grey-200)]"
       onClick={onEdit}
     >
       <div className="flex items-start gap-4">
-        {/* Thumbnail */}
-        <div className="flex-shrink-0 w-24 aspect-video rounded-md overflow-hidden bg-[var(--grey-100)]">
+        {/* Thumbnail - shape reflects orientation */}
+        <div 
+          className={cn(
+            "flex-shrink-0 rounded-md overflow-hidden bg-[var(--grey-100)]",
+            isVertical ? "w-14 aspect-[9/16]" : "w-24 aspect-video"
+          )}
+        >
           {template.image_url ? (
             <img
               src={template.image_url}
@@ -137,7 +144,7 @@ function TemplateCard({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Video className="h-6 w-6 text-[var(--grey-300)]" />
+              <Video className={cn("text-[var(--grey-300)]", isVertical ? "h-5 w-5" : "h-6 w-6")} />
             </div>
           )}
         </div>

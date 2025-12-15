@@ -13,7 +13,7 @@ const tabs = [
   { label: "Content Preferences", href: "/content" },
   { label: "Channels", href: "/channels" },
   { label: "Characters", href: "/characters" },
-  { label: "Style Templates", href: "/templates" },
+  { label: "Templates", href: "/templates" },
 ];
 
 export function BriefNav({ slug }: BriefNavProps) {

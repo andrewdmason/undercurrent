@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { PlatformIcon, getPlatformLabel } from "@/components/strategy/platform-icon";
+import { PlatformIcon } from "@/components/strategy/platform-icon";
 
 // Types for the options passed to the modal
 export interface CharacterOption {
@@ -71,7 +71,6 @@ export function GenerateIdeasModal({
 }: GenerateIdeasModalProps) {
   const [count, setCount] = useState(5);
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[] | "random">("random");
-  const [selectedChannelIds, setSelectedChannelIds] = useState<string[] | "random">("random");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | "random">("random");
   const [selectedTopicId, setSelectedTopicId] = useState<string | "random">("random");
   const [customInstructions, setCustomInstructions] = useState("");
@@ -80,7 +79,7 @@ export function GenerateIdeasModal({
     onGenerate({
       count,
       characterIds: selectedCharacterIds,
-      channelIds: selectedChannelIds,
+      channelIds: "random", // Channels are now inferred from selected template
       templateId: selectedTemplateId,
       topicId: selectedTopicId,
       customInstructions: customInstructions.trim() || undefined,
@@ -92,7 +91,6 @@ export function GenerateIdeasModal({
       // Reset to defaults when opening
       setCount(5);
       setSelectedCharacterIds("random");
-      setSelectedChannelIds("random");
       setSelectedTemplateId("random");
       setSelectedTopicId("random");
       setCustomInstructions("");
@@ -109,18 +107,6 @@ export function GenerateIdeasModal({
       setSelectedCharacterIds(newIds.length === 0 ? "random" : newIds);
     } else {
       setSelectedCharacterIds([...selectedCharacterIds, id]);
-    }
-  };
-
-  // Channel selection handlers
-  const toggleChannel = (id: string) => {
-    if (selectedChannelIds === "random") {
-      setSelectedChannelIds([id]);
-    } else if (selectedChannelIds.includes(id)) {
-      const newIds = selectedChannelIds.filter((cid) => cid !== id);
-      setSelectedChannelIds(newIds.length === 0 ? "random" : newIds);
-    } else {
-      setSelectedChannelIds([...selectedChannelIds, id]);
     }
   };
 
@@ -243,59 +229,6 @@ export function GenerateIdeasModal({
                         </div>
                       )}
                       <span>{character.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Channels - Chip Toggles (only show if channels exist) */}
-          {channels.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-[var(--grey-600)]">
-                Channels
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {/* Random/Any option */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedChannelIds("random")}
-                  disabled={isGenerating}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                    selectedChannelIds === "random"
-                      ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
-                      : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
-                  )}
-                >
-                  <Shuffle className="size-3" />
-                  Any
-                </button>
-                {/* Channel chips */}
-                {channels.map((channel) => {
-                  const isSelected =
-                    selectedChannelIds !== "random" &&
-                    selectedChannelIds.includes(channel.id);
-                  const label = getPlatformLabel(channel.platform, channel.custom_label);
-                  return (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      onClick={() => toggleChannel(channel.id)}
-                      disabled={isGenerating}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                        isSelected
-                          ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
-                          : "bg-white text-[var(--grey-600)] border-[var(--grey-200)] hover:border-[var(--grey-300)]"
-                      )}
-                    >
-                      <PlatformIcon 
-                        platform={channel.platform} 
-                        className={cn("size-3.5", isSelected && "text-white")} 
-                      />
-                      <span>{label}</span>
                     </button>
                   );
                 })}

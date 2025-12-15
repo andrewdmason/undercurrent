@@ -11,7 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DistributionChannel, ProjectTemplateWithChannels } from "@/lib/types";
+import { 
+  DistributionChannel, 
+  ProjectTemplateWithChannels, 
+  TemplateOrientation, 
+  platformSupportsOrientation,
+  getMinTargetDuration,
+  DistributionPlatform,
+} from "@/lib/types";
 import { analyzeVideoStyle, getVideoPreview } from "@/lib/actions/video-analysis";
 import { addTemplate, updateTemplate } from "@/lib/actions/templates";
 import { PlatformIcon, getPlatformLabel } from "./platform-icon";
@@ -38,6 +45,14 @@ const ANALYSIS_STAGES = [
   { message: "Generating template details...", duration: 30000 },
 ];
 
+// Format duration for display (converts seconds to readable format)
+function formatDurationForDisplay(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 export function CreateTemplateModal({
   open,
   onOpenChange,
@@ -62,6 +77,8 @@ export function CreateTemplateModal({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null);
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
+  const [orientation, setOrientation] = useState<TemplateOrientation>("vertical");
+  const [targetDurationSeconds, setTargetDurationSeconds] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Populate form when editing, or clear when creating new
@@ -73,6 +90,8 @@ export function CreateTemplateModal({
       setImageUrl(editingTemplate.image_url);
       setSourceVideoUrl(editingTemplate.source_video_url);
       setSelectedChannelIds(editingTemplate.channels.map((c) => c.id));
+      setOrientation(editingTemplate.orientation);
+      setTargetDurationSeconds(editingTemplate.target_duration_seconds);
     } else if (!editingTemplate && open) {
       // Clear all fields when opening for a new template
       setStep("youtube");
@@ -81,6 +100,8 @@ export function CreateTemplateModal({
       setImageUrl(null);
       setSourceVideoUrl(null);
       setSelectedChannelIds([]);
+      setOrientation("vertical");
+      setTargetDurationSeconds(null);
       setVideoUrl("");
       setAnalyzeError(null);
     }
@@ -118,6 +139,8 @@ export function CreateTemplateModal({
       setImageUrl(null);
       setSourceVideoUrl(null);
       setSelectedChannelIds([]);
+      setOrientation("vertical");
+      setTargetDurationSeconds(null);
     }
     setIsSaving(false);
   };
@@ -185,12 +208,45 @@ export function CreateTemplateModal({
   };
 
   const handleChannelToggle = (channelId: string) => {
-    setSelectedChannelIds((prev) =>
-      prev.includes(channelId)
+    setSelectedChannelIds((prev) => {
+      const newSelection = prev.includes(channelId)
         ? prev.filter((id) => id !== channelId)
-        : [...prev, channelId]
-    );
+        : [...prev, channelId];
+      
+      // Auto-update target duration based on newly selected channels
+      const selectedChannels = channels.filter((c) => newSelection.includes(c.id));
+      const platforms = selectedChannels.map((c) => c.platform as DistributionPlatform);
+      const suggestedDuration = getMinTargetDuration(platforms);
+      setTargetDurationSeconds(suggestedDuration);
+      
+      return newSelection;
+    });
   };
+
+  const handleOrientationChange = (newOrientation: TemplateOrientation) => {
+    setOrientation(newOrientation);
+    
+    // Filter out channels that don't support the new orientation
+    const compatibleChannelIds = selectedChannelIds.filter((id) => {
+      const channel = channels.find((c) => c.id === id);
+      if (!channel) return false;
+      return platformSupportsOrientation(channel.platform as DistributionPlatform, newOrientation);
+    });
+    
+    if (compatibleChannelIds.length !== selectedChannelIds.length) {
+      setSelectedChannelIds(compatibleChannelIds);
+      
+      // Recalculate target duration
+      const selectedChannels = channels.filter((c) => compatibleChannelIds.includes(c.id));
+      const platforms = selectedChannels.map((c) => c.platform as DistributionPlatform);
+      setTargetDurationSeconds(getMinTargetDuration(platforms));
+    }
+  };
+
+  // Get channels compatible with current orientation
+  const compatibleChannels = channels.filter((channel) => 
+    platformSupportsOrientation(channel.platform as DistributionPlatform, orientation)
+  );
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -223,6 +279,8 @@ export function CreateTemplateModal({
         source_video_url: sourceVideoUrl,
         image_url: imageUrl,
         channelIds: selectedChannelIds,
+        orientation,
+        target_duration_seconds: targetDurationSeconds,
       });
 
       if (result.success) {
@@ -239,6 +297,8 @@ export function CreateTemplateModal({
         source_video_url: sourceVideoUrl,
         image_url: imageUrl,
         channelIds: selectedChannelIds,
+        orientation,
+        target_duration_seconds: targetDurationSeconds,
       });
 
       if (result.success) {
@@ -456,8 +516,12 @@ export function CreateTemplateModal({
               description={description}
               setDescription={setDescription}
               selectedChannelIds={selectedChannelIds}
-              channels={channels}
+              channels={compatibleChannels}
               onChannelToggle={handleChannelToggle}
+              orientation={orientation}
+              onOrientationChange={handleOrientationChange}
+              targetDurationSeconds={targetDurationSeconds}
+              onTargetDurationChange={setTargetDurationSeconds}
               sourceVideoUrl={isEditing ? sourceVideoUrl : null}
             />
 
@@ -520,8 +584,12 @@ export function CreateTemplateModal({
               description={description}
               setDescription={setDescription}
               selectedChannelIds={selectedChannelIds}
-              channels={channels}
+              channels={compatibleChannels}
               onChannelToggle={handleChannelToggle}
+              orientation={orientation}
+              onOrientationChange={handleOrientationChange}
+              targetDurationSeconds={targetDurationSeconds}
+              onTargetDurationChange={setTargetDurationSeconds}
             />
 
             {analyzeError && (
@@ -575,6 +643,10 @@ interface TemplateFormProps {
   selectedChannelIds: string[];
   channels: DistributionChannel[];
   onChannelToggle: (channelId: string) => void;
+  orientation: TemplateOrientation;
+  onOrientationChange: (orientation: TemplateOrientation) => void;
+  targetDurationSeconds: number | null;
+  onTargetDurationChange: (seconds: number | null) => void;
   sourceVideoUrl?: string | null;
 }
 
@@ -586,8 +658,49 @@ function TemplateForm({
   selectedChannelIds,
   channels,
   onChannelToggle,
+  orientation,
+  onOrientationChange,
+  targetDurationSeconds,
+  onTargetDurationChange,
   sourceVideoUrl,
 }: TemplateFormProps) {
+  // Local state for duration input - allows free typing without auto-formatting
+  const [durationInput, setDurationInput] = useState(() => 
+    targetDurationSeconds ? formatDurationForDisplay(targetDurationSeconds) : ""
+  );
+
+  // Sync local state when parent value changes (e.g., from channel selection)
+  useEffect(() => {
+    setDurationInput(targetDurationSeconds ? formatDurationForDisplay(targetDurationSeconds) : "");
+  }, [targetDurationSeconds]);
+
+  // Parse duration input (handles formats like "60", "1:30", "90s", "1m 30s", "5m")
+  const parseDurationInput = (input: string): number | null => {
+    if (!input.trim()) return null;
+    
+    // Handle "Xm Ys" or "Xm" or "Ys" format first (before pure numbers)
+    const minsMatch = input.match(/(\d+)\s*m/i);
+    const secsMatch = input.match(/(\d+)\s*s/i);
+    if (minsMatch || secsMatch) {
+      const mins = minsMatch ? parseInt(minsMatch[1], 10) : 0;
+      const secs = secsMatch ? parseInt(secsMatch[1], 10) : 0;
+      return mins * 60 + secs;
+    }
+    
+    // Handle "X:Y" format (minutes:seconds)
+    const colonMatch = input.match(/^(\d+):(\d+)$/);
+    if (colonMatch) {
+      return parseInt(colonMatch[1], 10) * 60 + parseInt(colonMatch[2], 10);
+    }
+    
+    // Handle pure numbers (assume seconds)
+    if (/^\d+$/.test(input.trim())) {
+      return parseInt(input.trim(), 10);
+    }
+    
+    return null;
+  };
+
   return (
     <>
       {/* Name input */}
@@ -622,11 +735,84 @@ function TemplateForm({
         />
       </div>
 
+      {/* Orientation Picker */}
+      <div>
+        <label className="text-xs font-medium text-[var(--grey-600)] mb-1.5 block">
+          Video Orientation
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => onOrientationChange("vertical")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+              orientation === "vertical"
+                ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
+                : "bg-white text-[var(--grey-600)] border-[var(--border)] hover:border-[var(--grey-300)]"
+            )}
+          >
+            <svg 
+              width="12" 
+              height="16" 
+              viewBox="0 0 12 16" 
+              fill="none" 
+              className={cn(
+                orientation === "vertical" ? "text-white" : "text-[var(--grey-400)]"
+              )}
+            >
+              <rect 
+                x="1" 
+                y="1" 
+                width="10" 
+                height="14" 
+                rx="1.5" 
+                stroke="currentColor" 
+                strokeWidth="1.5"
+                fill="none"
+              />
+            </svg>
+            Vertical (9:16)
+          </button>
+          <button
+            type="button"
+            onClick={() => onOrientationChange("horizontal")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+              orientation === "horizontal"
+                ? "bg-[var(--grey-800)] text-white border-[var(--grey-800)]"
+                : "bg-white text-[var(--grey-600)] border-[var(--border)] hover:border-[var(--grey-300)]"
+            )}
+          >
+            <svg 
+              width="16" 
+              height="12" 
+              viewBox="0 0 16 12" 
+              fill="none" 
+              className={cn(
+                orientation === "horizontal" ? "text-white" : "text-[var(--grey-400)]"
+              )}
+            >
+              <rect 
+                x="1" 
+                y="1" 
+                width="14" 
+                height="10" 
+                rx="1.5" 
+                stroke="currentColor" 
+                strokeWidth="1.5"
+                fill="none"
+              />
+            </svg>
+            Horizontal (16:9)
+          </button>
+        </div>
+      </div>
+
       {/* Channel Selection */}
       {channels.length > 0 && (
         <div>
           <label className="text-xs font-medium text-[var(--grey-600)] mb-1.5 block">
-            Best For Channels
+            Publish to:
           </label>
           <div className="flex flex-wrap gap-2">
             {channels.map((channel) => {
@@ -649,8 +835,34 @@ function TemplateForm({
               );
             })}
           </div>
+          {channels.length === 0 && (
+            <p className="text-xs text-[var(--grey-400)]">
+              No channels available for {orientation} videos. Add channels in the Channels tab.
+            </p>
+          )}
         </div>
       )}
+
+      {/* Target Duration */}
+      <div>
+        <label className="text-xs font-medium text-[var(--grey-600)] mb-1.5 block">
+          Target Duration
+          <span className="font-normal text-[var(--grey-400)] ml-1">(optional)</span>
+        </label>
+        <Input
+          value={durationInput}
+          onChange={(e) => setDurationInput(e.target.value)}
+          onBlur={() => {
+            // Parse and sync to parent on blur
+            const parsed = parseDurationInput(durationInput);
+            onTargetDurationChange(parsed);
+            // Format the display value
+            setDurationInput(parsed ? formatDurationForDisplay(parsed) : "");
+          }}
+          placeholder="e.g., 60s, 3m, 1:30"
+          className="h-9 bg-white w-32"
+        />
+      </div>
 
       {/* Source Video Link */}
       {sourceVideoUrl && (

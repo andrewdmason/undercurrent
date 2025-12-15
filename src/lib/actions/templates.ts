@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { ProjectTemplateWithChannels } from "@/lib/types";
+import { ProjectTemplateWithChannels, TemplateOrientation } from "@/lib/types";
 
 export async function addTemplate(
   projectId: string,
@@ -12,6 +12,8 @@ export async function addTemplate(
     source_video_url?: string | null;
     image_url?: string | null;
     channelIds?: string[];
+    orientation?: TemplateOrientation;
+    target_duration_seconds?: number | null;
   }
 ): Promise<{ success: true; template: ProjectTemplateWithChannels } | { success: false; error: string }> {
   const supabase = await createClient();
@@ -32,6 +34,8 @@ export async function addTemplate(
       description: data.description || null,
       source_video_url: data.source_video_url || null,
       image_url: data.image_url || null,
+      orientation: data.orientation || "vertical",
+      target_duration_seconds: data.target_duration_seconds ?? null,
     })
     .select()
     .single();
@@ -107,6 +111,8 @@ export async function updateTemplate(
     source_video_url?: string | null;
     image_url?: string | null;
     channelIds?: string[];
+    orientation?: TemplateOrientation;
+    target_duration_seconds?: number | null;
   }
 ): Promise<{ success: true; template: ProjectTemplateWithChannels } | { success: false; error: string }> {
   const supabase = await createClient();
