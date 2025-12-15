@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,19 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     return null;
   });
 
+  // Sync assets state with initialAssets when server data changes (e.g., after router.refresh())
+  useEffect(() => {
+    setAssets(initialAssets);
+  }, [initialAssets]);
+
+  // Derive assets early so they can be used in useEffects
+  const selectedAsset = selectedAssetId 
+    ? assets.find(a => a.id === selectedAssetId) ?? null 
+    : null;
+  const scriptAsset = assets.find(a => a.type === "script");
+  const talkingPointsAsset = assets.find(a => a.type === "talking_points");
+  const currentScript = scriptAsset?.content_text || null;
+
   // Initialize selected asset from localStorage or default to first asset
   useEffect(() => {
     if (assets.length === 0) return;
@@ -104,16 +117,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     const storageKey = `undercurrent-selected-asset-${idea.id}`;
     localStorage.setItem(storageKey, selectedAssetId);
   }, [idea.id, selectedAssetId]);
-
-  // Derive the selected asset
-  const selectedAsset = selectedAssetId 
-    ? assets.find(a => a.id === selectedAssetId) ?? null 
-    : null;
-
-  // Legacy: still need script reference for Underlord prompt generation
-  const scriptAsset = assets.find(a => a.type === "script");
-  const talkingPointsAsset = assets.find(a => a.type === "talking_points");
-  const currentScript = scriptAsset?.content_text || null;
 
   // Edit modal state
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
@@ -205,6 +208,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     if (isGeneratingTalkingPoints) return;
     
     setIsGeneratingTalkingPoints(true);
+    
     try {
       const result = await generateTalkingPoints(idea.id);
       if (result.error) {
@@ -231,6 +235,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
     
     setIsGeneratingScript(true);
+    
     try {
       const result = await generateScript(idea.id);
       if (result.error) {
@@ -698,42 +703,172 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             <Copy size={14} />
                           </Button>
                         )}
+                        
+                        {/* Regenerate buttons for AI-generated assets */}
+                        {selectedAsset.type === "talking_points" && selectedAsset.content_text && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateTalkingPoints}
+                            disabled={isGeneratingTalkingPoints}
+                            className="h-7 px-2 gap-1.5"
+                            title="Regenerate Talking Points"
+                          >
+                            {isGeneratingTalkingPoints ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <RefreshCw size={14} />
+                            )}
+                            <span className="text-xs">Regenerate</span>
+                          </Button>
+                        )}
+                        {selectedAsset.type === "script" && selectedAsset.content_text && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateScript}
+                            disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
+                            className="h-7 px-2 gap-1.5"
+                            title="Regenerate Script"
+                          >
+                            {isGeneratingScript ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <RefreshCw size={14} />
+                            )}
+                            <span className="text-xs">Regenerate</span>
+                          </Button>
+                        )}
                       </div>
                     </div>
 
                     {/* Asset Content */}
                     {selectedAsset.type === "script" || selectedAsset.type === "talking_points" ? (
                       // Text asset - show content_text
-                      selectedAsset.content_text ? (
-                        <div className={cn(
-                          "flex-1 min-h-0 overflow-auto p-4 relative",
-                          isScriptUpdating && selectedAsset.type === "script" && "script-updating"
-                        )}>
-                          {selectedAsset.type === "talking_points" ? (
-                            <MarkdownDisplay content={selectedAsset.content_text} />
-                          ) : (
-                            <ScriptDisplay script={selectedAsset.content_text} />
-                          )}
-                          {isScriptUpdating && selectedAsset.type === "script" && (
-                            <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
-                          )}
-                        </div>
-                      ) : (
-                        // Text asset with no content yet
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                            <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                          </div>
-                          <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                            No Content Yet
-                          </h3>
-                          <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                            {selectedAsset.type === "talking_points" 
-                              ? "Use the chat to create talking points."
-                              : "Generate a script from your talking points."}
-                          </p>
-                        </div>
-                      )
+                      (() => {
+                        // Check if this asset is currently being generated
+                        const isGeneratingThisAsset = 
+                          (selectedAsset.type === "talking_points" && isGeneratingTalkingPoints) ||
+                          (selectedAsset.type === "script" && isGeneratingScript);
+                        
+                        if (selectedAsset.content_text) {
+                          // Has content - show it with overlay if regenerating
+                          return (
+                            <div className={cn(
+                              "flex-1 min-h-0 overflow-auto p-4 relative",
+                              isScriptUpdating && selectedAsset.type === "script" && "script-updating"
+                            )}>
+                              {selectedAsset.type === "talking_points" ? (
+                                <MarkdownDisplay content={selectedAsset.content_text} />
+                              ) : (
+                                <ScriptDisplay script={selectedAsset.content_text} />
+                              )}
+                              {/* Overlay for chat-based script updates */}
+                              {isScriptUpdating && selectedAsset.type === "script" && (
+                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
+                              )}
+                              {/* Overlay for regeneration */}
+                              {isGeneratingThisAsset && (
+                                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+                                  <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                                  <p className="text-sm text-[var(--grey-600)]">
+                                    {selectedAsset.type === "talking_points" 
+                                      ? "Generating talking points..." 
+                                      : "Generating script..."}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else if (isGeneratingThisAsset) {
+                          // No content yet, but generating - show loading state
+                          return (
+                            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                                <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+                              </div>
+                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                                {selectedAsset.type === "talking_points" 
+                                  ? "Generating Talking Points" 
+                                  : "Generating Script"}
+                              </h3>
+                              <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                                {selectedAsset.type === "talking_points" 
+                                  ? "Creating talking points based on your input..." 
+                                  : "Converting your talking points into a script..."}
+                              </p>
+                            </div>
+                          );
+                        } else {
+                          // No content, not generating - show empty state with CTAs
+                          return (
+                            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                                <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+                              </div>
+                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                                No Content Yet
+                              </h3>
+                              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
+                                {selectedAsset.type === "talking_points" 
+                                  ? "Use the chat to share your perspective and generate talking points."
+                                  : talkingPointsAsset?.content_text 
+                                    ? "Generate a script from your talking points."
+                                    : "Generate talking points first, then create a script."}
+                              </p>
+                              {selectedAsset.type === "talking_points" ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Focus the chat input
+                                    const chatInput = document.getElementById("chat-input");
+                                    if (chatInput) {
+                                      chatInput.focus();
+                                      chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    }
+                                  }}
+                                  className="gap-2"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                  Start Conversation
+                                </Button>
+                              ) : talkingPointsAsset?.content_text ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleGenerateScript}
+                                  disabled={isGeneratingScript}
+                                  className="gap-2"
+                                >
+                                  {isGeneratingScript ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4" />
+                                  )}
+                                  Generate Script
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Select the talking points asset
+                                    const tpAsset = assets.find(a => a.type === "talking_points");
+                                    if (tpAsset) {
+                                      setSelectedAssetId(tpAsset.id);
+                                    }
+                                  }}
+                                  className="gap-2"
+                                >
+                                  <ListTodo className="h-4 w-4" />
+                                  Create Talking Points First
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        }
+                      })()
                     ) : (
                       // Media asset - show instructions + upload placeholder
                       <div className="flex-1 min-h-0 overflow-auto">
@@ -804,18 +939,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
               <ChatSidebar
                 ideaId={idea.id}
                 projectSlug={projectSlug}
-                scriptQuestions={(() => {
-                  // Get questions from incomplete talking_points asset if it has them
-                  if (talkingPointsAsset && !talkingPointsAsset.is_complete && talkingPointsAsset.instructions) {
-                    try {
-                      const questions = JSON.parse(talkingPointsAsset.instructions);
-                      return Array.isArray(questions) ? questions : undefined;
-                    } catch {
-                      return undefined;
-                    }
-                  }
-                  return undefined;
-                })()}
                 onScriptUpdate={() => router.refresh()}
                 onIdeaRegenerate={() => router.refresh()}
                 onToolCallStart={(toolName) => {

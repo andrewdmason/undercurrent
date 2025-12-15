@@ -19,7 +19,6 @@ import { ChatModel, IdeaChat, IdeaChatMessage, CHAT_MODELS, MODEL_CONTEXT_LIMITS
 interface ChatSidebarProps {
   ideaId: string;
   projectSlug: string;
-  scriptQuestions?: string[];
   onScriptUpdate?: (script: string) => void;
   onIdeaRegenerate?: () => void;
   onToolCallStart?: (toolName: string) => void;
@@ -43,7 +42,7 @@ interface StreamingMessage {
   toolCallStartTime?: number;
 }
 
-export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
+export function ChatSidebar({ ideaId, projectSlug, onScriptUpdate, onIdeaRegenerate, onToolCallStart, onToolCallEnd }: ChatSidebarProps) {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -146,7 +145,6 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
         body: JSON.stringify({
           chatId,
           isInit: true,
-          scriptQuestions,
           model: currentChat?.model || "gpt-5.1",
         }),
       });
@@ -284,7 +282,6 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
           chatId: targetChatId,
           message: userMessage,
           model: currentChat.model,
-          scriptQuestions, // Always pass questions so AI knows what to ask
         }),
       });
 
@@ -367,24 +364,27 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
               onToolCallEnd?.(data.name);
               
               // Handle successful tool executions
-              if (data.result.success) {
-                if (data.name === "update_script") {
-                  // Find the corresponding tool call to get the script
-                  const scriptToolCall = toolCalls.find(tc => tc.name === "update_script");
-                  if (scriptToolCall && scriptToolCall.arguments.script) {
-                    onScriptUpdate?.(scriptToolCall.arguments.script as string);
-                  }
-                } else if (data.name === "generate_script") {
-                  // Script is returned in the result for generate_script
-                  if (data.result.script) {
-                    onScriptUpdate?.(data.result.script as string);
-                  }
-                  router.refresh(); // Refresh to update todos
-                } else if (data.name === "regenerate_idea") {
-                  onIdeaRegenerate?.();
-                  router.refresh();
-                }
-              }
+                              if (data.result.success) {
+                                if (data.name === "update_script") {
+                                  // Find the corresponding tool call to get the script
+                                  const scriptToolCall = toolCalls.find(tc => tc.name === "update_script");
+                                  if (scriptToolCall && scriptToolCall.arguments.script) {
+                                    onScriptUpdate?.(scriptToolCall.arguments.script as string);
+                                  }
+                                } else if (data.name === "generate_script") {
+                                  // Script is returned in the result for generate_script
+                                  if (data.result.script) {
+                                    onScriptUpdate?.(data.result.script as string);
+                                  }
+                                  router.refresh(); // Refresh to update assets
+                                } else if (data.name === "generate_talking_points") {
+                                  // Talking points generated - refresh to show them
+                                  router.refresh();
+                                } else if (data.name === "regenerate_idea") {
+                                  onIdeaRegenerate?.();
+                                  router.refresh();
+                                }
+                              }
             } else if (data.type === "error") {
               throw new Error(data.error);
             } else if (data.type === "done") {
@@ -413,7 +413,7 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
       // Keep focus on input so user can continue typing
       inputRef.current?.focus();
     }
-  }, [inputValue, currentChat, isSending, ideaId, router, onToolCallStart, onToolCallEnd, onScriptUpdate, onIdeaRegenerate, scriptQuestions]);
+  }, [inputValue, currentChat, isSending, ideaId, router, onToolCallStart, onToolCallEnd, onScriptUpdate, onIdeaRegenerate]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -565,6 +565,7 @@ export function ChatSidebar({ ideaId, projectSlug, scriptQuestions, onScriptUpda
       <div className="p-3 border-t border-[var(--border)]">
         <div className="flex items-end gap-2 px-3 py-2 rounded-lg bg-[var(--grey-50)] border border-[var(--border)] focus-within:ring-2 focus-within:ring-[var(--cyan-600)] focus-within:border-transparent">
           <textarea
+            id="chat-input"
             ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}

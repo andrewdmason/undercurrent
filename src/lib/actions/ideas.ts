@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { generateThumbnail } from "./thumbnail";
-import { generateTalkingPoints } from "./idea-assets";
+import { createTalkingPointsPlaceholder } from "./idea-assets";
 import { RecordingStyle } from "@/lib/types";
 
 interface GeneratedIdea {
@@ -747,18 +747,19 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
       model: DEFAULT_MODEL,
     });
 
-    // Use after() to generate thumbnails and talking points in the background
+    // Use after() to generate thumbnails and create talking points placeholders in the background
     // This keeps the serverless function alive until background tasks complete
+    // Note: Talking points are now created as placeholders - actual content is generated via chat
     after(async () => {
       await Promise.all(
         (insertedIdeas || []).map(async (insertedIdea) => {
-          // Generate thumbnail and talking points in parallel for each idea
+          // Generate thumbnail and create talking points placeholder in parallel for each idea
           await Promise.all([
             generateThumbnail(insertedIdea.id, projectId).catch(err => {
               console.error(`Failed to generate thumbnail for idea ${insertedIdea.id}:`, err);
             }),
-            generateTalkingPoints(insertedIdea.id).catch(err => {
-              console.error(`Failed to generate talking points for idea ${insertedIdea.id}:`, err);
+            createTalkingPointsPlaceholder(insertedIdea.id).catch(err => {
+              console.error(`Failed to create talking points placeholder for idea ${insertedIdea.id}:`, err);
             }),
           ]);
         })
@@ -1183,14 +1184,15 @@ export async function remixIdea(ideaId: string, options: RemixIdeaOptions = {}) 
       idea_id: resultIdeaId,
     });
 
-    // Generate thumbnail and talking points in background
+    // Generate thumbnail and create talking points placeholder in background
+    // Note: Talking points are now created as placeholders - actual content is generated via chat
     after(async () => {
       await Promise.all([
         generateThumbnail(resultIdeaId, projectId).catch(err => {
           console.error(`Failed to generate thumbnail for remixed idea ${resultIdeaId}:`, err);
         }),
-        generateTalkingPoints(resultIdeaId).catch(err => {
-          console.error(`Failed to generate talking points for remixed idea ${resultIdeaId}:`, err);
+        createTalkingPointsPlaceholder(resultIdeaId).catch(err => {
+          console.error(`Failed to create talking points placeholder for remixed idea ${resultIdeaId}:`, err);
         }),
       ]);
     });

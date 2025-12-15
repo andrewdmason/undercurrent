@@ -250,10 +250,54 @@ function formatIdeaContext(idea: {
   };
 }
 
-// Generate talking points for an idea (first step in the workflow)
-export async function generateTalkingPoints(
+// Create a placeholder talking points asset (without generating content)
+// The actual content will be generated via the chat interface after gathering user input
+export async function createTalkingPointsPlaceholder(
   ideaId: string
-): Promise<{ success: boolean; asset?: IdeaAsset; needsInput?: boolean; questions?: string[]; error?: string }> {
+): Promise<{ success: boolean; asset?: IdeaAsset; error?: string }> {
+  const supabase = await createClient();
+
+  // Check if a talking_points asset already exists
+  const { data: existingAsset } = await supabase
+    .from("idea_assets")
+    .select("*")
+    .eq("idea_id", ideaId)
+    .eq("type", "talking_points")
+    .single();
+
+  if (existingAsset) {
+    return { success: true, asset: existingAsset as IdeaAsset };
+  }
+
+  // Create a placeholder asset (not complete, no content)
+  const { data: asset, error: insertError } = await supabase
+    .from("idea_assets")
+    .insert({
+      idea_id: ideaId,
+      type: "talking_points",
+      is_complete: false,
+      title: "Talking Points",
+      is_ai_generatable: true,
+      sort_order: 0,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Error creating talking points placeholder:", insertError);
+    return { success: false, error: insertError.message };
+  }
+
+  await revalidateIdeaPaths(ideaId);
+  return { success: true, asset: asset as IdeaAsset };
+}
+
+// Generate talking points for an idea using AI
+// This is called from the chat interface after gathering user context
+export async function generateTalkingPoints(
+  ideaId: string,
+  userContext?: string
+): Promise<{ success: boolean; asset?: IdeaAsset; error?: string }> {
   const supabase = await createClient();
 
   const { idea, project, error: fetchError } = await fetchIdeaWithContext(ideaId);
@@ -269,7 +313,7 @@ export async function generateTalkingPoints(
     "utf-8"
   );
 
-  const prompt = promptTemplate
+  let prompt = promptTemplate
     .replace("{{ideaTitle}}", context.ideaTitle)
     .replace("{{ideaDescription}}", context.ideaDescription)
     .replace("{{template}}", context.templateSection)
@@ -277,6 +321,11 @@ export async function generateTalkingPoints(
     .replace("{{characters}}", context.charactersSection)
     .replace("{{projectName}}", context.projectName)
     .replace("{{projectDescription}}", context.projectDescription);
+
+  // If user context was provided from chat, append it
+  if (userContext) {
+    prompt += `\n\n## User's Perspective and Context\n\nThe user has provided the following information about their unique perspective on this video:\n\n${userContext}\n\n**Important:** Use this context to make the talking points specific and personalized. Do NOT return needs_input: true — generate the talking points directly using the context above.`;
+  }
 
   try {
     const completion = await openai.chat.completions.create({
@@ -298,18 +347,47 @@ export async function generateTalkingPoints(
       idea_id: ideaId,
     });
 
-    // Check if AI needs more input from user
-    if (parsed.needs_input && parsed.questions?.length > 0) {
-      // Create a talking_points asset (not complete) and store questions
-      const { data: asset, error: insertError } = await supabase
+    // Check if a talking_points asset already exists
+    const { data: existingAsset } = await supabase
+      .from("idea_assets")
+      .select("*")
+      .eq("idea_id", ideaId)
+      .eq("type", "talking_points")
+      .single();
+
+    let asset;
+    if (existingAsset) {
+      // Update existing asset
+      const { data: updatedAsset, error: updateError } = await supabase
+        .from("idea_assets")
+        .update({
+          content_text: parsed.talking_points,
+          instructions: parsed.instructions || null,
+          time_estimate_minutes: parsed.time_estimate_minutes || 5,
+          is_complete: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingAsset.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Failed to update asset: ${updateError.message}`);
+      }
+      asset = updatedAsset;
+    } else {
+      // Create new asset
+      const { data: newAsset, error: insertError } = await supabase
         .from("idea_assets")
         .insert({
           idea_id: ideaId,
           type: "talking_points",
-          is_complete: false,
+          is_complete: true,
           title: "Talking Points",
-          instructions: JSON.stringify(parsed.questions),
+          instructions: parsed.instructions || null,
+          content_text: parsed.talking_points,
           is_ai_generatable: true,
+          time_estimate_minutes: parsed.time_estimate_minutes || 5,
           sort_order: 0,
         })
         .select()
@@ -318,35 +396,7 @@ export async function generateTalkingPoints(
       if (insertError) {
         throw new Error(`Failed to save asset: ${insertError.message}`);
       }
-
-      await revalidateIdeaPaths(ideaId);
-      return { 
-        success: true, 
-        asset: asset as IdeaAsset, 
-        needsInput: true, 
-        questions: parsed.questions 
-      };
-    }
-
-    // AI generated the talking points directly
-    const { data: asset, error: insertError } = await supabase
-      .from("idea_assets")
-      .insert({
-        idea_id: ideaId,
-        type: "talking_points",
-        is_complete: true,
-        title: "Talking Points",
-        instructions: parsed.instructions || null,
-        content_text: parsed.talking_points,
-        is_ai_generatable: true,
-        time_estimate_minutes: parsed.time_estimate_minutes || 5,
-        sort_order: 0,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      throw new Error(`Failed to save asset: ${insertError.message}`);
+      asset = newAsset;
     }
 
     await revalidateIdeaPaths(ideaId);
