@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 const POLL_INTERVAL = 2000; // 2 seconds
 
 interface NewIdeasAlertBarProps {
+  /** Project ID to filter ideas by */
+  projectId: string;
   /** Total number of new ideas */
   totalNewIdeas: number;
   /** Number of ideas with thumbnails ready */
@@ -44,6 +46,7 @@ function setStoredGenerationState(isPending: boolean, count: number, baselineCou
 }
 
 export function NewIdeasAlertBar({
+  projectId,
   totalNewIdeas: initialTotal,
   readyCount: initialReady,
   onReviewClick,
@@ -100,6 +103,7 @@ export function NewIdeasAlertBar({
     const { data: newIdeas } = await supabase
       .from("ideas")
       .select("id, image_url")
+      .eq("project_id", projectId)
       .is("accepted_at", null)
       .is("reject_reason", null);
 
@@ -118,7 +122,7 @@ export function NewIdeasAlertBar({
         router.refresh();
       }
     }
-  }, [isPendingGeneration, router]);
+  }, [projectId, isPendingGeneration, router]);
 
   useEffect(() => {
     const stored = getStoredGenerationState();

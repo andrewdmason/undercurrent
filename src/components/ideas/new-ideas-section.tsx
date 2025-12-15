@@ -40,6 +40,7 @@ export function NewIdeasSection({
   return (
     <>
       <NewIdeasAlertBar
+        projectId={projectId}
         totalNewIdeas={totalNewIdeas}
         readyCount={readyCount}
         onReviewClick={() => setIsModalOpen(true)}
