@@ -50,7 +50,7 @@ export async function POST(
   // Fetch project context
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("name, description, business_objectives")
+    .select("name, description, business_objectives, content_preferences")
     .eq("id", projectId)
     .single();
 
@@ -144,6 +144,10 @@ Please refine the topic based on this feedback. You may adjust the name, descrip
     .replace(
       "{{projectObjectives}}",
       project.business_objectives || "No business objectives defined yet."
+    )
+    .replace(
+      "{{contentPreferences}}",
+      project.content_preferences || "No specific content preferences."
     )
     .replace("{{distributionChannels}}", channelsSection)
     .replace("{{existingTopics}}", existingTopicsSection)

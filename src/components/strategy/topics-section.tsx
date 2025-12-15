@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectTopic } from "@/lib/types";
 import { RejectedIdea } from "@/components/brief/brief-context";
-import { addTopic, updateTopic, deleteTopic } from "@/lib/actions/project";
+import { addTopic, updateTopic, deleteTopic, updateProjectInfo } from "@/lib/actions/project";
 import { deleteIdea } from "@/lib/actions/ideas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Ban, Sparkles, XCircle, Loader2 } from "lucide-react";
+import { Plus, Trash2, Ban, Sparkles, XCircle, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SuggestTopicsModal } from "./suggest-topics-modal";
@@ -17,6 +17,7 @@ interface TopicsSectionProps {
   projectId: string;
   topics: ProjectTopic[];
   rejectedIdeas?: RejectedIdea[];
+  contentPreferences?: string | null;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -25,10 +26,13 @@ export function TopicsSection({
   projectId,
   topics: initialTopics,
   rejectedIdeas: initialRejectedIdeas = [],
+  contentPreferences: initialContentPreferences = null,
 }: TopicsSectionProps) {
   const router = useRouter();
   const [topics, setTopics] = useState<ProjectTopic[]>(initialTopics);
   const [rejectedIdeas, setRejectedIdeas] = useState<RejectedIdea[]>(initialRejectedIdeas);
+  const [contentPreferences, setContentPreferences] = useState(initialContentPreferences || "");
+  const [preferencesSaveStatus, setPreferencesSaveStatus] = useState<SaveStatus>("idle");
   const [isAddingIncluded, setIsAddingIncluded] = useState(false);
   const [isAddingExcluded, setIsAddingExcluded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,8 +88,61 @@ export function TopicsSection({
     }
   };
 
+  const handleContentPreferencesBlur = async () => {
+    const trimmed = contentPreferences.trim();
+    if (trimmed !== (initialContentPreferences || "")) {
+      setPreferencesSaveStatus("saving");
+      try {
+        const result = await updateProjectInfo(projectId, {
+          content_preferences: trimmed || null,
+        });
+        if (result.error) {
+          setPreferencesSaveStatus("error");
+          toast.error(result.error);
+          return;
+        }
+        setPreferencesSaveStatus("saved");
+        setTimeout(() => setPreferencesSaveStatus("idle"), 2000);
+      } catch (error) {
+        setPreferencesSaveStatus("error");
+        toast.error("Failed to save preferences");
+        console.error(error);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* General Content Preferences */}
+      <div className="rounded-lg border border-[var(--border)] bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--grey-800)] flex items-center gap-2">
+              <FileText size={14} className="text-[var(--grey-400)]" />
+              General Content Preferences
+            </h2>
+            <p className="text-xs text-[var(--grey-400)] mt-0.5">
+              Describe your overall content style, tone, or preferences. Use the topic lists below for specific subjects to cover or avoid.
+            </p>
+          </div>
+          <SaveStatusIndicator status={preferencesSaveStatus} />
+        </div>
+
+        <textarea
+          value={contentPreferences}
+          onChange={(e) => setContentPreferences(e.target.value)}
+          onBlur={handleContentPreferencesBlur}
+          placeholder="e.g., I prefer educational content over entertainment. Keep things casual and conversational. Avoid anything too salesy..."
+          rows={3}
+          className={cn(
+            "w-full rounded-lg bg-[var(--grey-50)] border border-[var(--border)] px-3 py-2",
+            "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
+            "focus:outline-none focus:ring-2 focus:ring-[#007bc2] focus:bg-white",
+            "resize-none transition-colors"
+          )}
+        />
+      </div>
+
       {/* Topics to Cover */}
       <div className="rounded-lg border border-[var(--border)] bg-white p-6">
         <div className="flex items-center justify-between mb-4">

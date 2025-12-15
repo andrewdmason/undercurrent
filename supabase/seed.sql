@@ -77,6 +77,7 @@ insert into public.projects (
   description,
   business_objectives,
   content_inspiration_sources,
+  content_preferences,
   created_by,
   created_at,
   updated_at
@@ -88,6 +89,7 @@ insert into public.projects (
   'Tabletop Library is a 24-table board game club in Berkeley, California opening in early 2026. We''re membership-based with over 800 games in our collection, including rare and out-of-print titles. We host events most days, have an AI concierge to help organize pickup games, and feature a small retail section, coffee, pastries, and a back room with 500 vinyl records.',
   E'## Goals\n\n- **Primary**: Drive founding membership sign-ups before launch (target: 200 founding members)\n- **Secondary**: Build brand awareness in the Berkeley/Oakland board game community\n- **Long-term**: Establish Tabletop Library as THE place for board games in the East Bay\n\n## Success Metrics\n\n- Email list sign-ups from video CTAs\n- Website traffic from social platforms\n- Engagement rate (comments, shares, saves)\n- Founding member conversions attributed to video content\n\n## Target Audience\n\n- **Primary**: Board game enthusiasts in Berkeley/Oakland (25-45 years old)\n- **Secondary**: Young professionals looking for social activities beyond bars\n- **Tertiary**: Families looking for wholesome entertainment options\n\nOur ideal member is someone who owns 10+ board games, attends game nights with friends, and is looking for a dedicated space to play and discover new games.',
   '["tabletoplibrary.com/events", "boardgamegeek.com/hotness", "new board game releases 2025", "board game cafe marketing", "Berkeley local events"]'::jsonb,
+  'In general, we should be making videos that feel like they make sense for a board game social club to be making, and avoid videos that feel like any board game content creator could make. That doesn''t mean we''ll never make a "top 10 games about X" video or "how to play Y", but if we do, there should be some reason that it makes sense for us to be making it.',
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   now(),
   now()
@@ -297,7 +299,7 @@ insert into public.project_characters (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Nabeel Hyatt',
     'Partner and co-founder. Deep gaming industry experience and expertise in community building. Great for strategic content and industry commentary.',
-    '/seed/characters/nabeel.png',
+    '/seed/characters/nabeel.jpg',
     'c3d4e5f6-b7c8-9012-ef01-345678901234',
     now(),
     now()
@@ -307,7 +309,7 @@ insert into public.project_characters (
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Vera Devera',
     'General Manager. The face of day-to-day operations at Tabletop Library. Expert at teaching games and creating welcoming experiences for members.',
-    '/seed/characters/vera.png',
+    '/seed/characters/vera.jpg',
     'c2d3e4f5-a6b7-8901-def0-234567890123',
     now(),
     now()
@@ -816,15 +818,6 @@ insert into public.project_topics (
     now()
   ),
   (
-    '04d5e6f7-a7b8-9012-def1-234567890123',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Game Teaching',
-    'Tutorials and how-to-play videos for popular games. Vera is our expert teacher.',
-    false,
-    now(),
-    now()
-  ),
-  (
     '05e6f7a8-b8c9-0123-ef12-345678901234',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Berkeley Local',
@@ -1143,18 +1136,12 @@ insert into public.idea_characters (idea_id, character_id) values
 -- ============================================
 
 insert into public.idea_topics (idea_id, topic_id) values
-  -- Wingspan Tutorial -> Game Teaching
-  ('d1e2f3a4-b5c6-7890-def1-234567890abc', '04d5e6f7-a7b8-9012-def1-234567890123'),
-  -- POV Game Recommendation -> Game Teaching
-  ('d3e4f5a6-b7c8-9012-f123-456789012cde', '04d5e6f7-a7b8-9012-def1-234567890123'),
   -- Board Game Cafe Revolution -> Membership Benefits
   ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', '03c4d5e6-f6a7-8901-cdef-123456789012'),
   -- Unboxing BGG Hotness -> New Game Arrivals
   ('d4e5f6a7-b8c9-0123-a234-567890123def', '02b3c4d5-e5f6-7890-bcde-f12345678901'),
   -- Day in the Life -> Membership Benefits
   ('d6e7f8a9-b0c1-2345-c456-789012345f01', '03c4d5e6-f6a7-8901-cdef-123456789012'),
-  -- Rating Games by Teaching Difficulty -> Game Teaching
-  ('d7e8f9a0-b1c2-3456-d567-890123456102', '04d5e6f7-a7b8-9012-def1-234567890123'),
   -- Rare Game Spotlight -> New Game Arrivals
   ('dab1c2d3-e4f5-6789-a890-123456789435', '02b3c4d5-e5f6-7890-bcde-f12345678901'),
   -- AI Concierge Demo -> Membership Benefits

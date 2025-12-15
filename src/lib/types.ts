@@ -43,6 +43,7 @@ export interface Project {
   url: string | null;
   description: string | null;
   business_objectives: string | null;
+  content_preferences: string | null;
   content_inspiration_sources: string[] | null;
   created_at: string;
   updated_at: string;
