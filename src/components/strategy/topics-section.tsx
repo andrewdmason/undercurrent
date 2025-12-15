@@ -1,17 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProjectTopic } from "@/lib/types";
+import { RejectedIdea } from "@/components/brief/brief-context";
 import { addTopic, updateTopic, deleteTopic } from "@/lib/actions/project";
+import { deleteIdea } from "@/lib/actions/ideas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Ban, Sparkles } from "lucide-react";
+import { Plus, Trash2, Ban, Sparkles, XCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { SuggestTopicsModal } from "./suggest-topics-modal";
 
 interface TopicsSectionProps {
   projectId: string;
   topics: ProjectTopic[];
+  rejectedIdeas?: RejectedIdea[];
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -19,12 +24,16 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 export function TopicsSection({
   projectId,
   topics: initialTopics,
+  rejectedIdeas: initialRejectedIdeas = [],
 }: TopicsSectionProps) {
+  const router = useRouter();
   const [topics, setTopics] = useState<ProjectTopic[]>(initialTopics);
+  const [rejectedIdeas, setRejectedIdeas] = useState<RejectedIdea[]>(initialRejectedIdeas);
   const [isAddingIncluded, setIsAddingIncluded] = useState(false);
   const [isAddingExcluded, setIsAddingExcluded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [restoringIdeaId, setRestoringIdeaId] = useState<string | null>(null);
 
   const includedTopics = topics.filter((t) => !t.is_excluded);
   const excludedTopics = topics.filter((t) => t.is_excluded);
@@ -53,6 +62,26 @@ export function TopicsSection({
 
   const handleTopicAddedFromModal = (topic: ProjectTopic) => {
     setTopics([...topics, topic]);
+  };
+
+  const handleDeleteRejectedIdea = async (ideaId: string, ideaTitle: string) => {
+    setRestoringIdeaId(ideaId);
+    try {
+      const result = await deleteIdea(ideaId);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      // Remove from local state
+      setRejectedIdeas((prev) => prev.filter((idea) => idea.id !== ideaId));
+      toast.success(`"${ideaTitle}" removed — may appear in future batches`);
+      router.refresh();
+    } catch (error) {
+      toast.error("Failed to remove idea");
+      console.error(error);
+    } finally {
+      setRestoringIdeaId(null);
+    }
   };
 
   return (
@@ -181,6 +210,47 @@ export function TopicsSection({
         projectId={projectId}
         onTopicAdded={handleTopicAddedFromModal}
       />
+
+      {/* Rejected Ideas Section */}
+      {rejectedIdeas.length > 0 && (
+        <div className="rounded-lg border border-[var(--border)] bg-white p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--grey-800)] flex items-center gap-2">
+                <XCircle size={14} className="text-[var(--grey-400)]" />
+                Rejected Ideas
+              </h2>
+              <p className="text-xs text-[var(--grey-400)] mt-0.5">
+                These ideas won&apos;t be suggested again. Remove to allow re-generation.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            {rejectedIdeas.map((idea) => (
+              <div
+                key={idea.id}
+                className="group flex items-center gap-2 py-1.5 px-2 -mx-2 rounded transition-colors hover:bg-[var(--grey-50)]"
+              >
+                <span className="flex-1 text-sm text-[var(--grey-600)] truncate">
+                  {idea.title}
+                </span>
+                <button
+                  onClick={() => handleDeleteRejectedIdea(idea.id, idea.title)}
+                  disabled={restoringIdeaId === idea.id}
+                  className="text-xs text-[var(--grey-400)] hover:text-[var(--grey-600)] opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                >
+                  {restoringIdeaId === idea.id ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    "Remove"
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
