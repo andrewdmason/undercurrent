@@ -177,6 +177,12 @@ async function fetchIdeaWithContext(ideaId: string) {
           description
         )
       ),
+      idea_channels (
+        project_channels (
+          platform,
+          custom_label
+        )
+      ),
       project_templates (
         name,
         description
@@ -208,6 +214,7 @@ function formatIdeaContext(idea: {
   description: string | null;
   idea_characters: unknown;
   idea_topics: unknown;
+  idea_channels: unknown;
   project_templates: unknown;
 }, project: { name: string; description: string | null }) {
   const characters = (idea.idea_characters as Array<{
@@ -222,6 +229,12 @@ function formatIdeaContext(idea: {
     .map(it => it.project_topics)
     .filter(Boolean) as Array<{ name: string; description: string | null }>;
 
+  const channels = (idea.idea_channels as Array<{
+    project_channels: { platform: string; custom_label: string | null } | null;
+  }> || [])
+    .map(ic => ic.project_channels)
+    .filter(Boolean) as Array<{ platform: string; custom_label: string | null }>;
+
   const template = idea.project_templates as { name: string; description: string | null } | null;
 
   const charactersSection = characters.length > 0
@@ -232,6 +245,10 @@ function formatIdeaContext(idea: {
     ? topics.map((t) => `- **${t.name}**: ${t.description || ""}`).join("\n")
     : "No specific topics.";
 
+  const channelsSection = channels.length > 0
+    ? channels.map((c) => c.custom_label || c.platform).join(", ")
+    : "No specific channels";
+
   const templateSection = template
     ? `**Template:** ${template.name}\n${template.description || ""}`
     : "No specific template assigned.";
@@ -239,9 +256,11 @@ function formatIdeaContext(idea: {
   return {
     characters,
     topics,
+    channels,
     template,
     charactersSection,
     topicsSection,
+    channelsSection,
     templateSection,
     ideaTitle: idea.title || "Untitled",
     ideaDescription: idea.description || "No description",
@@ -316,6 +335,7 @@ export async function generateTalkingPoints(
   let prompt = promptTemplate
     .replace("{{ideaTitle}}", context.ideaTitle)
     .replace("{{ideaDescription}}", context.ideaDescription)
+    .replace("{{channels}}", context.channelsSection)
     .replace("{{template}}", context.templateSection)
     .replace("{{topics}}", context.topicsSection)
     .replace("{{characters}}", context.charactersSection)
@@ -453,6 +473,7 @@ export async function generateScript(
   const prompt = promptTemplate
     .replace("{{ideaTitle}}", context.ideaTitle)
     .replace("{{ideaDescription}}", context.ideaDescription)
+    .replace("{{channels}}", context.channelsSection)
     .replace("{{talkingPoints}}", talkingPointsAsset.content_text)
     .replace("{{template}}", context.templateSection)
     .replace("{{topics}}", context.topicsSection)
@@ -696,4 +717,29 @@ export async function deleteIdeaAssets(ideaId: string): Promise<{ success: boole
   return { success: true };
 }
 
+// Generate all assets in sequence: talking points → script → production assets
+// This is called after the onboarding chat has gathered user context
+export async function generateAllAssets(
+  ideaId: string,
+  userContext?: string
+): Promise<{ success: boolean; error?: string }> {
+  // Step 1: Generate talking points
+  const talkingPointsResult = await generateTalkingPoints(ideaId, userContext);
+  if (!talkingPointsResult.success) {
+    return { success: false, error: talkingPointsResult.error || "Failed to generate talking points" };
+  }
 
+  // Step 2: Generate script from talking points
+  const scriptResult = await generateScript(ideaId);
+  if (!scriptResult.success) {
+    return { success: false, error: scriptResult.error || "Failed to generate script" };
+  }
+
+  // Step 3: Generate production assets from script
+  const productionResult = await generateProductionAssets(ideaId);
+  if (!productionResult.success) {
+    return { success: false, error: productionResult.error || "Failed to generate production assets" };
+  }
+
+  return { success: true };
+}

@@ -12,6 +12,8 @@ Using the talking points below as your guide, write a complete script for this v
 
 **Description:** {{ideaDescription}}
 
+**Target Channels:** {{channels}}
+
 {{template}}
 
 **Topics:** {{topics}}
@@ -36,7 +38,7 @@ Return a JSON object with the script and optional metadata:
 
 ```json
 {
-  "script": "### Hook\n\n*Visual direction here*\n\n**Sarah**\nDialogue here...\n\n### Problem\n\n...",
+  "script": "### Hook\n\n*Visual direction here*\n\n**[Character Name]**\nDialogue here...\n\n### Problem\n\n...",
   "instructions": "Optional notes about delivery or recording this script",
   "time_estimate_minutes": 10
 }
@@ -53,10 +55,10 @@ Structure the script as a series of **scenes**. Each scene represents a distinct
 
 *Visual direction describing what we see*
 
-**Sarah**
+**[Character Name]**
 Dialogue goes here as a plain paragraph.
 
-**Sarah (V.O.)**
+**[Character Name] (V.O.)**
 Voiceover dialogue when the speaker is not on camera.
 ```
 
@@ -75,14 +77,14 @@ You don't need to use all of these — pick the scenes that fit the video idea.
 
 ### Speaker Notation
 
-- `**Sarah**` — Speaker is on camera
-- `**Sarah (V.O.)**` — Voiceover (speaker's voice, but not on camera)
-- `**Sarah (O.S.)**` — Off-screen (speaker is nearby but not visible)
-- `**Sarah (unscripted)**` — Direction for an unscripted/improvised moment. Wrap the direction in angle brackets. Keep it concise—just enough for them to know what to do.
+- `**[Name]**` — Speaker is on camera
+- `**[Name] (V.O.)**` — Voiceover (speaker's voice, but not on camera)
+- `**[Name] (O.S.)**` — Off-screen (speaker is nearby but not visible)
+- `**[Name] (unscripted)**` — Direction for an unscripted/improvised moment. Wrap the direction in angle brackets. Keep it concise—just enough for them to know what to do.
 
 Example of unscripted direction:
 ```
-**Oscar (unscripted)**
+**[Name] (unscripted)**
 <React excitedly. "I'm giving zeros!" or "I'm gonna be so harsh!">
 ```
 
@@ -92,7 +94,7 @@ Use italics for all visual/action directions:
 
 - `*Wide shot of the storefront*`
 - `*Cut to B-roll: hands assembling product*`
-- `*Lower third: "Sarah, Founder"*`
+- `*Lower third: "[Name], [Role]"*`
 - `*TEXT: "50% off this week"*`
 
 ## Scripted vs. Unscripted Content
@@ -144,7 +146,7 @@ When using `[unscripted]`, provide enough direction that the person knows what t
    - YouTube (long-form): More depth, can breathe more
    - LinkedIn: Professional tone, thought leadership angle
 
-5. **Character Consideration**: The characters listed are specifically assigned to this video. Write dialogue for ALL of them - they should all appear in the script. Write in their voice and play to their strengths.
+5. **Character Consideration**: ONLY use the characters listed in the "Characters" section above. Do NOT invent new character names or use example names from this prompt. Every speaker in your script must be one of the assigned characters. Write dialogue for ALL of them and play to their strengths.
 
 6. **Template Style**: If a template is specified, match its production style (e.g., quick tips should be punchy, tutorials should be thorough, behind-the-scenes should feel authentic)
 

@@ -577,6 +577,27 @@ insert into public.ideas (
     now() - interval '1 day',
     now() - interval '1 day',
     null
+  ),
+  
+  -- ===========================================
+  -- ONBOARDING TEST: Accepted idea with NO assets
+  -- This tests the onboarding chat flow
+  -- ===========================================
+  (
+    'dbc2d3e4-f5a6-7890-abcd-0000000000a1',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'Best Board Games for a First Date',
+    'Recommendations for games that are great for a first date - not too competitive, easy to learn, and creates good conversation.',
+    null,
+    '/seed/ideas/rare-games.jpg',
+    now() - interval '30 minutes',  -- Just accepted, ready for onboarding
+    null,
+    null,
+    null,
+    'f2a3b4c5-d6e7-8901-d567-890123456012',
+    now() - interval '30 minutes',
+    now() - interval '30 minutes',
+    null
   );
 
 -- ============================================
@@ -624,7 +645,11 @@ insert into public.idea_channels (idea_id, channel_id, video_url) values
   
   -- Rare Games Spotlight (NEW): Instagram Reels + YouTube Shorts (collector content)
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
-  ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null);
+  ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null),
+  
+  -- Best Board Games for First Date (ONBOARDING TEST): TikTok + Instagram (dating/lifestyle content)
+  ('dbc2d3e4-f5a6-7890-abcd-0000000000a1', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  ('dbc2d3e4-f5a6-7890-abcd-0000000000a1', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null);
 
 -- ============================================
 -- THE MASON FAMILY HIJINKS - Second Test Project
@@ -1105,6 +1130,7 @@ update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' whe
 update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'dab1c2d3-e4f5-6789-a890-123456789435'; -- Rare Game Spotlight -> Talking Head YouTube
 update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd9a0b1c2-d3e4-5678-f789-012345678324'; -- AI Concierge Demo -> Talking Head YouTube
 update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd8f9a0b1-c2d3-4567-e678-901234567213'; -- Saturday Night Recap -> Vertical Full Body
+update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'dbc2d3e4-f5a6-7890-abcd-0000000000a1'; -- First Date Games -> Talking Head YouTube (ONBOARDING TEST)
 
 -- ============================================
 -- IDEA_CHARACTERS - Link ideas to characters
@@ -1129,7 +1155,9 @@ insert into public.idea_characters (idea_id, character_id) values
   -- Rare Game Spotlight (Nabeel)
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'e2b3c4d5-e6f7-8901-bcde-f12345678901'),
   -- AI Concierge Demo (Andrew)
-  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890');
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'e1a2b3c4-d5e6-7890-abcd-ef1234567890'),
+  -- Best Board Games for First Date - ONBOARDING TEST (Vera - recommendation expert)
+  ('dbc2d3e4-f5a6-7890-abcd-0000000000a1', 'e3c4d5e6-f7a8-9012-cdef-123456789012');
 
 -- ============================================
 -- IDEA_TOPICS - Link ideas to topics

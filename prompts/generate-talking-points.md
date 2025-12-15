@@ -12,6 +12,8 @@ Analyze the video idea below and generate a talking points document. This should
 
 **Description:** {{ideaDescription}}
 
+**Target Channels:** {{channels}}
+
 {{template}}
 
 **Topics:** {{topics}}
@@ -25,6 +27,50 @@ Analyze the video idea below and generate a talking points document. This should
 
 **Characters:**
 {{characters}}
+
+## ⚠️ CRITICAL: Video Length Constraints
+
+**Match the talking points length to the target channel(s).** This is non-negotiable.
+
+| Channel | Max Length | Talking Points Scope |
+|---------|------------|---------------------|
+| TikTok | 60 seconds | 3-4 bullet points TOTAL. One hook + one main point + CTA |
+| Instagram Reels | 60-90 seconds | 3-5 bullet points TOTAL. Hook + 1-2 quick points + CTA |
+| YouTube Shorts | 60 seconds | 3-4 bullet points TOTAL. Same as TikTok |
+| YouTube (long-form) | 5-15 minutes | Full outline with multiple sections |
+| LinkedIn | 1-3 minutes | 5-8 bullet points. Hook + 2-3 points + CTA |
+
+**If targeting short-form channels (TikTok, Reels, Shorts):**
+- The ENTIRE video is under 60 seconds
+- You have time for ONE main idea, not multiple segments
+- No "Segment 1, Segment 2" structure — that's for long-form
+- Think "single tip" or "quick list of 3 things" not "comprehensive guide"
+
+**Example: 60-second Reel about date night games**
+
+WRONG (too much for 60 seconds):
+```
+## Hook
+## Segment 1: What Makes a Great Date Game
+## Segment 2: Best Cooperative Games  
+## Segment 3: Best Competitive Games
+## Segment 4: Tips for Playing
+## CTA
+```
+
+RIGHT (fits 60 seconds):
+```
+## Hook
+- Bold claim: "These 3 games saved my awkward first dates"
+
+## The Games
+- Game 1 name + one sentence why
+- Game 2 name + one sentence why  
+- Game 3 name + one sentence why
+
+## CTA
+- Come try them at Tabletop Library
+```
 
 ## Decision: Needs User Input?
 
@@ -85,21 +131,21 @@ Structure the talking points as a markdown document with clear sections:
 
 ## Critical Guidelines
 
-1. **Content, Not Script**: Talking points describe WHAT topics/information to cover. They do NOT include:
+1. **Length First**: Before writing anything, check the target channels and constrain your output accordingly. A TikTok outline should fit on a phone screen. A YouTube outline can be comprehensive.
+
+2. **Content, Not Script**: Talking points describe WHAT topics/information to cover. They do NOT include:
    - Verbatim quotes or suggested phrases to say
    - Stage direction (walking, gesturing, where to stand)
    - Performance notes (keep it punchy, be energetic)
    - Specific wording the creator should use
    
-2. **Ideas, Not Words**: Instead of "Say: 'Did you know most people do X wrong?'" write "Open with a surprising fact about how most people approach X incorrectly"
+3. **Ideas, Not Words**: Instead of "Say: 'Did you know most people do X wrong?'" write "Open with a surprising fact about how most people approach X incorrectly"
 
-3. **Save Direction for Scripts**: Stage direction, camera movements, performance style, and specific phrasing all belong in the script phase, not talking points.
+4. **Save Direction for Scripts**: Stage direction, camera movements, performance style, and specific phrasing all belong in the script phase, not talking points.
 
-4. **Bullets, Not Paragraphs**: Use short bullet points describing the content to cover. The creator will speak naturally from these prompts.
+5. **Bullets, Not Paragraphs**: Use short bullet points describing the content to cover. The creator will speak naturally from these prompts.
 
-5. **Natural Flow**: Order the points in a logical narrative arc.
-
-6. **Time Awareness**: For short-form content (TikTok, Reels, Shorts), keep it to 3-5 main bullet points total. For longer content, you can expand.
+6. **Natural Flow**: Order the points in a logical narrative arc.
 
 7. **Character Consideration**: If specific characters are assigned, note their relevant expertise for each section.
 
@@ -107,7 +153,31 @@ Structure the talking points as a markdown document with clear sections:
 
 ## Example Output
 
-For a "3 Common Mistakes" video:
+### Short-Form Example (TikTok/Reels/Shorts — 60 seconds)
+
+For a "3 Common Mistakes" video targeting Instagram Reels:
+
+```markdown
+## Hook
+
+- Bold claim: most people make these mistakes when [topic]
+
+## The 3 Mistakes
+
+- Mistake 1: [Name] — one line on what it is
+- Mistake 2: [Name] — one line on what it is
+- Mistake 3: [Name] — one line on what it is
+
+## CTA
+
+- Follow for more tips / Visit us to learn more
+```
+
+**That's it.** 60 seconds = ~150 words spoken. Keep it tight.
+
+### Long-Form Example (YouTube — 5-10 minutes)
+
+For the same "3 Common Mistakes" video targeting YouTube:
 
 ```markdown
 ## Hook
@@ -136,7 +206,7 @@ For a "3 Common Mistakes" video:
 ## Wrap Up
 
 - Quick recap of the three mistakes
-- Call to action (follow, comment, visit link, etc.)
+- Call to action (subscribe, comment, visit link)
 ```
 
 The creator should be able to glance at this outline and know exactly what content to cover, then deliver it naturally in their own words and style.

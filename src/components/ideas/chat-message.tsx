@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, ReactNode } from "react";
-import { ChevronDown, ChevronUp, FileText, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, RefreshCw, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Simple markdown renderer for chat messages
@@ -190,8 +190,12 @@ function ToolCallIndicator({
         return isPending ? "Updating script..." : "Updated script";
       case "generate_script":
         return isPending ? "Generating script..." : "Generated script";
+      case "generate_talking_points":
+        return isPending ? "Generating talking points..." : "Generated talking points";
       case "regenerate_idea":
         return isPending ? "Regenerating idea..." : "Regenerated idea";
+      case "ready_to_generate":
+        return isPending ? "Preparing to generate..." : "Ready to generate";
       default:
         return name;
     }
@@ -202,9 +206,12 @@ function ToolCallIndicator({
       case "update_script":
         return <FileText className={cn("h-3 w-3", isPending && "animate-pulse")} />;
       case "generate_script":
+      case "generate_talking_points":
         return <FileText className={cn("h-3 w-3", isPending && "animate-spin")} />;
       case "regenerate_idea":
         return <RefreshCw className={cn("h-3 w-3", isPending && "animate-spin")} />;
+      case "ready_to_generate":
+        return <Sparkles className={cn("h-3 w-3", isPending && "animate-pulse")} />;
       default:
         return null;
     }

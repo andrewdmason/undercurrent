@@ -10,8 +10,8 @@ import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { generateScript, generateTalkingPoints, updateAssetContent, getIdeaAssets, generateProductionAssets } from "@/lib/actions/idea-assets";
 import { after } from "next/server";
 
-// Tool definitions for the agent
-const tools = [
+// Tool definitions for the refinement agent (post-onboarding)
+const refinementTools = [
   {
     type: "function" as const,
     function: {
@@ -86,25 +86,51 @@ const tools = [
   },
 ];
 
-// Gemini tool format - using Type enum from Google SDK
-const geminiTools = [
+// Tool definitions for the onboarding agent (pre-asset generation)
+const onboardingTools = [
   {
-    functionDeclarations: tools.map((t) => ({
-      name: t.function.name,
-      description: t.function.description,
+    type: "function" as const,
+    function: {
+      name: "ready_to_generate",
+      description: "Call this when you have gathered enough information from the user to generate their talking points and script. This will show a 'Generate' button to the user. Only call this when you genuinely have enough context about their unique perspective, specific examples, or content they want to share.",
       parameters: {
-        type: Type.OBJECT,
-        properties: Object.fromEntries(
-          Object.entries(t.function.parameters.properties).map(([key, val]) => [
-            key,
-            { type: Type.STRING, description: (val as { description: string }).description },
-          ])
-        ),
-        required: t.function.parameters.required,
+        type: "object",
+        properties: {
+          summary: {
+            type: "string",
+            description: "A brief summary (1-2 sentences) of the key information gathered from the user that will be used to generate their content.",
+          },
+        },
+        required: ["summary"],
       },
-    })),
+    },
   },
 ];
+
+// Convert OpenAI tool format to Gemini format
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toGeminiTools(openaiTools: any[]) {
+  return [
+    {
+      functionDeclarations: openaiTools.map((t) => ({
+        name: t.function.name,
+        description: t.function.description,
+        parameters: {
+          type: Type.OBJECT,
+          properties: Object.fromEntries(
+            Object.entries(t.function.parameters.properties)
+              .filter(([, val]) => val !== undefined)
+              .map(([key, val]) => [
+                key,
+                { type: Type.STRING, description: (val as { description: string }).description },
+              ])
+          ),
+          required: t.function.parameters.required,
+        },
+      })),
+    },
+  ];
+}
 
 export async function POST(
   request: Request,
@@ -122,12 +148,17 @@ export async function POST(
   }
 
   // Parse request body
-  const { chatId, message, model, isInit } = (await request.json()) as {
+  const { chatId, message, model, isInit, mode } = (await request.json()) as {
     chatId: string;
     message: string;
     model: ChatModel;
     isInit?: boolean;
+    mode?: "onboarding" | "refinement";
   };
+  
+  // Determine which tools and prompt to use based on mode
+  const isOnboarding = mode === "onboarding";
+  const tools = isOnboarding ? onboardingTools : refinementTools;
 
   if (!chatId || (!message && !isInit)) {
     return new Response("Missing chatId or message", { status: 400 });
@@ -141,6 +172,7 @@ export async function POST(
       title,
       description,
       project_id,
+      template_id,
       idea_channels (
         channel_id,
         project_channels (
@@ -198,9 +230,26 @@ export async function POST(
     .eq("chat_id", chatId)
     .order("created_at", { ascending: true });
 
-  // Build system prompt
+  // Fetch template info if present
+  const { data: template } = idea.template_id
+    ? await supabase
+        .from("project_templates")
+        .select("name, description")
+        .eq("id", idea.template_id)
+        .single()
+    : { data: null };
+
+  // Fetch business objectives for onboarding mode
+  const { data: projectWithObjectives } = await supabase
+    .from("projects")
+    .select("business_objectives")
+    .eq("id", idea.project_id)
+    .single();
+
+  // Build system prompt - use different prompt file based on mode
+  const promptFile = isOnboarding ? "video-onboarding.md" : "chat-agent.md";
   const promptTemplate = await readFile(
-    path.join(process.cwd(), "prompts", "chat-agent.md"),
+    path.join(process.cwd(), "prompts", promptFile),
     "utf-8"
   );
 
@@ -231,12 +280,19 @@ export async function POST(
           .join(", ")
       : "No specific channels";
 
+  // Format template section
+  const templateSection = template
+    ? `**Template:** ${template.name}\n${template.description || ""}`
+    : "";
+
   let systemPrompt = promptTemplate
     .replace(/\{\{projectName\}\}/g, project.name || "Unnamed Project")
     .replace("{{ideaTitle}}", idea.title || "Untitled")
     .replace("{{ideaDescription}}", idea.description || "No description")
     .replace("{{channels}}", channelsSection)
+    .replace("{{template}}", templateSection)
     .replace("{{projectDescription}}", project.description || "No description provided.")
+    .replace("{{businessObjectives}}", projectWithObjectives?.business_objectives || "No specific objectives defined.")
     .replace("{{characters}}", charactersSection)
     .replace("{{currentScript}}", currentScript || "*No script generated yet*");
 
@@ -478,6 +534,17 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
 
       revalidatePath(`/${project.slug}/ideas/${ideaId}`);
       return JSON.stringify({ success: true, message: "Idea regenerated. New thumbnail is being generated." });
+    }
+
+    if (toolCall.function.name === "ready_to_generate") {
+      const { summary } = args;
+      // This tool just signals that the AI is ready - the frontend will show the generate button
+      // The actual generation happens when the user clicks the button
+      return JSON.stringify({ 
+        success: true, 
+        message: "Ready to generate talking points and script",
+        summary: summary || ""
+      });
     }
 
     return JSON.stringify({ success: false, error: "Unknown tool" });
@@ -763,7 +830,7 @@ A script already exists. Offer to help them refine it, change the hook, adjust t
             contents: geminiContents,
             config: {
               systemInstruction: systemPrompt,
-              tools: geminiTools,
+              tools: toGeminiTools(tools),
             },
           });
 

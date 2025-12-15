@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ import {
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, generateAllAssets } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
 import { MarkdownDisplay } from "@/components/ui/markdown-display";
 import { ChatSidebar } from "./chat-sidebar";
+import { OnboardingChat } from "./onboarding-chat";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
@@ -81,6 +82,14 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     // Will be properly initialized in useEffect (can't access localStorage during SSR)
     return null;
   });
+  
+  // View mode: onboarding (no assets) vs asset view
+  // Once generation starts, we switch to asset view even if assets aren't fully created yet
+  const [isGeneratingAllAssets, setIsGeneratingAllAssets] = useState(false);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
+  
+  // Determine if we're in onboarding mode (no assets and not generating)
+  const isOnboardingMode = assets.length === 0 && !isGeneratingAllAssets;
 
   // Sync assets state with initialAssets when server data changes (e.g., after router.refresh())
   useEffect(() => {
@@ -353,6 +362,30 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     }
   };
 
+  // Handle generating all assets after onboarding chat
+  const handleGenerateAllAssets = async () => {
+    if (isGeneratingAllAssets) return;
+    
+    setIsGeneratingAllAssets(true);
+    
+    try {
+      // The context will be gathered from the chat - for now we rely on what the AI learned
+      const result = await generateAllAssets(idea.id);
+      
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Assets generated successfully");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate assets");
+      console.error(error);
+    } finally {
+      setIsGeneratingAllAssets(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[var(--grey-25)] min-h-0">
       {/* Back Navigation & Title Bar */}
@@ -452,6 +485,17 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
+                {/* Chat sidebar toggle - only show when not in onboarding mode */}
+                {!isOnboardingMode && (
+                  <DropdownMenuItem
+                    onClick={() => setShowChatSidebar(!showChatSidebar)}
+                    className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {showChatSidebar ? "Hide Chat Sidebar" : "Show Chat Sidebar"}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
                   onClick={handleCancel}
                   disabled={isCanceling}
@@ -466,10 +510,72 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         </div>
       </div>
 
-      {/* Main Content - Three Column Layout */}
+      {/* Main Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full px-6 py-6 flex flex-col">
-          <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '340px minmax(400px, 1fr) 300px' }}>
+          {isOnboardingMode ? (
+            /* Onboarding Mode: Two-column layout with chat in main area */
+            <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '340px 1fr' }}>
+              {/* Left Column - Idea Context */}
+              <div className="flex flex-col gap-4 min-h-0 h-full">
+                {/* Image */}
+                <div className="group/image relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--grey-100)]">
+                  {hasImage && (
+                    <Image
+                      src={idea.image_url!}
+                      alt=""
+                      fill
+                      className={cn(
+                        "object-cover",
+                        showShimmer && "opacity-0"
+                      )}
+                      sizes="(max-width: 768px) 100vw, 400px"
+                    />
+                  )}
+                  {showShimmer && <ImageShimmer />}
+                  {hasImage && !showShimmer && (
+                    <ImageExpandButton
+                      onClick={() => setLightboxOpen(true)}
+                      className="opacity-0 group-hover/image:opacity-100"
+                    />
+                  )}
+                </div>
+                
+                {/* Image Lightbox */}
+                {hasImage && (
+                  <ImageLightbox
+                    src={idea.image_url!}
+                    open={lightboxOpen}
+                    onOpenChange={setLightboxOpen}
+                  />
+                )}
+                
+                {/* Description Card */}
+                <DescriptionCard 
+                  idea={idea} 
+                  projectChannels={projectChannels} 
+                  fullTemplate={fullTemplate} 
+                  setEditingChannel={setEditingChannel} 
+                  setEditingTemplate={setEditingTemplate} 
+                  setEditingTopic={setEditingTopic} 
+                  setEditingCharacter={setEditingCharacter} 
+                />
+              </div>
+              
+              {/* Main Column - Onboarding Chat */}
+              <OnboardingChat
+                ideaId={idea.id}
+                projectSlug={projectSlug}
+                onGenerate={handleGenerateAllAssets}
+                isGenerating={isGeneratingAllAssets}
+              />
+            </div>
+          ) : (
+            /* Asset View Mode: Two or three columns depending on chat sidebar visibility */
+            <div 
+              className="grid gap-6 flex-1 min-h-0 overflow-hidden" 
+              style={{ gridTemplateColumns: showChatSidebar ? '340px minmax(400px, 1fr) 300px' : '340px 1fr' }}
+            >
             {/* Left Column - Image & Info */}
             <div className="flex flex-col gap-4 min-h-0 h-full">
 
@@ -934,25 +1040,28 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
               </div>
             </div>
 
-            {/* Right Column - Chat (full height) */}
-            <div className="flex flex-col min-h-0 h-full">
-              <ChatSidebar
-                ideaId={idea.id}
-                projectSlug={projectSlug}
-                onScriptUpdate={() => router.refresh()}
-                onIdeaRegenerate={() => router.refresh()}
-                onToolCallStart={(toolName) => {
-                  if (toolName === "update_script") setIsScriptUpdating(true);
-                }}
-                onToolCallEnd={(toolName) => {
-                  // Add minimum delay so shimmer is visible
-                  if (toolName === "update_script") {
-                    setTimeout(() => setIsScriptUpdating(false), 800);
-                  }
-                }}
-              />
-            </div>
+            {/* Right Column - Chat (only shown if sidebar is open) */}
+            {showChatSidebar && (
+              <div className="flex flex-col min-h-0 h-full">
+                <ChatSidebar
+                  ideaId={idea.id}
+                  projectSlug={projectSlug}
+                  onScriptUpdate={() => router.refresh()}
+                  onIdeaRegenerate={() => router.refresh()}
+                  onToolCallStart={(toolName) => {
+                    if (toolName === "update_script") setIsScriptUpdating(true);
+                  }}
+                  onToolCallEnd={(toolName) => {
+                    // Add minimum delay so shimmer is visible
+                    if (toolName === "update_script") {
+                      setTimeout(() => setIsScriptUpdating(false), 800);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
+          )}
         </div>
       </div>
 
