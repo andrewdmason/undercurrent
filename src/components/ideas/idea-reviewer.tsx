@@ -97,6 +97,7 @@ export function IdeaReviewer({
   // Other UI state
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Sync local ideas with server ideas ONLY when not processing
   useEffect(() => {
@@ -111,6 +112,14 @@ export function IdeaReviewer({
   const isStackEmpty = currentIndex >= localIdeas.length;
   const hasImage = !!currentIdea?.image_url;
   const showShimmer = isGeneratingThumbnail || !hasImage;
+
+  // Get upcoming ideas for preloading (next 3 images)
+  const upcomingIdeas = localIdeas.slice(currentIndex + 1, currentIndex + 4);
+
+  // Reset image loaded state when current idea changes
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [currentIdea?.id]);
 
   // Poll for thumbnail updates
   const pendingIdeaIds = currentIdea && !currentIdea.image_url ? [currentIdea.id] : [];
@@ -504,21 +513,36 @@ export function IdeaReviewer({
                   alt=""
                   fill
                   className={cn(
-                    "object-cover",
-                    showShimmer && "opacity-0"
+                    "object-cover transition-opacity duration-150",
+                    (!imageLoaded || showShimmer) && "opacity-0"
                   )}
                   sizes="(max-width: 768px) 100vw, 700px"
                   priority
+                  onLoad={() => setImageLoaded(true)}
                 />
               ) : (
                 <ImageShimmer />
               )}
 
-              {showShimmer && hasImage && (
+              {(showShimmer || (hasImage && !imageLoaded)) && (
                 <div className="absolute inset-0">
                   <ImageShimmer />
                 </div>
               )}
+
+              {/* Preload upcoming images */}
+              {upcomingIdeas.map((idea) => idea.image_url && (
+                <Image
+                  key={idea.id}
+                  src={idea.image_url}
+                  alt=""
+                  fill
+                  className="opacity-0 pointer-events-none"
+                  sizes="(max-width: 768px) 100vw, 700px"
+                  priority={false}
+                  aria-hidden="true"
+                />
+              ))}
 
               {/* Channel badges */}
               {currentIdea.channels && currentIdea.channels.length > 0 && !showShimmer && (
@@ -566,8 +590,11 @@ export function IdeaReviewer({
               )}
             </div>
 
-            {/* Content */}
-            <div>
+            {/* Content - waits for image to load for synchronized appearance */}
+            <div className={cn(
+              "transition-opacity duration-150",
+              hasImage && !imageLoaded && "opacity-0"
+            )}>
               <h3 className="text-lg font-medium text-[var(--grey-800)] tracking-[-0.08px] mb-2">
                 {currentIdea.title}
               </h3>
