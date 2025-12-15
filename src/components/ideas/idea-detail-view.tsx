@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
@@ -94,39 +94,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const scriptAsset = assets.find(a => a.type === "script");
   const talkingPointsAsset = assets.find(a => a.type === "talking_points");
   const currentScript = scriptAsset?.content_text || null;
-
-  // Track content hashes to detect when generation completes
-  const talkingPointsContentRef = useRef(talkingPointsAsset?.content_text);
-  const scriptContentRef = useRef(scriptAsset?.content_text);
-
-  // Poll for updates when regeneration is pending
-  useEffect(() => {
-    if (!isGeneratingTalkingPoints && !isGeneratingScript) return;
-
-    const pollInterval = setInterval(() => {
-      router.refresh();
-    }, 2000);
-
-    return () => clearInterval(pollInterval);
-  }, [isGeneratingTalkingPoints, isGeneratingScript, router]);
-
-  // Clear generating state when talking points content updates
-  useEffect(() => {
-    if (isGeneratingTalkingPoints && talkingPointsAsset?.content_text !== talkingPointsContentRef.current) {
-      talkingPointsContentRef.current = talkingPointsAsset?.content_text;
-      setIsGeneratingTalkingPoints(false);
-      toast.success("Talking points regenerated");
-    }
-  }, [talkingPointsAsset?.content_text, isGeneratingTalkingPoints]);
-
-  // Clear generating state when script content updates
-  useEffect(() => {
-    if (isGeneratingScript && scriptAsset?.content_text !== scriptContentRef.current) {
-      scriptContentRef.current = scriptAsset?.content_text;
-      setIsGeneratingScript(false);
-      toast.success("Script regenerated");
-    }
-  }, [scriptAsset?.content_text, isGeneratingScript]);
 
   // Initialize selected asset from localStorage or default to first asset
   useEffect(() => {
@@ -240,22 +207,20 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const handleGenerateTalkingPoints = async () => {
     if (isGeneratingTalkingPoints) return;
     
-    // Store current content to detect when it changes
-    talkingPointsContentRef.current = talkingPointsAsset?.content_text;
     setIsGeneratingTalkingPoints(true);
     
     try {
       const result = await generateTalkingPoints(idea.id);
       if (result.error) {
         toast.error(result.error);
-        setIsGeneratingTalkingPoints(false);
       } else {
-        // Success toast will be shown by the useEffect when content updates
+        toast.success("Talking points generated");
         router.refresh();
       }
     } catch (error) {
       toast.error("Failed to generate talking points");
       console.error(error);
+    } finally {
       setIsGeneratingTalkingPoints(false);
     }
   };
@@ -269,17 +234,14 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       return;
     }
     
-    // Store current content to detect when it changes
-    scriptContentRef.current = scriptAsset?.content_text;
     setIsGeneratingScript(true);
     
     try {
       const result = await generateScript(idea.id);
       if (result.error) {
         toast.error(result.error);
-        setIsGeneratingScript(false);
       } else {
-        // Success toast will be shown by the useEffect when content updates
+        toast.success("Script generated");
         // Also generate production assets in background
         generateProductionAssets(idea.id).catch(console.error);
         router.refresh();
@@ -287,6 +249,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     } catch (error) {
       toast.error("Failed to generate script");
       console.error(error);
+    } finally {
       setIsGeneratingScript(false);
     }
   };
