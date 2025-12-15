@@ -584,7 +584,7 @@ export function IdeaCard({
       <ContextMenuItem
         onClick={handleContextRemix}
         disabled={!onRemix}
-        className="cursor-default"
+        className="cursor-pointer"
       >
         <Sparkles className="mr-2 h-4 w-4" />
         Remix Idea
@@ -592,7 +592,7 @@ export function IdeaCard({
       <ContextMenuItem
         onClick={handleGenerateThumbnail}
         disabled={isGenerating}
-        className="cursor-default"
+        className="cursor-pointer"
       >
         <RefreshCw className={cn("mr-2 h-4 w-4", isGenerating && "animate-spin")} />
         {hasImage ? "Regenerate Thumbnail" : "Generate Thumbnail"}
@@ -601,7 +601,7 @@ export function IdeaCard({
       <ContextMenuItem
         onClick={handleContextPublish}
         disabled={!onPublish}
-        className="cursor-default"
+        className="cursor-pointer"
       >
         <Send className="mr-2 h-4 w-4" />
         Mark as Published
@@ -609,7 +609,7 @@ export function IdeaCard({
       <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDelete}
-        className="text-[#f72736] focus:text-[#f72736] cursor-default"
+        className="text-[#f72736] focus:text-[#f72736] cursor-pointer"
       >
         <Trash2 className="mr-2 h-4 w-4" />
         Delete Idea
@@ -624,7 +624,7 @@ export function IdeaCard({
         <ContextMenuTrigger asChild>
           <Link
             href={href}
-            className={cn(baseCardClasses, "cursor-default hover:shadow-md block")}
+            className={cn(baseCardClasses, "cursor-pointer hover:shadow-md block")}
           >
             {cardContent}
           </Link>
@@ -639,7 +639,7 @@ export function IdeaCard({
       <ContextMenuTrigger asChild>
         <article
           onClick={isClickable ? onClick : undefined}
-          className={cn(baseCardClasses, isClickable && "cursor-default hover:shadow-md")}
+          className={cn(baseCardClasses, isClickable && "cursor-pointer hover:shadow-md")}
           tabIndex={isClickable ? 0 : undefined}
           onKeyDown={isClickable ? (e) => {
             if (e.key === "Enter" || e.key === " ") {

@@ -34,7 +34,7 @@ export function BriefNav({ slug }: BriefNavProps) {
               key={tab.href}
               href={href}
               className={cn(
-                "rounded-md px-3 text-sm font-medium inline-flex items-center justify-center cursor-default",
+                "rounded-md px-3 text-sm font-medium inline-flex items-center justify-center cursor-pointer",
                 isActive
                   ? "bg-white text-[var(--grey-800)] shadow-sm"
                   : "text-[var(--grey-400)] hover:text-[var(--grey-600)]"

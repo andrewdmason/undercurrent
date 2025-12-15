@@ -14,6 +14,8 @@ Analyze the video idea below and generate a talking points document. This should
 
 {{template}}
 
+{{targetDuration}}
+
 **Topics:** {{topics}}
 
 ## Project Context
@@ -61,84 +63,142 @@ If you have enough context to generate talking points, return:
 ```json
 {
   "needs_input": false,
-  "talking_points": "## Opening Hook\n\n- Attention-grabbing question or bold statement about [topic]\n- Establish credibility or relevance\n\n## Main Content\n\n### Point 1: [Topic]\n- Key information to convey\n- Supporting detail\n\n...",
-  "instructions": "These talking points capture the content to cover. Deliver naturally in your own words.",
+  "talking_points": "## Hook\n\n- Bold question or statement about [topic]\n\n## Main Point\n\n- Key concept\n- Supporting detail\n- The takeaway\n\n## CTA\n\n- What to do next",
+  "instructions": "Terse notes — deliver naturally in your own words.",
   "time_estimate_minutes": 5
 }
 ```
 
-## Talking Points Structure
-
-Structure the talking points as a markdown document with clear sections:
-
-### Opening Hook
-- 1-2 bullet points describing what concept or idea to open with
-- Focus on WHAT to communicate, not HOW to say it
-
-### Main Points
-- Break into 2-4 key sections
-- Each section has 2-4 bullet points
-- Use sub-bullets for supporting details
-
-### Call to Action
-- What you want viewers to do next
-
 ## Critical Guidelines
 
-1. **Content, Not Script**: Talking points describe WHAT topics/information to cover. They do NOT include:
-   - Verbatim quotes or suggested phrases to say
-   - Stage direction (walking, gesturing, where to stand)
-   - Performance notes (keep it punchy, be energetic)
-   - Specific wording the creator should use
-   
-2. **Ideas, Not Words**: Instead of "Say: 'Did you know most people do X wrong?'" write "Open with a surprising fact about how most people approach X incorrectly"
+### 1. DURATION IS THE #1 CONSTRAINT
 
-3. **Save Direction for Scripts**: Stage direction, camera movements, performance style, and specific phrasing all belong in the script phase, not talking points.
+**If a target duration is specified, it overrides everything else.** Count your bullet points carefully.
 
-4. **Bullets, Not Paragraphs**: Use short bullet points describing the content to cover. The creator will speak naturally from these prompts.
+| Duration | Max Total Bullets | Structure |
+|----------|-------------------|-----------|
+| **Under 60s** | 5-6 bullets total | Hook (1) + ONE main point (3-4) + CTA (1) |
+| **60-90s** | 7-9 bullets total | Hook (1-2) + ONE main point (4-5) + CTA (1-2) |
+| **90-180s** | 10-14 bullets total | Hook (2) + 2 main points (4-5 each) + CTA (2) |
+| **3-5 min** | 15-25 bullets total | Hook (2-3) + 3-4 main points + CTA (2-3) |
+| **5+ min** | More extensive allowed | Full outline structure |
 
-5. **Natural Flow**: Order the points in a logical narrative arc.
+**Sub-bullets count toward the total.** A bullet with 3 sub-bullets = 4 bullets.
 
-6. **Time Awareness**: For short-form content (TikTok, Reels, Shorts), keep it to 3-5 main bullet points total. For longer content, you can expand.
+**The math:** Average speaker = 150 words/minute. 90 seconds = 225 words. Each bullet point takes ~15-20 seconds to deliver naturally. For 90 seconds, that's 5-6 bullets max.
 
-7. **Character Consideration**: If specific characters are assigned, note their relevant expertise for each section.
+### ⛔ NO TIME ESTIMATES IN HEADERS
 
-8. **Template Alignment**: Match the depth to the template style (quick tips = fewer points, tutorials = more thorough).
+**NEVER put time estimates like "(10s)" or "(60-70s)" in section headers.** They're always wrong and add noise. Just use the section name:
 
-## Example Output
+- ✅ `## Hook`
+- ✅ `## The Story`  
+- ❌ `## Hook (10-15s)`
+- ❌ `## The Story (60-70s)`
 
-For a "3 Common Mistakes" video:
+### 2. SCOPE REDUCTION
+
+If the video idea is too ambitious for the target duration, **ruthlessly simplify**:
+- "Top 5 tips" becomes "The #1 tip"
+- "3 stories" becomes "1 story"
+- "Complete guide" becomes "Quick overview of the most important thing"
+- "Pros and cons" becomes "The main thing to know"
+
+**Do NOT try to cram a 5-minute idea into 90 seconds.** Instead, pick the single most compelling slice.
+
+### 3. Write as Terse Personal Notes
+
+Write as if the presenter scribbled quick notes to themselves. **Fragments, not sentences.** No filler words.
+
+**Good examples (terse, note-like):**
+- ✅ "Timeline: hobby shops → modern cafés (10-15 years)"
+- ✅ "Community first: regular faces, welcoming culture, staff who facilitate"
+- ✅ "The betrayal moment — trust broken, table explodes"
+- ✅ "800+ games, rare/out-of-print titles"
+
+**Bad examples (too wordy):**
+- ❌ "Give a quick timeline: from niche hobby shops to modern board game cafés in the last 10–15 years"
+- ❌ "Emphasize community first: regular faces, welcoming culture, staff/hosts who facilitate play"
+- ❌ "Describe the turning point when trust was broken"
+- ❌ "Spotlight the 800+ game collection: from modern hits to rare and out-of-print titles"
+
+**Patterns to avoid:**
+- Starting every bullet with action verbs (Describe, Explain, Mention, Highlight, Share, Touch on)
+- Colons followed by long explanations
+- Full sentences when fragments work
+
+**Keep it scannable.** The presenter glances at these while recording.
+
+### 4. Content, Not Script
+
+Talking points describe WHAT topics to cover. They do NOT include:
+- Verbatim quotes or suggested phrases
+- Stage direction or performance notes
+- Specific wording
+
+### 5. Bullets = One Concept
+
+One idea per bullet. Short enough to glance at mid-recording.
+
+### 5. Character Consideration
+
+If specific characters are assigned, note their relevant expertise.
+
+## Example: 90-Second Video
+
+For "Games That Destroy Friendships" in 90 seconds:
 
 ```markdown
 ## Hook
 
-- Surprising fact or question about how common these mistakes are
-- Why viewers should care (consequences of getting it wrong)
+- "Can your friendships survive game night?"
 
-## Mistake #1: [Name]
+## The Story
 
-- What the mistake is
-- Why people make it
-- The better approach
+- ONE betrayal moment from a real game night
+- The turning point — trust shattered
+- Table's reaction (the moment everyone remembers)
+- The game + why it creates these moments
 
-## Mistake #2: [Name]
+## CTA
 
-- What the mistake is
-- Why people make it  
-- The better approach
-
-## Mistake #3: [Name]
-
-- What the mistake is
-- Why people make it
-- The better approach
-
-## Wrap Up
-
-- Quick recap of the three mistakes
-- Call to action (follow, comment, visit link, etc.)
+- Try it at Tabletop Library
+- Tag the friend you'd betray
 ```
 
-The creator should be able to glance at this outline and know exactly what content to cover, then deliver it naturally in their own words and style.
+**Total: 7 bullets.** Terse, scannable, fits 90 seconds.
+
+**DO NOT include time estimates in section headers.** No "(10s)" or "(60-70s)". Just the section name. Time estimates are always wrong and add noise.
+
+## Counter-Example: TOO WORDY
+
+Even with the right number of bullets, verbose phrasing bloats the outline:
+
+```markdown
+## Hook
+- Open with bold claim about the "board game café revolution"
+- Briefly frame video: deep dive with Andrew + Nabeel on why this model works
+
+## Segment 1: Why Board Game Cafés Took Off
+- Give a quick timeline: from niche hobby shops to modern cafés in 10–15 years
+- Call out core cultural shift: people craving offline, tech-light experiences
+- Explain the café + games + events combination and why it solves the "what should we do tonight?" problem
+```
+
+**Problem:** Every bullet starts with an action verb and reads like a task list, not notes.
+
+**Better:**
+```markdown
+## Hook
+- "Board game café revolution" — bold claim
+- Deep dive: Andrew + Nabeel on why the model works
+
+## Segment 1: Why Cafés Took Off
+- Timeline: hobby shops → modern cafés (10-15 years)
+- Cultural shift: craving offline, tech-light social
+- Café + games + events = solves "what should we do tonight?"
+```
+
+**Same content, half the words.** Scannable at a glance.
 
 

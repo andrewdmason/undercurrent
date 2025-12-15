@@ -14,6 +14,8 @@ Using the talking points below as your guide, write a complete script for this v
 
 {{template}}
 
+{{targetDuration}}
+
 **Topics:** {{topics}}
 
 ## Talking Points to Expand
@@ -153,4 +155,9 @@ When using `[unscripted]`, provide enough direction that the person knows what t
 - Write in a natural, speakable voice (not robotic or overly formal)
 - Keep sentences short and punchy for video
 - Create a new scene any time the visual changes
-- Aim for 30-60 seconds of content unless the idea calls for longer
+- **DURATION IS CRITICAL**: If a target duration is specified above, the script MUST fit within it. Average speaking rate is ~150 words/minute:
+  - 60 seconds = ~100 words of dialogue
+  - 90 seconds = ~135 words of dialogue  
+  - 3 minutes = ~450 words of dialogue
+  - 5 minutes = ~750 words of dialogue
+- Count your words and ensure the script fits the target duration

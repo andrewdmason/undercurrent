@@ -32,6 +32,7 @@ const typeLabels: Record<string, { label: string; color: string }> = {
   idea_generation: { label: "Generate Ideas", color: "bg-blue-100 text-blue-700" },
   script_generation: { label: "Generate Script", color: "bg-emerald-100 text-emerald-700" },
   script_update: { label: "Update Script", color: "bg-teal-100 text-teal-700" },
+  asset_generation: { label: "Generate Assets", color: "bg-indigo-100 text-indigo-700" },
   todo_generation: { label: "Generate Prep List", color: "bg-orange-100 text-orange-700" },
   todo_refresh: { label: "Refresh Prep List", color: "bg-rose-100 text-rose-700" },
   ai_character: { label: "AI Character", color: "bg-violet-100 text-violet-700" },

@@ -331,17 +331,6 @@ insert into public.project_channels (
   updated_at
 ) values
   (
-    'dc1a2b3c-d4e5-6789-abcd-ef1234567890',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'tiktok',
-    null,
-    4,
-    'weekly',
-    'Primary discovery channel. Quick hooks, trending sounds, "games you need to try" series, POV content, unboxings. Board game cafes perform well here.',
-    now(),
-    now()
-  ),
-  (
     'dc2b3c4d-e5f6-7890-bcde-f12345678901',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'instagram_reels',
@@ -371,6 +360,17 @@ insert into public.project_channels (
     1,
     'monthly',
     'Monthly deep-dive: full game tutorials, event recaps, or game reviews. Vera as primary teaching host.',
+    now(),
+    now()
+  ),
+  (
+    '8152a239-e09f-414b-a765-ee6d641b5b13',
+    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
+    'x',
+    null,
+    3,
+    'weekly',
+    null,
     now(),
     now()
   );
@@ -592,35 +592,35 @@ insert into public.idea_channels (idea_id, channel_id, video_url) values
   -- Board Game Cafe Revolution (ACCEPTED/QUEUE): YouTube only (long-form)
   ('d2e3f4a5-b6c7-8901-ef12-345678901bcd', 'dc4d5e6f-a7b8-9012-def1-234567890123', null),
   
-  -- POV Game Recommendation (PUBLISHED): TikTok + Instagram Reels (trending format)
-  ('d3e4f5a6-b7c8-9012-f123-456789012cde', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', 'https://www.tiktok.com/@tabletoplibrary/video/example456'),
+  -- POV Game Recommendation (PUBLISHED): Instagram Reels + X (trending format)
   ('d3e4f5a6-b7c8-9012-f123-456789012cde', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', 'https://www.instagram.com/reel/example789'),
+  ('d3e4f5a6-b7c8-9012-f123-456789012cde', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- Unboxing BGG Hotness (NEW): TikTok + Instagram + YouTube Shorts (cross-post)
-  ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  -- Unboxing BGG Hotness (NEW): Instagram Reels + YouTube Shorts + X (cross-post)
   ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
   ('d4e5f6a7-b8c9-0123-a234-567890123def', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null),
+  ('d4e5f6a7-b8c9-0123-a234-567890123def', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- Friendship-Ending Games (ACCEPTED/QUEUE): TikTok + Instagram Reels (shareable)
-  ('d5e6f7a8-b9c0-1234-b345-678901234ef0', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  -- Friendship-Ending Games (ACCEPTED/QUEUE): Instagram Reels + X (shareable)
   ('d5e6f7a8-b9c0-1234-b345-678901234ef0', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
+  ('d5e6f7a8-b9c0-1234-b345-678901234ef0', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- Day in the Life (NEW): Instagram Reels + TikTok (cozy content)
+  -- Day in the Life (NEW): Instagram Reels + X (cozy content)
   ('d6e7f8a9-b0c1-2345-c456-789012345f01', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
-  ('d6e7f8a9-b0c1-2345-c456-789012345f01', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  ('d6e7f8a9-b0c1-2345-c456-789012345f01', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- Teaching Difficulty Rating (NEW): TikTok + YouTube Shorts (useful content)
-  ('d7e8f9a0-b1c2-3456-d567-890123456102', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  -- Teaching Difficulty Rating (NEW): YouTube Shorts + X (useful content)
   ('d7e8f9a0-b1c2-3456-d567-890123456102', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null),
+  ('d7e8f9a0-b1c2-3456-d567-890123456102', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- Saturday Game Night Recap (REJECTED): Instagram Reels + TikTok (event content)
+  -- Saturday Game Night Recap (REJECTED): Instagram Reels + X (event content)
   ('d8f9a0b1-c2d3-4567-e678-901234567213', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
-  ('d8f9a0b1-c2d3-4567-e678-901234567213', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  ('d8f9a0b1-c2d3-4567-e678-901234567213', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
-  -- AI Concierge Demo (ACCEPTED/QUEUE): TikTok + Instagram + YouTube Shorts (differentiator)
-  ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890', null),
+  -- AI Concierge Demo (ACCEPTED/QUEUE): Instagram Reels + YouTube Shorts + X (differentiator)
   ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
   ('d9a0b1c2-d3e4-5678-f789-012345678324', 'dc3c4d5e-f6a7-8901-cdef-123456789012', null),
+  ('d9a0b1c2-d3e4-5678-f789-012345678324', '8152a239-e09f-414b-a765-ee6d641b5b13', null),
   
   -- Rare Games Spotlight (NEW): Instagram Reels + YouTube Shorts (collector content)
   ('dab1c2d3-e4f5-6789-a890-123456789435', 'dc2b3c4d-e5f6-7890-bcde-f12345678901', null),
@@ -818,15 +818,6 @@ insert into public.project_topics (
     now()
   ),
   (
-    '05e6f7a8-b8c9-0123-ef12-345678901234',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Berkeley Local',
-    'Tie-ins with the Berkeley community, local events, neighborhood features.',
-    false,
-    now(),
-    now()
-  ),
-  (
     '05f7a8b9-c9d0-0234-f123-456789012345',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     'Behind the Scenes',
@@ -941,66 +932,56 @@ insert into public.project_templates (
   description,
   source_video_url,
   image_url,
+  orientation,
+  target_duration_seconds,
   created_at,
   updated_at
 ) values
   (
-    'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Full Tutorial',
-    'Comprehensive 5-15 minute game tutorial. Educational, SEO-friendly long-form content for YouTube.',
-    null,
-    null,
-    now(),
-    now()
-  ),
-  (
     'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Vertical Full Body',
+    'Instagram (Full Body)',
     'Set up a static, vertical camera on a tripod to capture the presenter full-body at Tabletop Library, while they speak directly to the lens. The footage is likely a single take, edited with frequent jump cuts to remove dead air and keep the pace fast, relying on the natural audio from the mic rather than background music to maintain an authentic, conversational connection.',
     null,
     null,
-    now(),
-    now()
-  ),
-  (
-    'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8',
-    'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Talking Head YouTube',
-    'Film a presenter in a medium close-up facing the camera directly with high energy, using a static setup (tripod or webcam) in a casual, authentic environment like a home office. Edit the footage aggressively with jump cuts to remove pauses and use frequent digital zooms (punch-ins) on the presenter''s face to accentuate key points and maintain a fast rhythm. Interleave the talking head segments with clear, high-speed screen recordings or b-roll that demonstrate the subject matter, using bold text overlays and occasional meme-style graphics to keep the tone entertaining and informal.',
-    null,
-    null,
+    'vertical',
+    90,
     now(),
     now()
   ),
   (
     'a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Vertical Talking Head + B-roll',
+    'Instagram (B-Roll Style)',
     'A-roll is medium close-up of presenter using a tripod-mounted camera for a clean studio look. Edit with a fast rhythm, frequently cutting away to high-quality b-roll footage, visual metaphors (like claymation or archival clips), and B-roll that literally illustrates the narrative. Overlay bold, kinetic text for emphasis—sometimes layering it behind the subject for depth—and mix clear dialogue with upbeat, rhythmic background music.',
     null,
     null,
+    'vertical',
+    90,
     now(),
     now()
   ),
   (
-    'a1000008-c9d0-4e1f-a3b4-c5d6e7f8a9b0',
+    'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Talking Head Screencast',
-    'Presenter in a medium close up shot using a static, tripod-mounted camera with professional lighting. Alternate with screen recordings as b-roll to demonstrate specific steps or whatever the presenter is saying. Use digital zooms to highlight button clicks and large, bold text overlays for key takeaways. Keep the audio crisp with a direct address to the camera and subtle low-fidelity background music to maintain a casual, helpful vibe.',
+    'YouTube',
+    'Film a presenter in a medium close-up facing the camera directly with high energy, using a static setup (tripod or webcam) in a casual, authentic environment like a home office. Edit the footage aggressively with jump cuts to remove pauses and use frequent digital zooms (punch-ins) on the presenter''s face to accentuate key points and maintain a fast rhythm. Interleave the talking head segments with clear, high-speed screen recordings or b-roll that demonstrate the subject matter, using bold text overlays and occasional meme-style graphics to keep the tone entertaining and informal.',
     null,
     null,
+    'horizontal',
+    300,
     now(),
     now()
   ),
   (
-    'a1000009-d0e1-4f2a-b4c5-d6e7f8a9b0c1',
+    '6759b97b-41ea-48c3-b927-315b4735d834',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
-    'Talking Head + B-roll',
-    'Presenter speaking directly to a tripod-mounted camera. Intercut the talking head footage frequently with relevant lifestyle B-roll, screen recordings, and bold full-screen text slides to structure the content. Edit with a snappy pace using jump cuts to remove pauses and underpin the audio with a low-volume, upbeat instrumental track to maintain energy.',
+    'Instagram Voiceover',
+    E'A-roll is just voiceover. Edit with a fast rhythm, frequently cutting away to high-quality b-roll footage, visual metaphors (like claymation or archival clips), and B-roll that literally illustrates the narrative. Overlay bold, kinetic text for emphasis—sometimes layering it behind the subject for depth—and mix clear dialogue with upbeat, rhythmic background music.\n\nA scripted, fast-paced voiceover with a rapid montage of relevant B-roll, movie clips, or stock footage, eliminating the need for an on-camera presenter. Enhance the visual analysis by adding simple, animated overlays or text to highlight specific details within the frame, while editing cuts rhythmically to match a lo-fi or chill background track.',
     null,
     null,
+    'vertical',
+    90,
     now(),
     now()
   );
@@ -1016,6 +997,8 @@ insert into public.project_templates (
   description,
   source_video_url,
   image_url,
+  orientation,
+  target_duration_seconds,
   created_at,
   updated_at
 ) values
@@ -1025,6 +1008,8 @@ insert into public.project_templates (
     'Family Project Build',
     'Longer format showing the family building or creating something together. Good for YouTube main channel.',
     null,
+    null,
+    'horizontal',
     null,
     now(),
     now()
@@ -1036,6 +1021,8 @@ insert into public.project_templates (
     'Family travel and exploration content. Mix of planned activities and spontaneous moments.',
     null,
     null,
+    'horizontal',
+    null,
     now(),
     now()
   ),
@@ -1046,6 +1033,8 @@ insert into public.project_templates (
     'Short-form content featuring kids'' genuine reactions to surprises, games, or experiences. High engagement format.',
     null,
     null,
+    'vertical',
+    60,
     now(),
     now()
   ),
@@ -1056,6 +1045,8 @@ insert into public.project_templates (
     'Spontaneous 15-30 second family moments. Authentic, unpolished charm for TikTok/Reels.',
     null,
     null,
+    'vertical',
+    30,
     now(),
     now()
   );
@@ -1065,18 +1056,21 @@ insert into public.project_templates (
 -- ============================================
 
 insert into public.template_channels (template_id, channel_id) values
-  -- Tabletop Library: Full Tutorial -> YouTube
-  ('a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
-  -- Tabletop Library: Talking Head YouTube -> YouTube
-  ('a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
-  -- Tabletop Library: Vertical Talking Head + B-roll -> YouTube, TikTok, Reels
-  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
-  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc1a2b3c-d4e5-6789-abcd-ef1234567890'),
+  -- Tabletop Library: Instagram (Full Body) -> Instagram Reels, YouTube Shorts, X
+  ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  ('a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7', '8152a239-e09f-414b-a765-ee6d641b5b13'),
+  -- Tabletop Library: Instagram (B-Roll Style) -> Instagram Reels, YouTube Shorts, X, YouTube
   ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
-  -- Tabletop Library: Talking Head Screencast -> YouTube
-  ('a1000008-c9d0-4e1f-a3b4-c5d6e7f8a9b0', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
-  -- Tabletop Library: Talking Head + B-roll -> YouTube
-  ('a1000009-d0e1-4f2a-b4c5-d6e7f8a9b0c1', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', '8152a239-e09f-414b-a765-ee6d641b5b13'),
+  ('a1000007-b8c9-4d0e-f2a3-b4c5d6e7f8a9', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  -- Tabletop Library: YouTube -> YouTube
+  ('a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8', 'dc4d5e6f-a7b8-9012-def1-234567890123'),
+  -- Tabletop Library: Instagram Voiceover -> Instagram Reels, YouTube Shorts, X
+  ('6759b97b-41ea-48c3-b927-315b4735d834', 'dc2b3c4d-e5f6-7890-bcde-f12345678901'),
+  ('6759b97b-41ea-48c3-b927-315b4735d834', 'dc3c4d5e-f6a7-8901-cdef-123456789012'),
+  ('6759b97b-41ea-48c3-b927-315b4735d834', '8152a239-e09f-414b-a765-ee6d641b5b13'),
   
   -- Mason Family: Family Project Build -> YouTube
   ('b2000001-b2c3-4d5e-f6a7-b8c9d0e1f2a3', 'fc1a2b3c-d4e5-6789-abcd-000000000010'),
@@ -1095,16 +1089,16 @@ insert into public.template_channels (template_id, channel_id) values
 -- UPDATE IDEAS WITH TEMPLATE_IDs
 -- ============================================
 
-update public.ideas set template_id = 'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5' where id = 'd1e2f3a4-b5c6-7890-def1-234567890abc'; -- Wingspan Tutorial -> Full Tutorial
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd3e4f5a6-b7c8-9012-f123-456789012cde'; -- POV Game Recommendation -> Talking Head YouTube
-update public.ideas set template_id = 'a1000003-d4e5-4f6a-b8c9-d0e1f2a3b4c5' where id = 'd2e3f4a5-b6c7-8901-ef12-345678901bcd'; -- Board Game Cafe Revolution -> Full Tutorial
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd5e6f7a8-b9c0-1234-b345-678901234ef0'; -- Games That Will End Friendships -> Talking Head YouTube
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd4e5f6a7-b8c9-0123-a234-567890123def'; -- Unboxing BGG Hotness -> Talking Head YouTube
-update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd6e7f8a9-b0c1-2345-c456-789012345f01'; -- Day in the Life -> Vertical Full Body
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd7e8f9a0-b1c2-3456-d567-890123456102'; -- Rating Games by Teaching Difficulty -> Talking Head YouTube
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'dab1c2d3-e4f5-6789-a890-123456789435'; -- Rare Game Spotlight -> Talking Head YouTube
-update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd9a0b1c2-d3e4-5678-f789-012345678324'; -- AI Concierge Demo -> Talking Head YouTube
-update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd8f9a0b1-c2d3-4567-e678-901234567213'; -- Saturday Night Recap -> Vertical Full Body
+update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd1e2f3a4-b5c6-7890-def1-234567890abc'; -- Wingspan Tutorial -> YouTube
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd3e4f5a6-b7c8-9012-f123-456789012cde'; -- POV Game Recommendation -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000006-a7b8-4c9d-e1f2-a3b4c5d6e7f8' where id = 'd2e3f4a5-b6c7-8901-ef12-345678901bcd'; -- Board Game Cafe Revolution -> YouTube
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd5e6f7a8-b9c0-1234-b345-678901234ef0'; -- Games That Will End Friendships -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd4e5f6a7-b8c9-0123-a234-567890123def'; -- Unboxing BGG Hotness -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd6e7f8a9-b0c1-2345-c456-789012345f01'; -- Day in the Life -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd7e8f9a0-b1c2-3456-d567-890123456102'; -- Rating Games by Teaching Difficulty -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'dab1c2d3-e4f5-6789-a890-123456789435'; -- Rare Game Spotlight -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd9a0b1c2-d3e4-5678-f789-012345678324'; -- AI Concierge Demo -> Instagram (Full Body)
+update public.ideas set template_id = 'a1000005-f6a7-4b8c-d0e1-f2a3b4c5d6e7' where id = 'd8f9a0b1-c2d3-4567-e678-901234567213'; -- Saturday Night Recap -> Instagram (Full Body)
 
 -- ============================================
 -- IDEA_CHARACTERS - Link ideas to characters
