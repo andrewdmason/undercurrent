@@ -605,17 +605,23 @@ export async function generateProductionAssets(
   const supabase = await createClient();
 
   // Get existing assets to use as context
-  const { data: existingAssets } = await supabase
+  const { data: existingAssets, error: fetchAssetsError } = await supabase
     .from("idea_assets")
     .select("*")
     .eq("idea_id", ideaId);
 
+  if (fetchAssetsError) {
+    console.error("Error fetching assets:", fetchAssetsError);
+    return { success: false, error: "Failed to fetch existing assets" };
+  }
+
   const talkingPoints = existingAssets?.find(a => a.type === "talking_points");
   const script = existingAssets?.find(a => a.type === "script");
 
-  // Need at least talking points to generate production assets
-  if (!talkingPoints?.content_text) {
-    return { success: false, error: "Talking points must be completed before generating production assets" };
+  // Need at least talking points OR script to generate production assets
+  const contentSource = script?.content_text || talkingPoints?.content_text;
+  if (!contentSource) {
+    return { success: false, error: "Talking points or script must have content before generating production assets" };
   }
 
   const { idea, project, error: fetchError } = await fetchIdeaWithContext(ideaId);
@@ -671,12 +677,30 @@ export async function generateProductionAssets(
       return { success: true, assets: [] };
     }
 
-    // Get max sort_order
-    const maxSortOrder = Math.max(0, ...(existingAssets || []).map(a => a.sort_order));
-
     // Filter to only production asset types
     const productionTypes: AssetType[] = ["a_roll", "b_roll_footage", "b_roll_screen_recording", "thumbnail"];
     const validAssets = generatedAssets.filter(a => productionTypes.includes(a.type));
+
+    // Delete existing production assets (keep talking_points and script)
+    const existingProductionAssetIds = (existingAssets || [])
+      .filter(a => productionTypes.includes(a.type as AssetType))
+      .map(a => a.id);
+    
+    if (existingProductionAssetIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("idea_assets")
+        .delete()
+        .in("id", existingProductionAssetIds);
+      
+      if (deleteError) {
+        console.error("Error deleting existing production assets:", deleteError);
+        // Continue anyway - we'll still try to insert new assets
+      }
+    }
+
+    // Get max sort_order from remaining assets (talking_points, script)
+    const remainingAssets = (existingAssets || []).filter(a => !productionTypes.includes(a.type as AssetType));
+    const maxSortOrder = Math.max(0, ...remainingAssets.map(a => a.sort_order));
 
     const assetsToInsert = validAssets.map((asset, index) => ({
       idea_id: ideaId,

@@ -36,30 +36,67 @@ Generate assets of these types as needed:
 
 The primary footage of the speaker(s) on camera. Usually there's ONE a_roll asset per video, representing the main talking-head or presenter footage.
 
-- Include specific guidance on framing, energy, and delivery style
-- Note any costume, setting, or prop considerations
-- Estimate time based on the content length
+- **Title format:** "[Character Name] Recording" (e.g., "Andrew Mason Recording")
+- **Keep instructions minimal.** The character description already has their setup details. Don't repeat generic video production advice.
+- Only include notes that are **specific to this particular video** (e.g., special props needed, unusual energy/tone, specific wardrobe consideration)
+- **Never recreate the script structure.** The script is already available—don't list out sections to record.
+- If the character has an established setup, the A-roll instructions might just be 2-3 bullet points.
 
 ### 2. `b_roll_footage` (Supplementary Video)
 
-Additional video footage to cut away to during editing. These support the main content visually.
+AI-generated B-roll using the Nano Banana → Veo3 workflow: generate an image, then animate it into video.
 
-Examples:
-- Product shots from different angles
-- Hands demonstrating something
-- Environment/location footage
-- Reaction shots
-- Detail close-ups
+**IMPORTANT: Each b-roll asset should be a SINGLE shot or clip.** If you need 5 different shots, create 5 separate assets.
+
+**Title format:** Concise description of the subject, not the shot type.
+- Good: "Coffee bar area", "Members at table", "Game shelf"
+- Bad: "Slow pan across coffee bar", "Wide shot of members"
+
+**Be project-specific, not generic.** If the B-roll is about a specific location or feature of the project (e.g., TTL's vinyl room, their game shelves, their coffee bar), the image prompt should describe THAT specific place using details from the project description. Don't write generic prompts like "a club's back room" when you know it's "Tabletop Library's vinyl listening room with 500 records."
+
+**Instructions format:**
+
+```
+**Image Prompt**
+[Detailed prompt for AI image generation. Be SPECIFIC to this project - use the project name, describe their actual space/products based on the project description. Include composition, lighting, style.]
+
+**Reference Images**
+[Include this section whenever the B-roll depicts something project-specific: their location, their products, their brand, their team. Specify what reference photos would help: "Photo of TTL's vinyl room", "Photo of the game shelf wall", "Photo of the coffee bar". Only omit this section for truly generic B-roll that has no project-specific elements.]
+
+**Video Prompt**
+[Prompt for Veo3 to animate the image. Describe the motion - camera movement, subject movement, atmosphere.]
+```
+
+**Do NOT create `b_roll_footage` assets for:**
+- Screenshots, website mockups, or UI demos → use `b_roll_screen_recording` instead
+- Text graphics, title cards, or motion graphics
+- Icons or illustrations
+- Anything that should be captured directly rather than AI-generated
 
 ### 3. `b_roll_screen_recording` (Screen Captures)
 
-Screen recordings for demos, tutorials, or showing digital products/services.
+Screen recordings and screenshots that need to be **captured directly** (NOT AI-generated). Use this for anything involving screens, websites, apps, or UI.
+
+**Each screen recording should be a single, discrete clip or screenshot.**
 
 Examples:
-- Software walkthroughs
-- Website demos
-- App interactions
-- Before/after comparisons on screen
+- Website homepage scroll
+- Pricing page mockup
+- App demo walkthrough
+- Calendar/booking interface
+- Dashboard or admin UI
+- Before/after comparison screenshots
+
+**Instructions format for screen recordings:**
+Simply describe what to capture and any specific details needed. No image/video prompts—this is real footage.
+
+```
+Capture the TTL website's table booking flow:
+- Start on homepage
+- Click "Book a Table"
+- Show the calendar interface with available slots
+- 10-15 seconds, smooth scrolling
+```
 
 ### 4. `thumbnail` (Video Thumbnail)
 
@@ -74,22 +111,43 @@ Return a JSON object with an `assets` array:
   "assets": [
     {
       "type": "a_roll",
-      "title": "Main Speaker Recording",
-      "instructions": "## Setup\n\n- Frame: Medium shot, slightly off-center\n- Background: Clean, on-brand setting\n- Lighting: Soft, natural light preferred\n\n## Delivery\n\n- Energy: High and enthusiastic for the hook\n- Pace: Quick for short-form, natural pauses okay\n- Eye line: Look directly at camera\n\n## Notes\n\n- This is a single continuous recording—deliver all talking points in one take or do multiple takes of each section.",
-      "time_estimate_minutes": 20,
+      "title": "Jane Smith Recording",
+      "instructions": "Record using your standard setup per character profile.\n\n**Notes for this video:**\n- Slightly higher energy for the hook—this one's playful\n- Have the product visible on desk for any ad-lib references",
+      "time_estimate_minutes": 25,
       "is_ai_generatable": false
     },
     {
       "type": "b_roll_footage",
-      "title": "Product close-up shots",
-      "instructions": "## What to Capture\n\n- Hero shot of product at 45° angle\n- Detail shot of key feature\n- Hands-on shot showing scale\n\n## Technical\n\n- 4K if possible for cropping flexibility\n- Steady shot or subtle movement\n- Good lighting, no harsh shadows",
-      "time_estimate_minutes": 15,
+      "title": "Vinyl listening room",
+      "instructions": "**Image Prompt**\nTabletop Library's vinyl listening room: intimate back room with wooden shelves holding ~500 vinyl records, a turntable setup on a credenza, a couple of comfortable chairs. Warm, moody lighting, slightly retro aesthetic, cozy listening-room vibe.\n\n**Reference Images**\nPhoto of TTL's actual vinyl room showing the shelving layout and turntable setup.\n\n**Video Prompt**\nGentle side-to-side pan across the record shelves, ending on the turntable, 6 seconds, slight record-label shimmer catching light.",
+      "time_estimate_minutes": 7,
+      "is_ai_generatable": true
+    },
+    {
+      "type": "b_roll_footage",
+      "title": "Game shelves",
+      "instructions": "**Image Prompt**\nTabletop Library's main game wall: floor-to-ceiling wooden shelves packed with 800+ board games, colorful spines visible, organized but abundant. Warm overhead lighting, shallow depth of field focusing on mid-shelf games.\n\n**Reference Images**\nPhoto of TTL's game shelf wall showing the scale and organization style.\n\n**Video Prompt**\nSlow vertical tilt from floor to ceiling along the shelves, 5 seconds, emphasizing the collection size.",
+      "time_estimate_minutes": 6,
+      "is_ai_generatable": true
+    },
+    {
+      "type": "b_roll_footage",
+      "title": "Members at tables",
+      "instructions": "**Image Prompt**\nTabletop Library's main room: several wooden tables with groups of 3-4 people mid-game, board game components visible, warm pendant lighting, relaxed social atmosphere. Not a crowded café—comfortable spacing between tables.\n\n**Reference Images**\nPhotos of TTL's table layout and the style of tables/chairs used.\n\n**Video Prompt**\nWide establishing shot with gentle push-in toward one table, ambient laughter, 6 seconds.",
+      "time_estimate_minutes": 8,
+      "is_ai_generatable": true
+    },
+    {
+      "type": "b_roll_screen_recording",
+      "title": "App Demo – Opening",
+      "instructions": "## What to Record\n\nScreen recording of opening the app from the home screen. Show the launch animation and initial load.\n\n## Technical\n\n- Clean desktop/phone with no notifications\n- 5-10 seconds of footage\n- Record at native resolution",
+      "time_estimate_minutes": 5,
       "is_ai_generatable": false
     },
     {
       "type": "b_roll_screen_recording",
-      "title": "App demo walkthrough",
-      "instructions": "## What to Record\n\n- Opening the app from home screen\n- Navigating to key feature\n- Demonstrating the main workflow\n\n## Technical\n\n- Clean desktop/phone with no notifications\n- Cursor movements should be smooth and intentional\n- Record at native resolution",
+      "title": "App Demo – Feature Walkthrough",
+      "instructions": "## What to Record\n\nNavigate to and demonstrate the main feature. Show the complete workflow from start to finish.\n\n## Technical\n\n- Smooth, deliberate cursor/tap movements\n- Pause briefly on key UI elements\n- Record at native resolution",
       "time_estimate_minutes": 10,
       "is_ai_generatable": false
     },
@@ -106,55 +164,52 @@ Return a JSON object with an `assets` array:
 
 ## Guidelines
 
-1. **Respect Character Descriptions**: Read the character descriptions carefully. If a character says they have a ready setup, don't need prep time, or have specific capabilities—honor that in the time estimates and instructions.
+1. **One Shot Per Asset**: Each b-roll asset should represent a single, discrete piece of footage—one camera angle, one shot. If the video needs 15 different b-roll clips, create 15 separate assets. Never group multiple shots into a single asset.
 
-2. **Be Specific**: Generic instructions aren't helpful. Make each asset concrete with specific shots, angles, and requirements.
+2. **A-Roll Should Be Minimal**: The character's profile already describes their setup, equipment, and capabilities. A-roll instructions should only include what's **unique to this specific video**—special props, unusual tone/energy, specific wardrobe. If nothing is unique, keep it to 1-2 lines. Never recreate the script structure or list sections to record.
 
-3. **Detailed Instructions**: Write comprehensive markdown instructions including:
-   - Setup requirements
-   - What specifically to capture
-   - Technical specifications
-   - Tips for best results
+3. **Respect Character Descriptions**: Read the character descriptions carefully. If a character has an established setup, don't repeat setup instructions. Honor their stated capabilities and time estimates.
 
-4. **Less is More**: Not every video needs extensive B-roll. A simple talking-head video might only need A-roll and a thumbnail. Don't pad the list with unnecessary assets.
+4. **B-Roll Titles = Subject, Instructions = Shot Details**: Title should be a concise label of what's being filmed (e.g., "Coffee bar area"). Put camera movements, angles, and shot types in the instructions. Never create assets for graphics, text, or illustrations—only actual footage to shoot.
 
-5. **AI Generatable**: Set `is_ai_generatable: true` for:
-   - Thumbnails (can often be generated or designed with AI tools)
-   - Some B-roll that could be AI-generated video from images
-   - Stock footage that could be sourced vs. shot
+5. **Only What's Needed**: Not every video needs extensive B-roll. A simple talking-head video might only need A-roll and a thumbnail. But when B-roll is needed, break it into individual shots—don't artificially reduce the count by grouping.
+
+6. **AI Generatable**: Set `is_ai_generatable: true` for:
+   - B-roll footage of physical scenes/locations (generated via Nano Banana → Veo3)
+   - Thumbnails
    
    Set `is_ai_generatable: false` for:
-   - A-roll (requires the actual person)
-   - Screen recordings of their specific product
-   - B-roll of their specific location/products
+   - A-roll (requires the actual person on camera)
+   - Screen recordings (must capture actual screens/websites/apps)
 
-6. **Realistic Time Estimates**:
-   - Quick shots: 5-10 minutes
+7. **Realistic Time Estimates** (per individual shot):
+   - Single b-roll shot: 5-10 minutes
    - A-roll recording: 15-30 minutes (depending on content length)
-   - Detailed B-roll: 15-30 minutes
-   - Screen recordings: 10-20 minutes
+   - Screen recording clip: 5-10 minutes
    - Thumbnail: 5-15 minutes
 
-7. **Template Consideration**: Different templates have different asset needs:
+8. **Template Consideration**: Different templates have different asset needs:
    - Quick tips: Minimal B-roll, focus on A-roll energy
    - Tutorials: Heavy on screen recordings or demos
-   - Behind-the-scenes: Documentary-style B-roll
-   - Product showcases: Multiple product shot angles
+   - Behind-the-scenes: Documentary-style B-roll (many individual shots)
+   - Product showcases: Multiple individual product shot angles
 
-8. **Short-Form Focus**: For TikTok/Reels/Shorts style content, B-roll should be quick cuts. For longer YouTube content, B-roll can be more extensive.
+9. **Short-Form Focus**: For TikTok/Reels/Shorts style content, B-roll should be quick cuts—but still create each cut as a separate asset. For longer YouTube content, B-roll can be more extensive.
 
 ## Common Asset Combinations
 
 **Talking Head Video**: A-roll + Thumbnail (minimal B-roll)
 
-**Tutorial Video**: A-roll + Screen Recording + Thumbnail
+**Tutorial Video**: A-roll + Multiple Screen Recording assets + Thumbnail
 
-**Product Video**: A-roll + Product B-roll + Thumbnail
+**Product Video**: A-roll + Multiple Product B-roll shots (hero, detail, hands-on, etc.) + Thumbnail
 
-**Behind-the-Scenes**: A-roll + Documentary B-roll + Thumbnail
+**Behind-the-Scenes**: A-roll + Many documentary B-roll shots + Thumbnail
+
+**Montage-Heavy Video**: A-roll + 10-20+ individual B-roll shots + Thumbnail
 
 **Reaction Video**: A-roll (possibly multiple angles) + Thumbnail
 
-Always include at least A-roll and Thumbnail. Add B-roll types only when the content genuinely needs them.
+Always include at least A-roll and Thumbnail. When B-roll is needed, create individual assets for each distinct shot.
 
 

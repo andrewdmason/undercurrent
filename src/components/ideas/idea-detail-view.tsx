@@ -24,12 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
@@ -68,6 +62,46 @@ function formatTime(minutes: number): string {
   return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
+// Helper to count dialogue words in a script and estimate duration
+function getScriptStats(script: string): { wordCount: number; duration: string } {
+  const lines = script.split("\n");
+  let dialogueWords = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Skip empty lines
+    if (!trimmed) continue;
+    
+    // Skip scene headings (### ...)
+    if (trimmed.startsWith("### ")) continue;
+    
+    // Skip dividers (---)
+    if (trimmed === "---") continue;
+    
+    // Skip speaker names (**Name** or **Name (V.O.)**)
+    if (/^\*\*[A-Za-z][A-Za-z0-9 ]*?(?:\s*\((V\.O\.|O\.S\.|unscripted)\))?\*\*$/.test(trimmed)) continue;
+    
+    // Skip visual directions (*[...]* or *...*)
+    if (/^\*\[.+\]\*$/.test(trimmed) || /^\*[^*]+\*$/.test(trimmed)) continue;
+    
+    // Count words in dialogue lines
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    dialogueWords += words.length;
+  }
+
+  // Estimate duration: ~150 words per minute for natural conversational speech
+  const totalSeconds = Math.round((dialogueWords / 150) * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  const duration = minutes > 0 
+    ? `${minutes}:${seconds.toString().padStart(2, "0")}`
+    : `0:${seconds.toString().padStart(2, "0")}`;
+
+  return { wordCount: dialogueWords, duration };
+}
+
 export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, fullTemplate, initialAssets }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -87,6 +121,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
   const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
+  const [assetContextMenu, setAssetContextMenu] = useState<{ x: number; y: number; assetId: string } | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(() => {
     // Will be properly initialized in useEffect (can't access localStorage during SSR)
     return null;
@@ -648,84 +683,63 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             {/* Assets in this stage */}
                             <div className="space-y-0.5">
                               {stageAssets.map((asset) => (
-                                <ContextMenu key={asset.id}>
-                                  <ContextMenuTrigger asChild>
-                                    <div
-                                      className={cn(
-                                        "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
-                                        selectedAssetId === asset.id
-                                          ? "bg-[var(--grey-100)]"
-                                          : "hover:bg-[var(--grey-50)]"
-                                      )}
-                                      onClick={() => setSelectedAssetId(asset.id)}
-                                    >
-                                      {/* Checkbox */}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleToggleAssetComplete(asset.id);
-                                        }}
-                                        className={cn(
-                                          "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
-                                          asset.is_complete
-                                            ? "bg-[#00975a] border-[#00975a] text-white"
-                                            : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
-                                        )}
-                                        title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
-                                      >
-                                        {asset.is_complete && <Check className="h-3 w-3" />}
-                                      </button>
+                                <div
+                                  key={asset.id}
+                                  className={cn(
+                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
+                                    selectedAssetId === asset.id
+                                      ? "bg-[var(--grey-100)]"
+                                      : "hover:bg-[var(--grey-50)]"
+                                  )}
+                                  onClick={() => setSelectedAssetId(asset.id)}
+                                  onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    setAssetContextMenu({ x: e.clientX, y: e.clientY, assetId: asset.id });
+                                  }}
+                                >
+                                  {/* Checkbox */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAssetComplete(asset.id);
+                                    }}
+                                    className={cn(
+                                      "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
+                                      asset.is_complete
+                                        ? "bg-[#00975a] border-[#00975a] text-white"
+                                        : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
+                                    )}
+                                    title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
+                                  >
+                                    {asset.is_complete && <Check className="h-3 w-3" />}
+                                  </button>
 
-                                      {/* Asset Type Icon */}
-                                      <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
-                                        {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
-                                        {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
-                                        {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
-                                        {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
-                                        {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
-                                      </span>
+                                  {/* Asset Type Icon */}
+                                  <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
+                                    {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
+                                    {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
+                                    {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
+                                  </span>
 
-                                      {/* AI sparkles next to icon */}
-                                      {asset.is_ai_generatable && (
-                                        <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
-                                      )}
+                                  {/* AI sparkles next to icon */}
+                                  {asset.is_ai_generatable && (
+                                    <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
+                                  )}
 
-                                      {/* Asset Title */}
-                                      <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
-                                        {asset.title}
-                                      </span>
+                                  {/* Asset Title */}
+                                  <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
+                                    {asset.title}
+                                  </span>
 
-                                      {/* Time Estimate */}
-                                      {asset.time_estimate_minutes && (
-                                        <span className="text-xs text-[var(--grey-400)] tabular-nums">
-                                          {asset.time_estimate_minutes}min
-                                        </span>
-                                      )}
-                                    </div>
-                                  </ContextMenuTrigger>
-                                  <ContextMenuContent>
-                                    <ContextMenuItem
-                                      onClick={async () => {
-                                        const result = await deleteAsset(asset.id);
-                                        if (result.success) {
-                                          toast.success("Asset deleted");
-                                          // If we deleted the selected asset, select the first remaining one
-                                          if (selectedAssetId === asset.id) {
-                                            const remainingAssets = assets.filter(a => a.id !== asset.id);
-                                            setSelectedAssetId(remainingAssets[0]?.id || null);
-                                          }
-                                          router.refresh();
-                                        } else {
-                                          toast.error(result.error || "Failed to delete asset");
-                                        }
-                                      }}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </ContextMenuItem>
-                                  </ContextMenuContent>
-                                </ContextMenu>
+                                  {/* Time Estimate */}
+                                  {asset.time_estimate_minutes && (
+                                    <span className="text-xs text-[var(--grey-400)] tabular-nums">
+                                      {asset.time_estimate_minutes}min
+                                    </span>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -744,9 +758,20 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   <>
                     {/* Asset Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                      <h4 className="text-sm font-medium text-[var(--grey-800)]">
-                        {selectedAsset.title}
-                      </h4>
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-sm font-medium text-[var(--grey-800)]">
+                          {selectedAsset.title}
+                        </h4>
+                        {/* Word count and duration for scripts */}
+                        {selectedAsset.type === "script" && selectedAsset.content_text && (() => {
+                          const stats = getScriptStats(selectedAsset.content_text);
+                          return (
+                            <span className="text-xs text-[var(--grey-400)]">
+                              {stats.wordCount.toLocaleString()} words · ~{stats.duration}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="flex items-center gap-2">
                         {/* Completion checkbox */}
                         <button
@@ -1261,6 +1286,45 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Asset Context Menu (positioned at click location) */}
+      {assetContextMenu && (
+        <>
+          {/* Backdrop to close menu when clicking outside */}
+          <div 
+            className="fixed inset-0 z-50" 
+            onClick={() => setAssetContextMenu(null)}
+          />
+          {/* Menu */}
+          <div 
+            className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+            style={{ left: assetContextMenu.x, top: assetContextMenu.y }}
+          >
+            <button
+              onClick={async () => {
+                const assetId = assetContextMenu.assetId;
+                setAssetContextMenu(null);
+                const result = await deleteAsset(assetId);
+                if (result.success) {
+                  toast.success("Asset deleted");
+                  // If we deleted the selected asset, select the first remaining one
+                  if (selectedAssetId === assetId) {
+                    const remainingAssets = assets.filter(a => a.id !== assetId);
+                    setSelectedAssetId(remainingAssets[0]?.id || null);
+                  }
+                  router.refresh();
+                } else {
+                  toast.error(result.error || "Failed to delete asset");
+                }
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-red-600 outline-none cursor-pointer hover:bg-red-50 focus:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
