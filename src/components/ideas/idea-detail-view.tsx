@@ -1298,7 +1298,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
           {/* Menu */}
           <div 
             className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-            style={{ left: assetContextMenu.x, top: assetContextMenu.y }}
+            style={{ left: `${assetContextMenu.x}px`, top: `${assetContextMenu.y}px` }}
           >
             <button
               onClick={async () => {

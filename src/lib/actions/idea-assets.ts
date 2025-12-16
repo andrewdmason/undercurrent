@@ -639,7 +639,7 @@ export async function generateProductionAssets(
 
   const contentSection = script?.content_text
     ? `**Script:**\n\n${script.content_text}`
-    : `**Talking Points:**\n\n${talkingPoints.content_text}`;
+    : `**Talking Points:**\n\n${talkingPoints?.content_text}`;
 
   const prompt = promptTemplate
     .replace("{{ideaTitle}}", context.ideaTitle)
