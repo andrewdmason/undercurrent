@@ -129,6 +129,7 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
     { name: "Channels", href: `/${navSlug}/brief/channels` },
     { name: "Characters", href: `/${navSlug}/brief/characters` },
     { name: "Templates", href: `/${navSlug}/brief/templates` },
+    { name: "Images", href: `/${navSlug}/brief/images` },
   ] : [];
 
   const isBriefActive = pathname?.startsWith(`/${navSlug}/brief`);
