@@ -135,6 +135,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     // Will be properly initialized in useEffect (can't access localStorage during SSR)
     return null;
   });
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
 
   // Sync assets state with initialAssets when server data changes (e.g., after router.refresh())
   useEffect(() => {
@@ -597,6 +598,14 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   Regenerate Assets
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
+                <DropdownMenuItem
+                  onClick={() => setShowChatSidebar(!showChatSidebar)}
+                  className="flex items-center gap-2 h-8 px-2 rounded-md text-xs text-[var(--grey-800)] hover:bg-[var(--grey-50-a)] cursor-pointer"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {showChatSidebar ? "Hide AI Chat" : "Show AI Chat"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <IdeaLogsSubmenu ideaId={idea.id} projectId={projectId} />
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
@@ -616,7 +625,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       {/* Main Content - Three Column Layout */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full px-6 py-6 flex flex-col">
-          <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: '340px minmax(400px, 1fr) 300px' }}>
+          <div className="grid gap-6 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: showChatSidebar ? '340px minmax(400px, 1fr) 300px' : '340px minmax(400px, 1fr)' }}>
             {/* Left Column - Image & Info */}
             <div className="flex flex-col gap-4 min-h-0 h-full">
 
@@ -1032,11 +1041,24 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                   variant="outline"
                                   size="sm"
                                   onClick={() => {
-                                    // Focus the chat input
-                                    const chatInput = document.getElementById("chat-input");
-                                    if (chatInput) {
-                                      chatInput.focus();
-                                      chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    // Show chat sidebar if hidden
+                                    if (!showChatSidebar) {
+                                      setShowChatSidebar(true);
+                                      // Wait for re-render before focusing
+                                      setTimeout(() => {
+                                        const chatInput = document.getElementById("chat-input");
+                                        if (chatInput) {
+                                          chatInput.focus();
+                                          chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                                        }
+                                      }, 100);
+                                    } else {
+                                      // Focus the chat input
+                                      const chatInput = document.getElementById("chat-input");
+                                      if (chatInput) {
+                                        chatInput.focus();
+                                        chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      }
                                     }
                                   }}
                                   className="gap-2"
@@ -1345,23 +1367,25 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
             </div>
 
             {/* Right Column - Chat (full height) */}
-            <div className="flex flex-col min-h-0 h-full">
-              <ChatSidebar
-                ideaId={idea.id}
-                projectSlug={projectSlug}
-                onScriptUpdate={() => router.refresh()}
-                onIdeaRegenerate={() => router.refresh()}
-                onToolCallStart={(toolName) => {
-                  if (toolName === "update_script") setIsScriptUpdating(true);
-                }}
-                onToolCallEnd={(toolName) => {
-                  // Add minimum delay so shimmer is visible
-                  if (toolName === "update_script") {
-                    setTimeout(() => setIsScriptUpdating(false), 800);
-                  }
-                }}
-              />
-            </div>
+            {showChatSidebar && (
+              <div className="flex flex-col min-h-0 h-full">
+                <ChatSidebar
+                  ideaId={idea.id}
+                  projectSlug={projectSlug}
+                  onScriptUpdate={() => router.refresh()}
+                  onIdeaRegenerate={() => router.refresh()}
+                  onToolCallStart={(toolName) => {
+                    if (toolName === "update_script") setIsScriptUpdating(true);
+                  }}
+                  onToolCallEnd={(toolName) => {
+                    // Add minimum delay so shimmer is visible
+                    if (toolName === "update_script") {
+                      setTimeout(() => setIsScriptUpdating(false), 800);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
