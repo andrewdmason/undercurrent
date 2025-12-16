@@ -5,7 +5,7 @@ import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
-import { IdeaAsset, GeneratedAsset, AssetType, ProjectImage, IdeaAssetReferenceImage } from "@/lib/types";
+import { IdeaAsset, GeneratedAsset, GeneratedAssetsResponse, AssetType, ProjectImage, IdeaAssetReferenceImage } from "@/lib/types";
 import { findBestMatches, MATCH_THRESHOLD } from "@/lib/embeddings";
 import { genai, IMAGE_MODEL, VIDEO_MODEL } from "@/lib/gemini";
 
@@ -731,7 +731,7 @@ export async function generateProductionAssets(
     });
 
     const responseRaw = completion.choices[0]?.message?.content || "";
-    const parsed = JSON.parse(responseRaw);
+    const parsed: GeneratedAssetsResponse = JSON.parse(responseRaw);
 
     // Log the generation
     await supabase.from("generation_logs").insert({
@@ -1188,5 +1188,248 @@ export async function generateAssetVideo(
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return { success: false, error: errorMessage };
   }
+}
+
+// ============================================
+// Reference Image Management
+// ============================================
+
+// Link a reference image to a project image
+export async function linkReferenceImage(
+  referenceImageId: string,
+  projectImageId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: refImage, error: fetchError } = await supabase
+    .from("idea_asset_reference_images")
+    .select("idea_asset_id, idea_assets(idea_id, ideas(project_id, projects(slug)))")
+    .eq("id", referenceImageId)
+    .single();
+
+  if (fetchError || !refImage) {
+    return { success: false, error: "Reference image not found" };
+  }
+
+  const { error } = await supabase
+    .from("idea_asset_reference_images")
+    .update({
+      project_image_id: projectImageId,
+      uploaded_url: null, // Clear any uploaded URL when linking to project image
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", referenceImageId);
+
+  if (error) {
+    console.error("Error linking reference image:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Revalidate paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asset = refImage.idea_assets as any;
+  if (asset?.ideas?.projects?.slug) {
+    revalidatePath(`/${asset.ideas.projects.slug}`);
+    revalidatePath(`/${asset.ideas.projects.slug}/ideas/${asset.idea_id}`);
+  }
+
+  return { success: true };
+}
+
+// Unlink a reference image (clear both project_image_id and uploaded_url)
+export async function unlinkReferenceImage(
+  referenceImageId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: refImage, error: fetchError } = await supabase
+    .from("idea_asset_reference_images")
+    .select("idea_asset_id, idea_assets(idea_id, ideas(project_id, projects(slug)))")
+    .eq("id", referenceImageId)
+    .single();
+
+  if (fetchError || !refImage) {
+    return { success: false, error: "Reference image not found" };
+  }
+
+  const { error } = await supabase
+    .from("idea_asset_reference_images")
+    .update({
+      project_image_id: null,
+      uploaded_url: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", referenceImageId);
+
+  if (error) {
+    console.error("Error unlinking reference image:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Revalidate paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asset = refImage.idea_assets as any;
+  if (asset?.ideas?.projects?.slug) {
+    revalidatePath(`/${asset.ideas.projects.slug}`);
+    revalidatePath(`/${asset.ideas.projects.slug}/ideas/${asset.idea_id}`);
+  }
+
+  return { success: true };
+}
+
+// Delete a reference image entirely
+export async function deleteReferenceImage(
+  referenceImageId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: refImage, error: fetchError } = await supabase
+    .from("idea_asset_reference_images")
+    .select("idea_asset_id, idea_assets(idea_id, ideas(project_id, projects(slug)))")
+    .eq("id", referenceImageId)
+    .single();
+
+  if (fetchError || !refImage) {
+    return { success: false, error: "Reference image not found" };
+  }
+
+  const { error } = await supabase
+    .from("idea_asset_reference_images")
+    .delete()
+    .eq("id", referenceImageId);
+
+  if (error) {
+    console.error("Error deleting reference image:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Revalidate paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asset = refImage.idea_assets as any;
+  if (asset?.ideas?.projects?.slug) {
+    revalidatePath(`/${asset.ideas.projects.slug}`);
+    revalidatePath(`/${asset.ideas.projects.slug}/ideas/${asset.idea_id}`);
+  }
+
+  return { success: true };
+}
+
+// Upload an image file for a reference image
+export async function uploadReferenceImage(
+  referenceImageId: string,
+  formData: FormData
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  const supabase = await createClient();
+
+  const file = formData.get("file") as File;
+  if (!file) {
+    return { success: false, error: "No file provided" };
+  }
+
+  const { data: refImage, error: fetchError } = await supabase
+    .from("idea_asset_reference_images")
+    .select("idea_asset_id, idea_assets(idea_id, ideas(project_id, projects(slug)))")
+    .eq("id", referenceImageId)
+    .single();
+
+  if (fetchError || !refImage) {
+    return { success: false, error: "Reference image not found" };
+  }
+
+  // Upload to storage
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${referenceImageId}-${Date.now()}.${fileExt}`;
+  const filePath = `reference-images/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("asset-images")
+    .upload(filePath, file, { contentType: file.type });
+
+  if (uploadError) {
+    console.error("Error uploading reference image:", uploadError);
+    return { success: false, error: uploadError.message };
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from("asset-images")
+    .getPublicUrl(filePath);
+
+  // Update reference image with uploaded URL
+  const { error: updateError } = await supabase
+    .from("idea_asset_reference_images")
+    .update({
+      uploaded_url: publicUrl,
+      project_image_id: null, // Clear project image link when uploading
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", referenceImageId);
+
+  if (updateError) {
+    console.error("Error updating reference image:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  // Revalidate paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const asset = refImage.idea_assets as any;
+  if (asset?.ideas?.projects?.slug) {
+    revalidatePath(`/${asset.ideas.projects.slug}`);
+    revalidatePath(`/${asset.ideas.projects.slug}/ideas/${asset.idea_id}`);
+  }
+
+  return { success: true, imageUrl: publicUrl };
+}
+
+// Add a new reference image to an asset
+export async function addReferenceImage(
+  assetId: string,
+  description: string,
+  projectImageId?: string
+): Promise<{ success: boolean; referenceImage?: IdeaAssetReferenceImage; error?: string }> {
+  const supabase = await createClient();
+
+  const { data: asset, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select("idea_id, ideas(project_id, projects(slug))")
+    .eq("id", assetId)
+    .single();
+
+  if (fetchError || !asset) {
+    return { success: false, error: "Asset not found" };
+  }
+
+  const { data: refImage, error: insertError } = await supabase
+    .from("idea_asset_reference_images")
+    .insert({
+      idea_asset_id: assetId,
+      description,
+      project_image_id: projectImageId || null,
+      uploaded_url: null,
+    })
+    .select(`*, project_images(*)`)
+    .single();
+
+  if (insertError) {
+    console.error("Error adding reference image:", insertError);
+    return { success: false, error: insertError.message };
+  }
+
+  // Revalidate paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const idea = asset.ideas as any;
+  if (idea?.projects?.slug) {
+    revalidatePath(`/${idea.projects.slug}`);
+    revalidatePath(`/${idea.projects.slug}/ideas/${asset.idea_id}`);
+  }
+
+  // Transform to match expected type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transformed: IdeaAssetReferenceImage = {
+    ...(refImage as any),
+    project_image: (refImage as any).project_images || undefined,
+  };
+
+  return { success: true, referenceImage: transformed };
 }
 

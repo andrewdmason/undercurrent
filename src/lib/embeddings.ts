@@ -4,7 +4,8 @@ import { getOpenAI } from "./openai";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 
 // Similarity threshold for auto-matching reference images
-export const MATCH_THRESHOLD = 0.7;
+// Lower threshold (0.4) allows more semantic matches for general descriptions
+export const MATCH_THRESHOLD = 0.4;
 
 /**
  * Generate an embedding vector for a text string
@@ -65,20 +66,33 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 /**
+ * Helper to get the best text representation of a candidate for matching
+ * Uses description if available, falls back to title
+ */
+function getCandidateText<T extends { description: string | null; title?: string | null }>(
+  candidate: T
+): string | null {
+  if (candidate.description) return candidate.description;
+  if (candidate.title) return candidate.title;
+  return null;
+}
+
+/**
  * Find the best matching item from a list based on embedding similarity
  * Returns the item and its similarity score, or null if no match above threshold
+ * Matches against description OR title (whichever is available)
  */
-export async function findBestMatch<T extends { description: string | null }>(
+export async function findBestMatch<T extends { description: string | null; title?: string | null }>(
   query: string,
   candidates: T[],
   threshold: number = MATCH_THRESHOLD
 ): Promise<{ item: T; similarity: number } | null> {
-  // Filter out candidates without descriptions
-  const validCandidates = candidates.filter((c) => c.description);
+  // Filter out candidates without any text to match
+  const validCandidates = candidates.filter((c) => getCandidateText(c));
   if (validCandidates.length === 0) return null;
   
-  // Get embeddings for query and all candidate descriptions
-  const textsToEmbed = [query, ...validCandidates.map((c) => c.description!)];
+  // Get embeddings for query and all candidate texts
+  const textsToEmbed = [query, ...validCandidates.map((c) => getCandidateText(c)!)];
   const embeddings = await embedTexts(textsToEmbed);
   
   const queryEmbedding = embeddings[0];
@@ -103,8 +117,9 @@ export async function findBestMatch<T extends { description: string | null }>(
 /**
  * Find matches for multiple queries against the same candidates
  * More efficient than calling findBestMatch multiple times
+ * Matches against description OR title (whichever is available)
  */
-export async function findBestMatches<T extends { description: string | null }>(
+export async function findBestMatches<T extends { description: string | null; title?: string | null }>(
   queries: string[],
   candidates: T[],
   threshold: number = MATCH_THRESHOLD
@@ -113,15 +128,15 @@ export async function findBestMatches<T extends { description: string | null }>(
   
   if (queries.length === 0) return results;
   
-  // Filter out candidates without descriptions
-  const validCandidates = candidates.filter((c) => c.description);
+  // Filter out candidates without any text to match against
+  const validCandidates = candidates.filter((c) => getCandidateText(c));
   if (validCandidates.length === 0) {
     queries.forEach((q) => results.set(q, null));
     return results;
   }
   
-  // Get all embeddings in one call
-  const textsToEmbed = [...queries, ...validCandidates.map((c) => c.description!)];
+  // Get all embeddings in one call - use description or title
+  const textsToEmbed = [...queries, ...validCandidates.map((c) => getCandidateText(c)!)];
   const embeddings = await embedTexts(textsToEmbed);
   
   const queryEmbeddings = embeddings.slice(0, queries.length);

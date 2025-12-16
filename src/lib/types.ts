@@ -342,7 +342,7 @@ export interface IdeaAssetReferenceImage {
   project_image?: ProjectImage;
 }
 
-// For AI-generated assets
+// For AI-generated assets (from generate-production-assets.md prompt)
 export interface GeneratedAsset {
   type: AssetType;
   title: string;
@@ -350,12 +350,17 @@ export interface GeneratedAsset {
   time_estimate_minutes?: number;
   is_ai_generatable?: boolean;
   questions?: string[]; // for talking_points that need user input
-  reference_images?: GeneratedReferenceImage[]; // for b_roll_footage assets
+  reference_images?: GeneratedReferenceImage[]; // for b_roll_footage and b_roll_image assets
 }
 
 // Reference image requirement from AI
 export interface GeneratedReferenceImage {
   description: string;
+}
+
+// AI response wrapper for asset generation
+export interface GeneratedAssetsResponse {
+  assets: GeneratedAsset[];
 }
 
 // ============================================
