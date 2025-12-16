@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, Clock, FileText, Loader2, LayoutTemplate, User, Tag, Trash2, Circle, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, FileText, Loader2, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, deleteAsset, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -59,14 +60,6 @@ interface IdeaDetailViewProps {
   projectImages: ProjectImage[];
   fullTemplate: ProjectTemplateWithChannels | null;
   initialAssets: IdeaAsset[];
-}
-
-// Helper to format time as "Xh Ymin"
-function formatTime(minutes: number): string {
-  if (minutes < 60) return `${minutes}min`;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
 // Helper to count dialogue words in a script and estimate duration
@@ -130,12 +123,11 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
   const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
-  const [assetContextMenu, setAssetContextMenu] = useState<{ x: number; y: number; assetId: string } | null>(null);
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(() => {
-    // Will be properly initialized in useEffect (can't access localStorage during SSR)
-    return null;
-  });
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [showChatSidebar, setShowChatSidebar] = useState(false);
+  const [activeTab, setActiveTab] = useState<"talking_points" | "script" | "storyboard" | "assets">("talking_points");
+  // When true, Assets tab shows the detail view for selectedAssetId; when false, shows the grid
+  const [showAssetDetail, setShowAssetDetail] = useState(false);
 
   // Sync assets state with initialAssets when server data changes (e.g., after router.refresh())
   useEffect(() => {
@@ -149,29 +141,11 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const scriptAsset = assets.find(a => a.type === "script");
   const talkingPointsAsset = assets.find(a => a.type === "talking_points");
   const currentScript = scriptAsset?.content_text || null;
-
-  // Initialize selected asset from localStorage or default to first asset
-  useEffect(() => {
-    if (assets.length === 0) return;
-    
-    const storageKey = `undercurrent-selected-asset-${idea.id}`;
-    const savedAssetId = localStorage.getItem(storageKey);
-    
-    // Check if saved asset still exists in the list
-    if (savedAssetId && assets.some(a => a.id === savedAssetId)) {
-      setSelectedAssetId(savedAssetId);
-    } else {
-      // Default to first asset
-      setSelectedAssetId(assets[0].id);
-    }
-  }, [idea.id, assets]);
-
-  // Persist selected asset to localStorage
-  useEffect(() => {
-    if (!selectedAssetId) return;
-    const storageKey = `undercurrent-selected-asset-${idea.id}`;
-    localStorage.setItem(storageKey, selectedAssetId);
-  }, [idea.id, selectedAssetId]);
+  
+  // Production assets for the Assets tab grid (excludes talking_points and script)
+  const productionAssets = assets.filter(a => 
+    a.type !== "talking_points" && a.type !== "script"
+  );
 
   // Edit modal state
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplateWithChannels | null>(null);
@@ -234,10 +208,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       toast.error(result.error || "Failed to update asset");
     }
   };
-
-  const remainingMinutes = assets
-    .filter(asset => !asset.is_complete)
-    .reduce((sum, asset) => sum + (asset.time_estimate_minutes || 0), 0);
 
   const handleGenerateThumbnail = async () => {
     if (isGeneratingThumbnail) return;
@@ -688,682 +658,127 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 setEditingTopic={setEditingTopic} 
                 setEditingCharacter={setEditingCharacter}
               />
-
-              {/* Assets List - expands to fill remaining space */}
-              <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {/* Assets Header */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
-                  <ListTodo className="h-4 w-4 text-[var(--grey-400)]" />
-                  <h4 className="text-xs font-semibold text-[var(--grey-600)] uppercase tracking-wider">
-                    Assets
-                  </h4>
-                  {remainingMinutes > 0 && (
-                    <div className="flex items-center gap-1 ml-auto text-xs text-[var(--grey-500)]">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>{formatTime(remainingMinutes)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Assets List - Scrollable, Grouped by Stage */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-3">
-                  {assets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-4 gap-2">
-                      {assetsLikelyGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
-                          <p className="text-xs text-[var(--grey-400)]">
-                            Generating assets...
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-[var(--grey-400)]">
-                          No assets yet
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Group assets by stage */}
-                      {(["preproduction", "production", "postproduction"] as const).map((stage) => {
-                        const stageAssets = assets.filter(a => ASSET_STAGE_MAP[a.type as AssetType] === stage);
-                        if (stageAssets.length === 0) return null;
-                        
-                        const stageLabels = {
-                          preproduction: "Pre-Production",
-                          production: "Production",
-                          postproduction: "Post-Production",
-                        };
-                        
-                        return (
-                          <div key={stage} className="mb-4 last:mb-0">
-                            {/* Stage Header */}
-                            <div className="text-[10px] font-medium text-[var(--grey-400)] uppercase tracking-wider px-2 mb-1.5">
-                              {stageLabels[stage]}
-                            </div>
-                            
-                            {/* Assets in this stage */}
-                            <div className="space-y-0.5">
-                              {stageAssets.map((asset) => (
-                                <div
-                                  key={asset.id}
-                                  className={cn(
-                                    "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors cursor-default",
-                                    selectedAssetId === asset.id
-                                      ? "bg-[var(--grey-100)]"
-                                      : "hover:bg-[var(--grey-50)]"
-                                  )}
-                                  onClick={() => setSelectedAssetId(asset.id)}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setAssetContextMenu({ x: e.clientX, y: e.clientY, assetId: asset.id });
-                                  }}
-                                >
-                                  {/* Checkbox */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleAssetComplete(asset.id);
-                                    }}
-                                    className={cn(
-                                      "flex-shrink-0 w-4 h-4 rounded border transition-colors flex items-center justify-center",
-                                      asset.is_complete
-                                        ? "bg-[#00975a] border-[#00975a] text-white"
-                                        : "border-[var(--grey-300)] hover:border-[var(--grey-400)]"
-                                    )}
-                                    title={asset.is_complete ? "Mark incomplete" : "Mark complete"}
-                                  >
-                                    {asset.is_complete && <Check className="h-3 w-3" />}
-                                  </button>
-
-                                  {/* Asset Type Icon */}
-                                  <span className="text-[var(--grey-400)]" title={ASSET_TYPE_LABELS[asset.type as AssetType]}>
-                                    {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
-                                    {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
-                                    {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
-                                    {asset.type === "b_roll_image" && <ImageIcon className="h-3.5 w-3.5" />}
-                                    {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
-                                    {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
-                                  </span>
-
-                                  {/* AI sparkles next to icon */}
-                                  {asset.is_ai_generatable && (
-                                    <Sparkles className="h-3 w-3 text-[var(--cyan-600)]" />
-                                  )}
-
-                                  {/* Asset Title */}
-                                  <span className="flex-1 text-sm text-[var(--grey-800)] truncate">
-                                    {asset.title}
-                                  </span>
-
-                                  {/* Time Estimate */}
-                                  {asset.time_estimate_minutes && (
-                                    <span className="text-xs text-[var(--grey-400)] tabular-nums">
-                                      {asset.time_estimate_minutes}min
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
 
-            {/* Middle Column - Selected Asset Content (full height) */}
+            {/* Middle Column - Tabs */}
             <div className="flex flex-col min-h-0 h-full">
-              <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                {selectedAsset ? (
-                  <>
-                    {/* Asset Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-sm font-medium text-[var(--grey-800)]">
-                          {selectedAsset.title}
-                        </h4>
-                        {/* Word count and duration for scripts */}
-                        {selectedAsset.type === "script" && selectedAsset.content_text && (() => {
-                          const stats = getScriptStats(selectedAsset.content_text);
-                          return (
-                            <span className="text-xs text-[var(--grey-400)]">
-                              {stats.wordCount.toLocaleString()} words · ~{stats.duration}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Completion checkbox */}
-                        <button
-                          onClick={() => handleToggleAssetComplete(selectedAsset.id)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 rounded border transition-colors text-xs",
-                            selectedAsset.is_complete
-                              ? "bg-[#00975a]/10 border-[#00975a]/30 text-[#00975a]"
-                              : "border-[var(--border)] text-[var(--grey-500)] hover:border-[var(--grey-400)]"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-3.5 h-3.5 rounded border flex items-center justify-center",
-                            selectedAsset.is_complete
-                              ? "bg-[#00975a] border-[#00975a] text-white"
-                              : "border-current"
-                          )}>
-                            {selectedAsset.is_complete && <Check className="h-2.5 w-2.5" />}
-                          </div>
-                          {selectedAsset.is_complete ? "Complete" : "Incomplete"}
-                        </button>
-                        
-                        {/* Copy button - only for text content */}
-                        {(selectedAsset.content_text || selectedAsset.instructions) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              const textToCopy = selectedAsset.content_text || selectedAsset.instructions || "";
-                              await navigator.clipboard.writeText(textToCopy);
-                              toast.success("Copied to clipboard");
-                            }}
-                            className="h-7 px-2"
-                            title="Copy"
-                          >
-                            <Copy size={14} />
-                          </Button>
-                        )}
-                        
-                        {/* Generate/Regenerate buttons for AI-generated assets */}
-                        {selectedAsset.type === "talking_points" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (selectedAsset.content_text) {
-                                setRegenerateDialogOpen("talking_points");
-                              } else {
-                                handleGenerateTalkingPoints();
-                              }
-                            }}
-                            disabled={isGeneratingTalkingPoints}
-                            className="h-7 px-2 gap-1.5"
-                            title={selectedAsset.content_text ? "Regenerate Talking Points" : "Generate Talking Points"}
-                          >
-                            {isGeneratingTalkingPoints ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : selectedAsset.content_text ? (
-                              <RefreshCw size={14} />
-                            ) : (
-                              <Sparkles size={14} />
-                            )}
-                            <span className="text-xs">{selectedAsset.content_text ? "Regenerate" : "Generate"}</span>
-                          </Button>
-                        )}
-                        {selectedAsset.type === "script" && selectedAsset.content_text && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setRegenerateDialogOpen("script")}
-                            disabled={isGeneratingScript || !talkingPointsAsset?.content_text}
-                            className="h-7 px-2 gap-1.5"
-                            title="Regenerate Script"
-                          >
-                            {isGeneratingScript ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <RefreshCw size={14} />
-                            )}
-                            <span className="text-xs">Regenerate</span>
-                          </Button>
-                        )}
-                        
-                        {/* Generate Image button for AI-generatable media assets */}
-                        {selectedAsset.is_ai_generatable && (selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image" || selectedAsset.type === "thumbnail") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleGenerateAssetImage}
-                            disabled={isGeneratingAssetImage}
-                            className="h-7 px-2 gap-1.5"
-                            title={selectedAsset.image_url ? "Regenerate Image" : "Generate Image"}
-                          >
-                            {isGeneratingAssetImage ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : selectedAsset.image_url ? (
-                              <RefreshCw size={14} />
-                            ) : (
-                              <Sparkles size={14} />
-                            )}
-                            <span className="text-xs">{selectedAsset.image_url ? "Regen Image" : "Generate Image"}</span>
-                          </Button>
-                        )}
-                        
-                        {/* Generate Video button for b_roll_footage assets */}
-                        {selectedAsset.type === "b_roll_footage" && selectedAsset.is_ai_generatable && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleGenerateAssetVideo}
-                            disabled={!selectedAsset.image_url || isGeneratingAssetVideo}
-                            className="h-7 px-2 gap-1.5"
-                            title={!selectedAsset.image_url ? "Generate image first" : selectedAsset.video_url ? "Regenerate Video" : "Generate Video"}
-                          >
-                            {isGeneratingAssetVideo ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : selectedAsset.video_url ? (
-                              <RefreshCw size={14} />
-                            ) : (
-                              <Film size={14} />
-                            )}
-                            <span className="text-xs">{selectedAsset.video_url ? "Regen Video" : "Generate Video"}</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+              <Tabs 
+                value={activeTab} 
+                onValueChange={(v) => {
+                  setActiveTab(v as "talking_points" | "script" | "storyboard" | "assets");
+                  // Reset asset detail view when switching away from Assets tab
+                  if (v !== "assets") {
+                    setShowAssetDetail(false);
+                    setSelectedAssetId(null);
+                  }
+                }}
+                className="flex-1 flex flex-col min-h-0"
+              >
+                {/* Tab Bar - Pill/Segmented style matching Creative Brief */}
+                <TabsList className="flex-shrink-0 h-9 p-1 bg-[var(--grey-50)] rounded-lg inline-flex w-auto mb-4">
+                  <TabsTrigger 
+                    value="talking_points"
+                    className="rounded-md px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[var(--grey-800)] data-[state=active]:shadow-sm data-[state=inactive]:bg-transparent data-[state=inactive]:text-[var(--grey-400)] data-[state=inactive]:shadow-none hover:text-[var(--grey-600)] cursor-default"
+                  >
+                    Talking Points
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="script"
+                    className="rounded-md px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[var(--grey-800)] data-[state=active]:shadow-sm data-[state=inactive]:bg-transparent data-[state=inactive]:text-[var(--grey-400)] data-[state=inactive]:shadow-none hover:text-[var(--grey-600)] cursor-default"
+                  >
+                    Script
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="storyboard"
+                    className="rounded-md px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[var(--grey-800)] data-[state=active]:shadow-sm data-[state=inactive]:bg-transparent data-[state=inactive]:text-[var(--grey-400)] data-[state=inactive]:shadow-none hover:text-[var(--grey-600)] cursor-default"
+                  >
+                    Storyboard
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="assets"
+                    className="rounded-md px-3 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-[var(--grey-800)] data-[state=active]:shadow-sm data-[state=inactive]:bg-transparent data-[state=inactive]:text-[var(--grey-400)] data-[state=inactive]:shadow-none hover:text-[var(--grey-600)] cursor-default"
+                  >
+                    Assets
+                    {productionAssets.length > 0 && (
+                      <span className="ml-1.5 text-xs text-[var(--grey-400)]">
+                        ({productionAssets.length})
+                      </span>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
 
-                    {/* Asset Content */}
-                    {selectedAsset.type === "script" || selectedAsset.type === "talking_points" ? (
-                      // Text asset - show content_text
-                      (() => {
-                        // Check if this asset is currently being generated
-                        const isGeneratingThisAsset = 
-                          (selectedAsset.type === "talking_points" && isGeneratingTalkingPoints) ||
-                          (selectedAsset.type === "script" && isGeneratingScript);
-                        
-                        if (selectedAsset.content_text) {
-                          // Has content - show it with overlay if regenerating
-                          return (
-                            <div className={cn(
-                              "flex-1 min-h-0 overflow-auto p-4 relative",
-                              isScriptUpdating && selectedAsset.type === "script" && "script-updating"
-                            )}>
-                              {selectedAsset.type === "talking_points" ? (
-                                <MarkdownDisplay content={selectedAsset.content_text} />
-                              ) : (
-                                <ScriptDisplay script={selectedAsset.content_text} />
-                              )}
-                              {/* Overlay for chat-based script updates */}
-                              {isScriptUpdating && selectedAsset.type === "script" && (
-                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
-                              )}
-                              {/* Overlay for regeneration */}
-                              {isGeneratingThisAsset && (
-                                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
-                                  <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                                  <p className="text-sm text-[var(--grey-600)]">
-                                    {selectedAsset.type === "talking_points" 
-                                      ? "Generating talking points..." 
-                                      : "Generating script..."}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        } else if (isGeneratingThisAsset) {
-                          // No content yet, but generating - show loading state
-                          return (
-                            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                                <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
-                              </div>
-                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                                {selectedAsset.type === "talking_points" 
-                                  ? "Generating Talking Points" 
-                                  : "Generating Script"}
-                              </h3>
-                              <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                                {selectedAsset.type === "talking_points" 
-                                  ? "Creating talking points based on your input..." 
-                                  : "Converting your talking points into a script..."}
-                              </p>
-                            </div>
-                          );
-                        } else {
-                          // No content, not generating - show empty state with CTAs
-                          return (
-                            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                                <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                              </div>
-                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                                No Content Yet
-                              </h3>
-                              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
-                                {selectedAsset.type === "talking_points" 
-                                  ? "Use the chat to share your perspective and generate talking points."
-                                  : talkingPointsAsset?.content_text 
-                                    ? "Generate a script from your talking points."
-                                    : "Generate talking points first, then create a script."}
-                              </p>
-                              {selectedAsset.type === "talking_points" ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    // Show chat sidebar if hidden
-                                    if (!showChatSidebar) {
-                                      setShowChatSidebar(true);
-                                      // Wait for re-render before focusing
-                                      setTimeout(() => {
-                                        const chatInput = document.getElementById("chat-input");
-                                        if (chatInput) {
-                                          chatInput.focus();
-                                          chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
-                                        }
-                                      }, 100);
-                                    } else {
-                                      // Focus the chat input
-                                      const chatInput = document.getElementById("chat-input");
-                                      if (chatInput) {
-                                        chatInput.focus();
-                                        chatInput.scrollIntoView({ behavior: "smooth", block: "center" });
-                                      }
-                                    }
-                                  }}
-                                  className="gap-2"
-                                >
-                                  <MessageSquare className="h-4 w-4" />
-                                  Start Conversation
-                                </Button>
-                              ) : talkingPointsAsset?.content_text ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleGenerateScript()}
-                                  disabled={isGeneratingScript}
-                                  className="gap-2"
-                                >
-                                  {isGeneratingScript ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Sparkles className="h-4 w-4" />
-                                  )}
-                                  Generate Script
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    // Select the talking points asset
-                                    const tpAsset = assets.find(a => a.type === "talking_points");
-                                    if (tpAsset) {
-                                      setSelectedAssetId(tpAsset.id);
-                                    }
-                                  }}
-                                  className="gap-2"
-                                >
-                                  <ListTodo className="h-4 w-4" />
-                                  Create Talking Points First
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        }
-                      })()
-                    ) : (
-                      // Media asset - show generated media + instructions + reference images
-                      <div className="flex-1 min-h-0 overflow-auto">
-                        {/* Generated Media Section - always show for AI-generatable assets */}
-                        {selectedAsset.is_ai_generatable && (selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image" || selectedAsset.type === "thumbnail") && (
-                          <div className="p-4 border-b border-[var(--border)]">
-                            {/* Empty state - no image yet */}
-                            {!selectedAsset.image_url && !isGeneratingAssetImage && (
-                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center")}>
-                                {selectedAsset.type === "b_roll_footage" ? (
-                                  <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
-                                ) : (
-                                  <ImageIcon className="h-8 w-8 text-[var(--grey-300)] mb-3" />
-                                )}
-                                <p className="text-sm text-[var(--grey-500)] mb-3">
-                                  {selectedAsset.type === "b_roll_footage" ? "No video generated yet" : "No image generated yet"}
-                                </p>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={handleGenerateAssetImage}
-                                  className="gap-2"
-                                >
-                                  <Sparkles className="h-4 w-4" />
-                                  Generate Image
-                                </Button>
-                              </div>
-                            )}
-                            
-                            {/* Loading state for image generation */}
-                            {isGeneratingAssetImage && !selectedAsset.image_url && (
-                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center")}>
-                                <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                                <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
-                              </div>
-                            )}
-                            
-                            {/* Loading state for video generation */}
-                            {isGeneratingAssetVideo && !selectedAsset.video_url && selectedAsset.image_url && (
-                              <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
-                                <Image 
-                                  src={selectedAsset.image_url} 
-                                  alt={selectedAsset.title} 
-                                  fill 
-                                  className="object-contain opacity-50" 
-                                />
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                  <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
-                                  <p className="text-sm text-[var(--grey-700)]">Generating video...</p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Generated Media - unified display */}
-                            {selectedAsset.image_url && !isGeneratingAssetVideo && (
-                              <div className="relative group">
-                                {/* Video player with poster (when video exists) */}
-                                {selectedAsset.type === "b_roll_footage" && selectedAsset.video_url ? (
-                                  <div className="relative">
-                                    <video 
-                                      src={selectedAsset.video_url}
-                                      poster={selectedAsset.image_url}
-                                      controls 
-                                      className={cn("w-full rounded-lg", getAspectRatioClass(idea.template?.orientation))}
-                                    />
-                                    {/* Video indicator badge */}
-                                    <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                                      <Film className="h-3 w-3" />
-                                      Video
-                                    </div>
-                                    {/* Regenerate overlay */}
-                                    {isGeneratingAssetVideo && (
-                                      <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
-                                        <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                                        <p className="text-sm text-[var(--grey-600)]">Regenerating video...</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  /* Image only (or b_roll_footage without video yet) */
-                                  <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
-                                    <Image 
-                                      src={selectedAsset.image_url} 
-                                      alt={selectedAsset.title} 
-                                      fill 
-                                      className="object-contain" 
-                                    />
-                                    
-                                    {/* Video type indicator (subtle, always visible for b_roll_footage) */}
-                                    {selectedAsset.type === "b_roll_footage" && (
-                                      <div className="absolute top-2 left-2 bg-black/40 text-white/80 px-2 py-1 rounded text-xs flex items-center gap-1">
-                                        <Film className="h-3 w-3" />
-                                        <span className="opacity-75">Video pending</span>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Hover overlay with appropriate action */}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                      {selectedAsset.type === "b_roll_footage" && !selectedAsset.video_url ? (
-                                        /* Generate Video action for b_roll_footage without video */
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          onClick={handleGenerateAssetVideo}
-                                          disabled={isGeneratingAssetVideo}
-                                          className="gap-2"
-                                        >
-                                          {isGeneratingAssetVideo ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Film className="h-4 w-4" />
-                                          )}
-                                          Generate Video
-                                        </Button>
-                                      ) : (
-                                        /* Regenerate Image action for images/thumbnails */
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          onClick={handleGenerateAssetImage}
-                                          disabled={isGeneratingAssetImage}
-                                          className="gap-2"
-                                        >
-                                          {isGeneratingAssetImage ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <RefreshCw className="h-4 w-4" />
-                                          )}
-                                          Regenerate
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Generation loading overlay for image regeneration */}
-                                {isGeneratingAssetImage && (
-                                  <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
-                                    <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                                    <p className="text-sm text-[var(--grey-600)]">Regenerating image...</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Instructions section */}
-                        {selectedAsset.instructions && (
-                          <div className="p-4 border-b border-[var(--border)]">
-                            <h5 className="text-xs font-semibold text-[var(--grey-500)] uppercase tracking-wider mb-2">
-                              Instructions
-                            </h5>
-                            <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
-                              <MarkdownDisplay content={selectedAsset.instructions} />
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Reference Images section - always show for b_roll_footage and b_roll_image */}
-                        {(selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image") && (
-                          <div className="border-b border-[var(--border)]">
-                            <AssetReferenceImages
-                              referenceImages={selectedAsset.reference_images || []}
-                              projectImages={projectImages}
-                              assetId={selectedAsset.id}
-                              onLinkImage={async (refImageId, projectImageId) => {
-                                const result = await linkReferenceImage(refImageId, projectImageId);
-                                if (result.error) {
-                                  toast.error(result.error);
-                                } else {
-                                  router.refresh();
-                                }
-                              }}
-                              onUnlinkImage={async (refImageId) => {
-                                const result = await unlinkReferenceImage(refImageId);
-                                if (result.error) {
-                                  toast.error(result.error);
-                                } else {
-                                  router.refresh();
-                                }
-                              }}
-                              onUploadImage={async (refImageId, file) => {
-                                const formData = new FormData();
-                                formData.append("file", file);
-                                const result = await uploadReferenceImage(refImageId, formData);
-                                if (result.error) {
-                                  toast.error(result.error);
-                                } else {
-                                  router.refresh();
-                                }
-                              }}
-                              onDeleteImage={async (refImageId) => {
-                                const result = await deleteReferenceImage(refImageId);
-                                if (result.error) {
-                                  toast.error(result.error);
-                                } else {
-                                  router.refresh();
-                                }
-                              }}
-                              onAddImage={async (description, projectImageId) => {
-                                const result = await addReferenceImage(selectedAsset.id, description, projectImageId);
-                                if (result.error) {
-                                  toast.error(result.error);
-                                } else {
-                                  router.refresh();
-                                }
-                              }}
-                            />
-                          </div>
-                        )}
-                        
-                        {/* Upload placeholder - only show for non-AI-generatable assets or assets without generated media */}
-                        {(!selectedAsset.is_ai_generatable || (selectedAsset.type !== "b_roll_footage" && selectedAsset.type !== "b_roll_image" && selectedAsset.type !== "thumbnail")) && (
-                          <div className="p-4">
-                            <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
-                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                                <Upload className="h-6 w-6 text-[var(--grey-300)]" />
-                              </div>
-                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                                Media Upload Coming Soon
-                              </h3>
-                              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
-                                You&apos;ll be able to upload {selectedAsset.type === "thumbnail" || selectedAsset.type === "b_roll_image" ? "images" : "video files"} here.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  // No asset selected - empty state
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    {assetsLikelyGenerating ? (
-                      <>
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                          <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
-                        </div>
-                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                          Generating Assets
-                        </h3>
-                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                          Creating talking points and production assets...
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                          <FileText className="h-6 w-6 text-[var(--grey-300)]" />
-                        </div>
-                        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                          No Asset Selected
-                        </h3>
-                        <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                          Select an asset from the list to view its content.
-                        </p>
-                      </>
-                    )}
+                {/* Talking Points Tab */}
+                <TabsContent value="talking_points" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                    <TalkingPointsTabContent
+                      talkingPointsAsset={talkingPointsAsset}
+                      isGeneratingTalkingPoints={isGeneratingTalkingPoints}
+                      handleGenerateTalkingPoints={handleGenerateTalkingPoints}
+                      setRegenerateDialogOpen={setRegenerateDialogOpen}
+                    />
                   </div>
-                )}
-              </div>
+                </TabsContent>
+
+                {/* Script Tab */}
+                <TabsContent value="script" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                    <ScriptTabContent
+                      scriptAsset={scriptAsset}
+                      talkingPointsAsset={talkingPointsAsset}
+                      isGeneratingScript={isGeneratingScript}
+                      isScriptUpdating={isScriptUpdating}
+                      handleGenerateScript={handleGenerateScript}
+                      setRegenerateDialogOpen={setRegenerateDialogOpen}
+                      setActiveTab={setActiveTab}
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* Storyboard Tab */}
+                <TabsContent value="storyboard" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                      <h4 className="text-sm font-medium text-[var(--grey-800)]">Storyboard</h4>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                        <Film className="h-6 w-6 text-[var(--grey-300)]" />
+                      </div>
+                      <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                        Coming Soon
+                      </h3>
+                      <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                        Visual storyboard generation will be available here.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Assets Tab */}
+                <TabsContent value="assets" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
+                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
+                    <AssetsTabContent
+                      productionAssets={productionAssets}
+                      selectedAsset={selectedAsset}
+                      showAssetDetail={showAssetDetail}
+                      setShowAssetDetail={setShowAssetDetail}
+                      setSelectedAssetId={setSelectedAssetId}
+                      handleToggleAssetComplete={handleToggleAssetComplete}
+                      handleGenerateAssetImage={handleGenerateAssetImage}
+                      handleGenerateAssetVideo={handleGenerateAssetVideo}
+                      handleGenerateAssets={handleGenerateAssets}
+                      isGeneratingAssetImage={isGeneratingAssetImage}
+                      isGeneratingAssetVideo={isGeneratingAssetVideo}
+                      isGeneratingAssets={isGeneratingAssets}
+                      hasScript={!!scriptAsset?.content_text}
+                      projectImages={projectImages}
+                      idea={idea}
+                      router={router}
+                      assetsLikelyGenerating={assetsLikelyGenerating}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
 
             {/* Right Column - Chat (full height) */}
@@ -1606,44 +1021,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         </DialogContent>
       </Dialog>
 
-      {/* Asset Context Menu (positioned at click location) */}
-      {assetContextMenu && (
-        <>
-          {/* Backdrop to close menu when clicking outside */}
-          <div 
-            className="fixed inset-0 z-50" 
-            onClick={() => setAssetContextMenu(null)}
-          />
-          {/* Menu */}
-          <div 
-            className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
-            style={{ left: `${assetContextMenu.x}px`, top: `${assetContextMenu.y}px` }}
-          >
-            <button
-              onClick={async () => {
-                const assetId = assetContextMenu.assetId;
-                setAssetContextMenu(null);
-                const result = await deleteAsset(assetId);
-                if (result.success) {
-                  toast.success("Asset deleted");
-                  // If we deleted the selected asset, select the first remaining one
-                  if (selectedAssetId === assetId) {
-                    const remainingAssets = assets.filter(a => a.id !== assetId);
-                    setSelectedAssetId(remainingAssets[0]?.id || null);
-                  }
-                  router.refresh();
-                } else {
-                  toast.error(result.error || "Failed to delete asset");
-                }
-              }}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-red-600 outline-none cursor-pointer hover:bg-red-50 focus:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -2125,6 +1502,857 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ===========================================
+// Tab Content Components
+// ===========================================
+
+interface TalkingPointsTabContentProps {
+  talkingPointsAsset: IdeaAsset | undefined;
+  isGeneratingTalkingPoints: boolean;
+  handleGenerateTalkingPoints: (notes?: string) => Promise<void>;
+  setRegenerateDialogOpen: (type: "talking_points" | "script" | null) => void;
+}
+
+function TalkingPointsTabContent({
+  talkingPointsAsset,
+  isGeneratingTalkingPoints,
+  handleGenerateTalkingPoints,
+  setRegenerateDialogOpen,
+}: TalkingPointsTabContentProps) {
+  const content = talkingPointsAsset?.content_text;
+
+  // Header with actions
+  const header = (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+      <h4 className="text-sm font-medium text-[var(--grey-800)]">Talking Points</h4>
+      <div className="flex items-center gap-2">
+        {content && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              await navigator.clipboard.writeText(content);
+              toast.success("Copied to clipboard");
+            }}
+            className="h-7 px-2"
+            title="Copy"
+          >
+            <Copy size={14} />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (content) {
+              setRegenerateDialogOpen("talking_points");
+            } else {
+              handleGenerateTalkingPoints();
+            }
+          }}
+          disabled={isGeneratingTalkingPoints}
+          className="h-7 px-2 gap-1.5"
+          title={content ? "Regenerate" : "Generate"}
+        >
+          {isGeneratingTalkingPoints ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : content ? (
+            <RefreshCw size={14} />
+          ) : (
+            <Sparkles size={14} />
+          )}
+          <span className="text-xs">{content ? "Regenerate" : "Generate"}</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isGeneratingTalkingPoints && !content) {
+    return (
+      <>
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+            <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+          </div>
+          <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+            Generating Talking Points
+          </h3>
+          <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+            Creating talking points based on your input...
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  if (content) {
+    return (
+      <>
+        {header}
+        <div className="flex-1 min-h-0 overflow-auto p-4 relative">
+          <MarkdownDisplay content={content} />
+          {isGeneratingTalkingPoints && (
+            <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+              <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+              <p className="text-sm text-[var(--grey-600)]">Generating talking points...</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Empty state
+  return (
+    <>
+      {header}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+          <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+        </div>
+        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+          No Talking Points Yet
+        </h3>
+        <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
+          Generate talking points based on this idea to get started.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleGenerateTalkingPoints()}
+          disabled={isGeneratingTalkingPoints}
+          className="gap-2"
+        >
+          {isGeneratingTalkingPoints ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          Generate Talking Points
+        </Button>
+      </div>
+    </>
+  );
+}
+
+interface ScriptTabContentProps {
+  scriptAsset: IdeaAsset | undefined;
+  talkingPointsAsset: IdeaAsset | undefined;
+  isGeneratingScript: boolean;
+  isScriptUpdating: boolean;
+  handleGenerateScript: (notes?: string) => Promise<void>;
+  setRegenerateDialogOpen: (type: "talking_points" | "script" | null) => void;
+  setActiveTab: (tab: "talking_points" | "script" | "storyboard" | "assets") => void;
+}
+
+function ScriptTabContent({
+  scriptAsset,
+  talkingPointsAsset,
+  isGeneratingScript,
+  isScriptUpdating,
+  handleGenerateScript,
+  setRegenerateDialogOpen,
+  setActiveTab,
+}: ScriptTabContentProps) {
+  const content = scriptAsset?.content_text;
+  const hasTalkingPoints = !!talkingPointsAsset?.content_text;
+
+  // Header with actions
+  const header = (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+      <div className="flex items-center gap-3">
+        <h4 className="text-sm font-medium text-[var(--grey-800)]">Script</h4>
+        {content && (() => {
+          const stats = getScriptStats(content);
+          return (
+            <span className="text-xs text-[var(--grey-400)]">
+              {stats.wordCount.toLocaleString()} words · ~{stats.duration}
+            </span>
+          );
+        })()}
+      </div>
+      <div className="flex items-center gap-2">
+        {content && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              await navigator.clipboard.writeText(content);
+              toast.success("Copied to clipboard");
+            }}
+            className="h-7 px-2"
+            title="Copy"
+          >
+            <Copy size={14} />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => content ? setRegenerateDialogOpen("script") : handleGenerateScript()}
+          disabled={isGeneratingScript || !hasTalkingPoints}
+          className="h-7 px-2 gap-1.5"
+          title={!hasTalkingPoints ? "Generate talking points first" : content ? "Regenerate Script" : "Generate Script"}
+        >
+          {isGeneratingScript ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : content ? (
+            <RefreshCw size={14} />
+          ) : (
+            <Sparkles size={14} />
+          )}
+          <span className="text-xs">{content ? "Regenerate" : "Generate"}</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isGeneratingScript && !content) {
+    return (
+      <>
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+            <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+          </div>
+          <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+            Generating Script
+          </h3>
+          <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+            Converting your talking points into a script...
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  if (content) {
+    return (
+      <>
+        {header}
+        <div className={cn(
+          "flex-1 min-h-0 overflow-auto p-4 relative",
+          isScriptUpdating && "script-updating"
+        )}>
+          <ScriptDisplay script={content} />
+          {isScriptUpdating && (
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-[var(--cyan-600)]/5 to-transparent animate-shimmer" />
+          )}
+          {isGeneratingScript && (
+            <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+              <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+              <p className="text-sm text-[var(--grey-600)]">Generating script...</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Empty state
+  return (
+    <>
+      {header}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+          <FileText className="h-6 w-6 text-[var(--grey-300)]" />
+        </div>
+        <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+          No Script Yet
+        </h3>
+        <p className="text-xs text-[var(--grey-400)] max-w-[200px] mb-4">
+          {hasTalkingPoints
+            ? "Generate a script from your talking points."
+            : "Generate talking points first, then create a script."}
+        </p>
+        {hasTalkingPoints ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleGenerateScript()}
+            disabled={isGeneratingScript}
+            className="gap-2"
+          >
+            {isGeneratingScript ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate Script
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveTab("talking_points")}
+            className="gap-2"
+          >
+            <ListTodo className="h-4 w-4" />
+            Create Talking Points First
+          </Button>
+        )}
+      </div>
+    </>
+  );
+}
+
+interface AssetsTabContentProps {
+  productionAssets: IdeaAsset[];
+  selectedAsset: IdeaAsset | null;
+  showAssetDetail: boolean;
+  setShowAssetDetail: (show: boolean) => void;
+  setSelectedAssetId: (id: string | null) => void;
+  handleToggleAssetComplete: (assetId: string) => void;
+  handleGenerateAssetImage: () => Promise<void>;
+  handleGenerateAssetVideo: () => Promise<void>;
+  handleGenerateAssets: () => Promise<void>;
+  isGeneratingAssetImage: boolean;
+  isGeneratingAssetVideo: boolean;
+  isGeneratingAssets: boolean;
+  hasScript: boolean;
+  projectImages: ProjectImage[];
+  idea: IdeaWithChannels;
+  router: ReturnType<typeof useRouter>;
+  assetsLikelyGenerating: boolean;
+}
+
+function AssetsTabContent({
+  productionAssets,
+  selectedAsset,
+  showAssetDetail,
+  setShowAssetDetail,
+  setSelectedAssetId,
+  handleToggleAssetComplete,
+  handleGenerateAssetImage,
+  handleGenerateAssetVideo,
+  handleGenerateAssets,
+  isGeneratingAssetImage,
+  isGeneratingAssetVideo,
+  isGeneratingAssets,
+  hasScript,
+  projectImages,
+  idea,
+  router,
+  assetsLikelyGenerating,
+}: AssetsTabContentProps) {
+  // Asset detail view
+  if (showAssetDetail && selectedAsset) {
+    return (
+      <AssetDetailView
+        asset={selectedAsset}
+        onBack={() => {
+          setShowAssetDetail(false);
+          setSelectedAssetId(null);
+        }}
+        handleToggleAssetComplete={handleToggleAssetComplete}
+        handleGenerateAssetImage={handleGenerateAssetImage}
+        handleGenerateAssetVideo={handleGenerateAssetVideo}
+        isGeneratingAssetImage={isGeneratingAssetImage}
+        isGeneratingAssetVideo={isGeneratingAssetVideo}
+        projectImages={projectImages}
+        idea={idea}
+        router={router}
+      />
+    );
+  }
+
+  // Header for the Assets tab
+  const header = (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+      <h4 className="text-sm font-medium text-[var(--grey-800)]">Assets</h4>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleGenerateAssets}
+          disabled={isGeneratingAssets || !hasScript}
+          className="h-7 px-2 gap-1.5"
+          title={!hasScript ? "Generate a script first" : productionAssets.length > 0 ? "Regenerate Assets" : "Generate Assets"}
+        >
+          {isGeneratingAssets ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : productionAssets.length > 0 ? (
+            <RefreshCw size={14} />
+          ) : (
+            <Sparkles size={14} />
+          )}
+          <span className="text-xs">{productionAssets.length > 0 ? "Regenerate" : "Generate"}</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Grid view - empty state
+  if (productionAssets.length === 0) {
+    return (
+      <>
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          {assetsLikelyGenerating ? (
+            <>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+              </div>
+              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                Generating Assets
+              </h3>
+              <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                Creating production assets...
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                <ImageIcon className="h-6 w-6 text-[var(--grey-300)]" />
+              </div>
+              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                No Production Assets
+              </h3>
+              <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
+                {hasScript ? "Generate assets from your script." : "Assets will appear here once a script is generated."}
+              </p>
+              {hasScript && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateAssets}
+                  disabled={isGeneratingAssets}
+                  className="mt-4 gap-2"
+                >
+                  {isGeneratingAssets ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Generate Assets
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {header}
+      <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl">
+        {productionAssets.map((asset) => (
+          <button
+            key={asset.id}
+            onClick={() => {
+              setSelectedAssetId(asset.id);
+              setShowAssetDetail(true);
+            }}
+            className="group relative rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden text-left hover:border-[var(--grey-300)] transition-colors"
+          >
+            {/* Image or placeholder */}
+            <div className="aspect-video bg-[var(--grey-50)] relative">
+              {asset.image_url ? (
+                <Image
+                  src={asset.image_url}
+                  alt={asset.title}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {asset.type === "a_roll" && <User className="h-8 w-8 text-[var(--grey-300)]" />}
+                  {asset.type === "b_roll_footage" && <Film className="h-8 w-8 text-[var(--grey-300)]" />}
+                  {asset.type === "b_roll_image" && <ImageIcon className="h-8 w-8 text-[var(--grey-300)]" />}
+                  {asset.type === "b_roll_screen_recording" && <Monitor className="h-8 w-8 text-[var(--grey-300)]" />}
+                  {asset.type === "thumbnail" && <ImageIcon className="h-8 w-8 text-[var(--grey-300)]" />}
+                </div>
+              )}
+              
+              {/* Completion indicator */}
+              {asset.is_complete && (
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#00975a] flex items-center justify-center">
+                  <Check className="h-3 w-3 text-white" />
+                </div>
+              )}
+              
+              {/* AI indicator */}
+              {asset.is_ai_generatable && (
+                <div className="absolute top-2 left-2">
+                  <Sparkles className="h-4 w-4 text-[var(--cyan-600)]" />
+                </div>
+              )}
+            </div>
+            
+            {/* Info */}
+            <div className="p-3">
+              <p className="text-sm font-medium text-[var(--grey-800)] truncate">
+                {asset.title}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-[var(--grey-400)]">
+                  {ASSET_TYPE_LABELS[asset.type as AssetType]}
+                </span>
+                {asset.time_estimate_minutes && (
+                  <>
+                    <span className="text-[var(--grey-300)]">·</span>
+                    <span className="text-xs text-[var(--grey-400)]">
+                      {asset.time_estimate_minutes}min
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </button>
+        ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface AssetDetailViewProps {
+  asset: IdeaAsset;
+  onBack: () => void;
+  handleToggleAssetComplete: (assetId: string) => void;
+  handleGenerateAssetImage: () => Promise<void>;
+  handleGenerateAssetVideo: () => Promise<void>;
+  isGeneratingAssetImage: boolean;
+  isGeneratingAssetVideo: boolean;
+  projectImages: ProjectImage[];
+  idea: IdeaWithChannels;
+  router: ReturnType<typeof useRouter>;
+}
+
+function AssetDetailView({
+  asset,
+  onBack,
+  handleToggleAssetComplete,
+  handleGenerateAssetImage,
+  handleGenerateAssetVideo,
+  isGeneratingAssetImage,
+  isGeneratingAssetVideo,
+  projectImages,
+  idea,
+  router,
+}: AssetDetailViewProps) {
+  return (
+    <>
+      {/* Header with back button */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--grey-500)] hover:text-[var(--grey-800)] hover:bg-[var(--grey-50)] transition-colors"
+            aria-label="Back to Assets"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h4 className="text-sm font-medium text-[var(--grey-800)]">
+            {asset.title}
+          </h4>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Completion checkbox */}
+          <button
+            onClick={() => handleToggleAssetComplete(asset.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-1 rounded border transition-colors text-xs",
+              asset.is_complete
+                ? "bg-[#00975a]/10 border-[#00975a]/30 text-[#00975a]"
+                : "border-[var(--border)] text-[var(--grey-500)] hover:border-[var(--grey-400)]"
+            )}
+          >
+            <div className={cn(
+              "w-3.5 h-3.5 rounded border flex items-center justify-center",
+              asset.is_complete
+                ? "bg-[#00975a] border-[#00975a] text-white"
+                : "border-current"
+            )}>
+              {asset.is_complete && <Check className="h-2.5 w-2.5" />}
+            </div>
+            {asset.is_complete ? "Complete" : "Incomplete"}
+          </button>
+          
+          {/* Copy button */}
+          {asset.instructions && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await navigator.clipboard.writeText(asset.instructions || "");
+                toast.success("Copied to clipboard");
+              }}
+              className="h-7 px-2"
+              title="Copy"
+            >
+              <Copy size={14} />
+            </Button>
+          )}
+          
+          {/* Generate Image button */}
+          {asset.is_ai_generatable && (asset.type === "b_roll_footage" || asset.type === "b_roll_image" || asset.type === "thumbnail") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleGenerateAssetImage}
+              disabled={isGeneratingAssetImage}
+              className="h-7 px-2 gap-1.5"
+              title={asset.image_url ? "Regenerate Image" : "Generate Image"}
+            >
+              {isGeneratingAssetImage ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : asset.image_url ? (
+                <RefreshCw size={14} />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              <span className="text-xs">{asset.image_url ? "Regen Image" : "Generate Image"}</span>
+            </Button>
+          )}
+          
+          {/* Generate Video button */}
+          {asset.type === "b_roll_footage" && asset.is_ai_generatable && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleGenerateAssetVideo}
+              disabled={!asset.image_url || isGeneratingAssetVideo}
+              className="h-7 px-2 gap-1.5"
+              title={!asset.image_url ? "Generate image first" : asset.video_url ? "Regenerate Video" : "Generate Video"}
+            >
+              {isGeneratingAssetVideo ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : asset.video_url ? (
+                <RefreshCw size={14} />
+              ) : (
+                <Film size={14} />
+              )}
+              <span className="text-xs">{asset.video_url ? "Regen Video" : "Generate Video"}</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        {/* Generated Media Section */}
+        {asset.is_ai_generatable && (asset.type === "b_roll_footage" || asset.type === "b_roll_image" || asset.type === "thumbnail") && (
+          <div className="p-4 border-b border-[var(--border)] max-w-2xl">
+            {/* Empty state - no image yet */}
+            {!asset.image_url && !isGeneratingAssetImage && (
+              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center")}>
+                {asset.type === "b_roll_footage" ? (
+                  <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                ) : (
+                  <ImageIcon className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                )}
+                <p className="text-sm text-[var(--grey-500)] mb-3">
+                  {asset.type === "b_roll_footage" ? "No video generated yet" : "No image generated yet"}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateAssetImage}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate Image
+                </Button>
+              </div>
+            )}
+            
+            {/* Loading state for image generation */}
+            {isGeneratingAssetImage && !asset.image_url && (
+              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center")}>
+                <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
+              </div>
+            )}
+            
+            {/* Loading state for video generation */}
+            {isGeneratingAssetVideo && !asset.video_url && asset.image_url && (
+              <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
+                <Image 
+                  src={asset.image_url} 
+                  alt={asset.title} 
+                  fill 
+                  className="object-contain opacity-50" 
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
+                  <p className="text-sm text-[var(--grey-700)]">Generating video...</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Generated Media */}
+            {asset.image_url && !isGeneratingAssetVideo && (
+              <div className="relative group">
+                {asset.type === "b_roll_footage" && asset.video_url ? (
+                  <div className="relative">
+                    <video 
+                      src={asset.video_url}
+                      poster={asset.image_url}
+                      controls 
+                      className={cn("w-full rounded-lg", getAspectRatioClass(idea.template?.orientation))}
+                    />
+                    <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                      <Film className="h-3 w-3" />
+                      Video
+                    </div>
+                    {isGeneratingAssetVideo && (
+                      <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                        <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                        <p className="text-sm text-[var(--grey-600)]">Regenerating video...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
+                    <Image 
+                      src={asset.image_url} 
+                      alt={asset.title} 
+                      fill 
+                      className="object-contain" 
+                    />
+                    {asset.type === "b_roll_footage" && (
+                      <div className="absolute top-2 left-2 bg-black/40 text-white/80 px-2 py-1 rounded text-xs flex items-center gap-1">
+                        <Film className="h-3 w-3" />
+                        <span className="opacity-75">Video pending</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      {asset.type === "b_roll_footage" && !asset.video_url ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleGenerateAssetVideo}
+                          disabled={isGeneratingAssetVideo}
+                          className="gap-2"
+                        >
+                          {isGeneratingAssetVideo ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Film className="h-4 w-4" />
+                          )}
+                          Generate Video
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleGenerateAssetImage}
+                          disabled={isGeneratingAssetImage}
+                          className="gap-2"
+                        >
+                          {isGeneratingAssetImage ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          Regenerate
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {isGeneratingAssetImage && (
+                  <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                    <p className="text-sm text-[var(--grey-600)]">Regenerating image...</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Instructions section */}
+        {asset.instructions && (
+          <div className="p-4 border-b border-[var(--border)]">
+            <h5 className="text-xs font-semibold text-[var(--grey-500)] uppercase tracking-wider mb-2">
+              Instructions
+            </h5>
+            <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
+              <MarkdownDisplay content={asset.instructions} />
+            </div>
+          </div>
+        )}
+        
+        {/* Reference Images section */}
+        {(asset.type === "b_roll_footage" || asset.type === "b_roll_image") && (
+          <div className="border-b border-[var(--border)]">
+            <AssetReferenceImages
+              referenceImages={asset.reference_images || []}
+              projectImages={projectImages}
+              assetId={asset.id}
+              onLinkImage={async (refImageId, projectImageId) => {
+                const result = await linkReferenceImage(refImageId, projectImageId);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+              onUnlinkImage={async (refImageId) => {
+                const result = await unlinkReferenceImage(refImageId);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+              onUploadImage={async (refImageId, file) => {
+                const formData = new FormData();
+                formData.append("file", file);
+                const result = await uploadReferenceImage(refImageId, formData);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+              onDeleteImage={async (refImageId) => {
+                const result = await deleteReferenceImage(refImageId);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+              onAddImage={async (description, projectImageId) => {
+                const result = await addReferenceImage(asset.id, description, projectImageId);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  router.refresh();
+                }
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Upload placeholder for non-AI-generatable assets */}
+        {(!asset.is_ai_generatable || (asset.type !== "b_roll_footage" && asset.type !== "b_roll_image" && asset.type !== "thumbnail")) && (
+          <div className="p-4">
+            <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                <Upload className="h-6 w-6 text-[var(--grey-300)]" />
+              </div>
+              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                Media Upload Coming Soon
+              </h3>
+              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
+                You&apos;ll be able to upload {asset.type === "thumbnail" || asset.type === "b_roll_image" ? "images" : "video files"} here.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
