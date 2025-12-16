@@ -282,6 +282,7 @@ export const ASSET_TYPES = [
   "script",
   "a_roll",
   "b_roll_footage",
+  "b_roll_image",
   "b_roll_screen_recording",
   "thumbnail",
 ] as const;
@@ -293,6 +294,7 @@ export const ASSET_STAGE_MAP: Record<AssetType, "preproduction" | "production" |
   script: "preproduction",
   a_roll: "production",
   b_roll_footage: "production",
+  b_roll_image: "production",
   b_roll_screen_recording: "production",
   thumbnail: "postproduction",
 };
@@ -303,6 +305,7 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   script: "Script",
   a_roll: "A-Roll Recording",
   b_roll_footage: "B-Roll Footage",
+  b_roll_image: "B-Roll Image",
   b_roll_screen_recording: "Screen Recording",
   thumbnail: "Thumbnail",
 };
