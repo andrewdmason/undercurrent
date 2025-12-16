@@ -60,12 +60,17 @@ AI-generated B-roll using the Nano Banana → Veo3 workflow: generate an image, 
 **Image Prompt**
 [Detailed prompt for AI image generation. Be SPECIFIC to this project - use the project name, describe their actual space/products based on the project description. Include composition, lighting, style.]
 
-**Reference Images**
-[Include this section whenever the B-roll depicts something project-specific: their location, their products, their brand, their team. Specify what reference photos would help: "Photo of TTL's vinyl room", "Photo of the game shelf wall", "Photo of the coffee bar". Only omit this section for truly generic B-roll that has no project-specific elements.]
-
 **Video Prompt**
 [Prompt for Veo3 to animate the image. Describe the motion - camera movement, subject movement, atmosphere.]
 ```
+
+**REQUIRED - Reference images:** For b_roll_footage that depicts project-specific locations, products, spaces, or team members, you MUST include a `reference_images` array. These should describe the **general visual elements** the AI needs as reference - NOT the specific composed scene you're generating.
+
+Think of reference images as the "ingredients" for the AI:
+- Good: "Photo of TTL's game shelves", "Photo of TTL's interior space", "Photo of the coffee bar"
+- Bad: "Photo of a person browsing the shelves at eye level" (too specific - that's what you're GENERATING)
+
+Keep descriptions short and focused on the base visual element: the space, the furniture, the products, the lighting/vibe. The AI will compose the specific scene from these references.
 
 **Do NOT create `b_roll_footage` assets for:**
 - Screenshots, website mockups, or UI demos → use `b_roll_screen_recording` instead
@@ -88,10 +93,9 @@ Still images (NOT video) used as cutaways, overlays, inserts, or “freeze” mo
 ```
 **Image Prompt**
 [Detailed prompt for AI image generation. Be SPECIFIC to this project - use the project name, describe their actual space/products based on the project description. Include composition, lighting, style.]
-
-**Reference Images**
-[Include this section whenever the image depicts something project-specific: their location, their products, their brand, their team. Specify what reference photos would help.]
 ```
+
+**REQUIRED - Reference images:** For b_roll_image that depicts project-specific locations, products, spaces, or team members, you MUST include a `reference_images` array. These should describe the **general visual elements** the AI needs - NOT the specific scene. Keep descriptions short: "Photo of TTL's game shelves", "Photo of the coffee bar", etc.
 
 Set `is_ai_generatable: true` for `b_roll_image` (unless the instructions clearly require capturing a real photo).
 
@@ -141,22 +145,42 @@ Return a JSON object with an `assets` array:
     {
       "type": "b_roll_footage",
       "title": "Vinyl listening room",
-      "instructions": "**Image Prompt**\nTabletop Library's vinyl listening room: intimate back room with wooden shelves holding ~500 vinyl records, a turntable setup on a credenza, a couple of comfortable chairs. Warm, moody lighting, slightly retro aesthetic, cozy listening-room vibe.\n\n**Reference Images**\nPhoto of TTL's actual vinyl room showing the shelving layout and turntable setup.\n\n**Video Prompt**\nGentle side-to-side pan across the record shelves, ending on the turntable, 6 seconds, slight record-label shimmer catching light.",
+      "instructions": "**Image Prompt**\nTabletop Library's vinyl listening room: intimate back room with wooden shelves holding ~500 vinyl records, a turntable setup on a credenza, a couple of comfortable chairs. Warm, moody lighting, slightly retro aesthetic, cozy listening-room vibe.\n\n**Video Prompt**\nGentle side-to-side pan across the record shelves, ending on the turntable, 6 seconds, slight record-label shimmer catching light.",
+      "reference_images": [
+        { "description": "Photo of TTL's vinyl room" }
+      ],
       "time_estimate_minutes": 7,
       "is_ai_generatable": true
     },
     {
       "type": "b_roll_footage",
       "title": "Game shelves",
-      "instructions": "**Image Prompt**\nTabletop Library's main game wall: floor-to-ceiling wooden shelves packed with 800+ board games, colorful spines visible, organized but abundant. Warm overhead lighting, shallow depth of field focusing on mid-shelf games.\n\n**Reference Images**\nPhoto of TTL's game shelf wall showing the scale and organization style.\n\n**Video Prompt**\nSlow vertical tilt from floor to ceiling along the shelves, 5 seconds, emphasizing the collection size.",
+      "instructions": "**Image Prompt**\nTabletop Library's main game wall: floor-to-ceiling wooden shelves packed with 800+ board games, colorful spines visible, organized but abundant. Warm overhead lighting, shallow depth of field focusing on mid-shelf games.\n\n**Video Prompt**\nSlow vertical tilt from floor to ceiling along the shelves, 5 seconds, emphasizing the collection size.",
+      "reference_images": [
+        { "description": "Photo of TTL's game shelves" }
+      ],
       "time_estimate_minutes": 6,
       "is_ai_generatable": true
     },
     {
       "type": "b_roll_footage",
       "title": "Members at tables",
-      "instructions": "**Image Prompt**\nTabletop Library's main room: several wooden tables with groups of 3-4 people mid-game, board game components visible, warm pendant lighting, relaxed social atmosphere. Not a crowded café—comfortable spacing between tables.\n\n**Reference Images**\nPhotos of TTL's table layout and the style of tables/chairs used.\n\n**Video Prompt**\nWide establishing shot with gentle push-in toward one table, ambient laughter, 6 seconds.",
+      "instructions": "**Image Prompt**\nTabletop Library's main room: several wooden tables with groups of 3-4 people mid-game, board game components visible, warm pendant lighting, relaxed social atmosphere. Not a crowded café—comfortable spacing between tables.\n\n**Video Prompt**\nWide establishing shot with gentle push-in toward one table, ambient laughter, 6 seconds.",
+      "reference_images": [
+        { "description": "Photo of TTL's interior" },
+        { "description": "Photo of TTL's tables" }
+      ],
       "time_estimate_minutes": 8,
+      "is_ai_generatable": true
+    },
+    {
+      "type": "b_roll_image",
+      "title": "Coffee menu board",
+      "instructions": "**Image Prompt**\nTabletop Library's coffee bar menu board: handwritten chalk style, warm lighting, coffee drink names visible.",
+      "reference_images": [
+        { "description": "Photo of TTL's coffee bar" }
+      ],
+      "time_estimate_minutes": 5,
       "is_ai_generatable": true
     },
     {
@@ -183,6 +207,8 @@ Return a JSON object with an `assets` array:
   ]
 }
 ```
+
+**CRITICAL:** For `b_roll_footage` and `b_roll_image` assets that depict ANYTHING project-specific, you MUST include a `reference_images` array. Keep descriptions SHORT and GENERAL - describe the base visual element ("Photo of TTL's game shelves", "Photo of TTL's interior"), NOT the specific composed scene you're generating. The AI will use these references as ingredients to compose the scene described in your Image Prompt.
 
 ## Guidelines
 

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaAsset, AssetType } from "@/lib/types";
+import { IdeaWithChannels, IdeaAsset, AssetType, ProjectImage } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 import { calculateIdeaStatus } from "@/lib/utils";
 
@@ -80,7 +80,8 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         name,
         description,
         image_url,
-        source_video_url
+        source_video_url,
+        orientation
       )
     `)
     .eq("id", ideaId)
@@ -136,6 +137,13 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     .eq("is_excluded", false)
     .order("created_at");
 
+  // Fetch all project images for reference image linking
+  const { data: projectImages } = await supabase
+    .from("project_images")
+    .select("*")
+    .eq("project_id", project.id)
+    .order("created_at", { ascending: false });
+
   // Fetch template channels if idea has a template
   let templateChannels: string[] = [];
   if (idea?.template_id) {
@@ -146,10 +154,16 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     templateChannels = tc?.map(t => t.channel_id) || [];
   }
 
-  // Fetch idea assets
+  // Fetch idea assets with reference images
   const { data: ideaAssets } = await supabase
     .from("idea_assets")
-    .select("*")
+    .select(`
+      *,
+      idea_asset_reference_images (
+        *,
+        project_images (*)
+      )
+    `)
     .eq("idea_id", ideaId)
     .order("sort_order", { ascending: true });
 
@@ -163,7 +177,14 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
   }
 
   // Calculate status from timestamps and assets
-  const assets = (ideaAssets || []) as IdeaAsset[];
+  // Transform assets to include properly typed reference_images
+  const assets = (ideaAssets || []).map((asset: Record<string, unknown>) => ({
+    ...asset,
+    reference_images: (asset.idea_asset_reference_images as Array<Record<string, unknown>> || []).map((ref) => ({
+      ...ref,
+      project_image: ref.project_images || null,
+    })),
+  })) as IdeaAsset[];
   const status = calculateIdeaStatus(
     {
       accepted_at: idea.accepted_at,
@@ -221,8 +242,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       projectCharacters={projectCharacters || []}
       projectTemplates={projectTemplates || []}
       projectTopics={projectTopics || []}
+      projectImages={projectImages || []}
       fullTemplate={fullTemplate}
-      initialAssets={(ideaAssets || []) as IdeaAsset[]}
+      initialAssets={assets}
     />
   );
 }

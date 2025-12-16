@@ -321,13 +321,28 @@ export interface IdeaAsset {
   is_ai_generatable: boolean;
   assigned_to: string | null;
   content_text: string | null;
-  content_url: string | null;
+  image_url: string | null;
+  video_url: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
+  // Joined data
+  reference_images?: IdeaAssetReferenceImage[];
 }
 
-// For AI-generated assets
+export interface IdeaAssetReferenceImage {
+  id: string;
+  idea_asset_id: string;
+  project_image_id: string | null;
+  uploaded_url: string | null;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  project_image?: ProjectImage;
+}
+
+// For AI-generated assets (from generate-production-assets.md prompt)
 export interface GeneratedAsset {
   type: AssetType;
   title: string;
@@ -335,6 +350,17 @@ export interface GeneratedAsset {
   time_estimate_minutes?: number;
   is_ai_generatable?: boolean;
   questions?: string[]; // for talking_points that need user input
+  reference_images?: GeneratedReferenceImage[]; // for b_roll_footage and b_roll_image assets
+}
+
+// Reference image requirement from AI
+export interface GeneratedReferenceImage {
+  description: string;
+}
+
+// AI response wrapper for asset generation
+export interface GeneratedAssetsResponse {
+  assets: GeneratedAsset[];
 }
 
 // ============================================

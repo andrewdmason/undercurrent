@@ -24,10 +24,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_STAGE_MAP, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, deleteAsset } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, deleteAsset, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage } from "@/lib/actions/idea-assets";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,12 @@ import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
+import { AssetReferenceImages } from "./asset-reference-images";
+
+// Helper to get aspect ratio class based on template orientation
+function getAspectRatioClass(orientation: "vertical" | "horizontal" | null | undefined): string {
+  return orientation === "vertical" ? "aspect-[9/16]" : "aspect-video";
+}
 
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
@@ -50,6 +56,7 @@ interface IdeaDetailViewProps {
   projectCharacters: Array<{ id: string; name: string; image_url: string | null }>;
   projectTemplates: Array<{ id: string; name: string; channels?: Array<{ id: string; platform: string }> }>;
   projectTopics: Array<{ id: string; name: string }>;
+  projectImages: ProjectImage[];
   fullTemplate: ProjectTemplateWithChannels | null;
   initialAssets: IdeaAsset[];
 }
@@ -102,7 +109,7 @@ function getScriptStats(script: string): { wordCount: number; duration: string }
   return { wordCount: dialogueWords, duration };
 }
 
-export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, fullTemplate, initialAssets }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, projectImages, fullTemplate, initialAssets }: IdeaDetailViewProps) {
   const router = useRouter();
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
@@ -118,6 +125,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isGeneratingTalkingPoints, setIsGeneratingTalkingPoints] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [isGeneratingAssetImage, setIsGeneratingAssetImage] = useState(false);
+  const [isGeneratingAssetVideo, setIsGeneratingAssetVideo] = useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
   const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
@@ -253,20 +262,24 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     if (isGeneratingAssets) return;
 
     setIsGeneratingAssets(true);
-    try {
-      const result = await generateProductionAssets(idea.id);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Production assets generated");
-        router.refresh();
-      }
-    } catch (error) {
-      toast.error("Failed to generate production assets");
-      console.error(error);
-    } finally {
+    
+    const promise = generateProductionAssets(idea.id).then((result) => {
       setIsGeneratingAssets(false);
-    }
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      router.refresh();
+      return result;
+    }).catch((err) => {
+      setIsGeneratingAssets(false);
+      throw err;
+    });
+    
+    toast.promise(promise, {
+      loading: "Generating production assets...",
+      success: "Production assets generated",
+      error: (err) => err.message || "Failed to generate production assets",
+    });
   };
 
   const handleGenerateTalkingPoints = async (notes?: string) => {
@@ -321,6 +334,46 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       console.error(error);
     } finally {
       setIsGeneratingScript(false);
+    }
+  };
+
+  const handleGenerateAssetImage = async () => {
+    if (!selectedAsset || isGeneratingAssetImage) return;
+    
+    setIsGeneratingAssetImage(true);
+    try {
+      const result = await generateAssetImage(selectedAsset.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Image generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate image");
+      console.error(error);
+    } finally {
+      setIsGeneratingAssetImage(false);
+    }
+  };
+
+  const handleGenerateAssetVideo = async () => {
+    if (!selectedAsset || isGeneratingAssetVideo) return;
+    
+    setIsGeneratingAssetVideo(true);
+    try {
+      const result = await generateAssetVideo(selectedAsset.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Video generated");
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to generate video");
+      console.error(error);
+    } finally {
+      setIsGeneratingAssetVideo(false);
     }
   };
 
@@ -855,6 +908,48 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             <span className="text-xs">Regenerate</span>
                           </Button>
                         )}
+                        
+                        {/* Generate Image button for AI-generatable media assets */}
+                        {selectedAsset.is_ai_generatable && (selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image" || selectedAsset.type === "thumbnail") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateAssetImage}
+                            disabled={isGeneratingAssetImage}
+                            className="h-7 px-2 gap-1.5"
+                            title={selectedAsset.image_url ? "Regenerate Image" : "Generate Image"}
+                          >
+                            {isGeneratingAssetImage ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : selectedAsset.image_url ? (
+                              <RefreshCw size={14} />
+                            ) : (
+                              <Sparkles size={14} />
+                            )}
+                            <span className="text-xs">{selectedAsset.image_url ? "Regen Image" : "Generate Image"}</span>
+                          </Button>
+                        )}
+                        
+                        {/* Generate Video button for b_roll_footage assets */}
+                        {selectedAsset.type === "b_roll_footage" && selectedAsset.is_ai_generatable && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateAssetVideo}
+                            disabled={!selectedAsset.image_url || isGeneratingAssetVideo}
+                            className="h-7 px-2 gap-1.5"
+                            title={!selectedAsset.image_url ? "Generate image first" : selectedAsset.video_url ? "Regenerate Video" : "Generate Video"}
+                          >
+                            {isGeneratingAssetVideo ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : selectedAsset.video_url ? (
+                              <RefreshCw size={14} />
+                            ) : (
+                              <Film size={14} />
+                            )}
+                            <span className="text-xs">{selectedAsset.video_url ? "Regen Video" : "Generate Video"}</span>
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -986,8 +1081,152 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                         }
                       })()
                     ) : (
-                      // Media asset - show instructions + upload placeholder
+                      // Media asset - show generated media + instructions + reference images
                       <div className="flex-1 min-h-0 overflow-auto">
+                        {/* Generated Media Section - always show for AI-generatable assets */}
+                        {selectedAsset.is_ai_generatable && (selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image" || selectedAsset.type === "thumbnail") && (
+                          <div className="p-4 border-b border-[var(--border)]">
+                            {/* Empty state - no image yet */}
+                            {!selectedAsset.image_url && !isGeneratingAssetImage && (
+                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center")}>
+                                {selectedAsset.type === "b_roll_footage" ? (
+                                  <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                                ) : (
+                                  <ImageIcon className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                                )}
+                                <p className="text-sm text-[var(--grey-500)] mb-3">
+                                  {selectedAsset.type === "b_roll_footage" ? "No video generated yet" : "No image generated yet"}
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleGenerateAssetImage}
+                                  className="gap-2"
+                                >
+                                  <Sparkles className="h-4 w-4" />
+                                  Generate Image
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {/* Loading state for image generation */}
+                            {isGeneratingAssetImage && !selectedAsset.image_url && (
+                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center")}>
+                                <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                                <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
+                              </div>
+                            )}
+                            
+                            {/* Loading state for video generation */}
+                            {isGeneratingAssetVideo && !selectedAsset.video_url && selectedAsset.image_url && (
+                              <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
+                                <Image 
+                                  src={selectedAsset.image_url} 
+                                  alt={selectedAsset.title} 
+                                  fill 
+                                  className="object-contain opacity-50" 
+                                />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                  <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
+                                  <p className="text-sm text-[var(--grey-700)]">Generating video...</p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Generated Media - unified display */}
+                            {selectedAsset.image_url && !isGeneratingAssetVideo && (
+                              <div className="relative group">
+                                {/* Video player with poster (when video exists) */}
+                                {selectedAsset.type === "b_roll_footage" && selectedAsset.video_url ? (
+                                  <div className="relative">
+                                    <video 
+                                      src={selectedAsset.video_url}
+                                      poster={selectedAsset.image_url}
+                                      controls 
+                                      className={cn("w-full rounded-lg", getAspectRatioClass(idea.template?.orientation))}
+                                    />
+                                    {/* Video indicator badge */}
+                                    <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                      <Film className="h-3 w-3" />
+                                      Video
+                                    </div>
+                                    {/* Regenerate overlay */}
+                                    {isGeneratingAssetVideo && (
+                                      <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                                        <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                                        <p className="text-sm text-[var(--grey-600)]">Regenerating video...</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  /* Image only (or b_roll_footage without video yet) */
+                                  <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
+                                    <Image 
+                                      src={selectedAsset.image_url} 
+                                      alt={selectedAsset.title} 
+                                      fill 
+                                      className="object-contain" 
+                                    />
+                                    
+                                    {/* Video type indicator (subtle, always visible for b_roll_footage) */}
+                                    {selectedAsset.type === "b_roll_footage" && (
+                                      <div className="absolute top-2 left-2 bg-black/40 text-white/80 px-2 py-1 rounded text-xs flex items-center gap-1">
+                                        <Film className="h-3 w-3" />
+                                        <span className="opacity-75">Video pending</span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Hover overlay with appropriate action */}
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                      {selectedAsset.type === "b_roll_footage" && !selectedAsset.video_url ? (
+                                        /* Generate Video action for b_roll_footage without video */
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          onClick={handleGenerateAssetVideo}
+                                          disabled={isGeneratingAssetVideo}
+                                          className="gap-2"
+                                        >
+                                          {isGeneratingAssetVideo ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Film className="h-4 w-4" />
+                                          )}
+                                          Generate Video
+                                        </Button>
+                                      ) : (
+                                        /* Regenerate Image action for images/thumbnails */
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          onClick={handleGenerateAssetImage}
+                                          disabled={isGeneratingAssetImage}
+                                          className="gap-2"
+                                        >
+                                          {isGeneratingAssetImage ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <RefreshCw className="h-4 w-4" />
+                                          )}
+                                          Regenerate
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Generation loading overlay for image regeneration */}
+                                {isGeneratingAssetImage && (
+                                  <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                                    <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                                    <p className="text-sm text-[var(--grey-600)]">Regenerating image...</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         {/* Instructions section */}
                         {selectedAsset.instructions && (
                           <div className="p-4 border-b border-[var(--border)]">
@@ -1000,20 +1239,75 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                           </div>
                         )}
                         
-                        {/* Upload placeholder */}
-                        <div className="p-4">
-                          <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
-                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                              <Upload className="h-6 w-6 text-[var(--grey-300)]" />
-                            </div>
-                            <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                              Media Upload Coming Soon
-                            </h3>
-                            <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
-                              You&apos;ll be able to upload {selectedAsset.type === "thumbnail" || selectedAsset.type === "b_roll_image" ? "images" : "video files"} here.
-                            </p>
+                        {/* Reference Images section - always show for b_roll_footage and b_roll_image */}
+                        {(selectedAsset.type === "b_roll_footage" || selectedAsset.type === "b_roll_image") && (
+                          <div className="border-b border-[var(--border)]">
+                            <AssetReferenceImages
+                              referenceImages={selectedAsset.reference_images || []}
+                              projectImages={projectImages}
+                              assetId={selectedAsset.id}
+                              onLinkImage={async (refImageId, projectImageId) => {
+                                const result = await linkReferenceImage(refImageId, projectImageId);
+                                if (result.error) {
+                                  toast.error(result.error);
+                                } else {
+                                  router.refresh();
+                                }
+                              }}
+                              onUnlinkImage={async (refImageId) => {
+                                const result = await unlinkReferenceImage(refImageId);
+                                if (result.error) {
+                                  toast.error(result.error);
+                                } else {
+                                  router.refresh();
+                                }
+                              }}
+                              onUploadImage={async (refImageId, file) => {
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                const result = await uploadReferenceImage(refImageId, formData);
+                                if (result.error) {
+                                  toast.error(result.error);
+                                } else {
+                                  router.refresh();
+                                }
+                              }}
+                              onDeleteImage={async (refImageId) => {
+                                const result = await deleteReferenceImage(refImageId);
+                                if (result.error) {
+                                  toast.error(result.error);
+                                } else {
+                                  router.refresh();
+                                }
+                              }}
+                              onAddImage={async (description, projectImageId) => {
+                                const result = await addReferenceImage(selectedAsset.id, description, projectImageId);
+                                if (result.error) {
+                                  toast.error(result.error);
+                                } else {
+                                  router.refresh();
+                                }
+                              }}
+                            />
                           </div>
-                        </div>
+                        )}
+                        
+                        {/* Upload placeholder - only show for non-AI-generatable assets or assets without generated media */}
+                        {(!selectedAsset.is_ai_generatable || (selectedAsset.type !== "b_roll_footage" && selectedAsset.type !== "b_roll_image" && selectedAsset.type !== "thumbnail")) && (
+                          <div className="p-4">
+                            <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
+                              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                                <Upload className="h-6 w-6 text-[var(--grey-300)]" />
+                              </div>
+                              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                                Media Upload Coming Soon
+                              </h3>
+                              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
+                                You&apos;ll be able to upload {selectedAsset.type === "thumbnail" || selectedAsset.type === "b_roll_image" ? "images" : "video files"} here.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
