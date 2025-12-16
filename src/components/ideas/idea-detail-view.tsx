@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, FileText, Loader2, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, FileText, Loader2, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2052,43 +2052,6 @@ function AssetDetailView({
           </h4>
         </div>
         <div className="flex items-center gap-2">
-          {/* Completion checkbox */}
-          <button
-            onClick={() => handleToggleAssetComplete(asset.id)}
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded border transition-colors text-xs",
-              asset.is_complete
-                ? "bg-[#00975a]/10 border-[#00975a]/30 text-[#00975a]"
-                : "border-[var(--border)] text-[var(--grey-500)] hover:border-[var(--grey-400)]"
-            )}
-          >
-            <div className={cn(
-              "w-3.5 h-3.5 rounded border flex items-center justify-center",
-              asset.is_complete
-                ? "bg-[#00975a] border-[#00975a] text-white"
-                : "border-current"
-            )}>
-              {asset.is_complete && <Check className="h-2.5 w-2.5" />}
-            </div>
-            {asset.is_complete ? "Complete" : "Incomplete"}
-          </button>
-          
-          {/* Copy button */}
-          {asset.instructions && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                await navigator.clipboard.writeText(asset.instructions || "");
-                toast.success("Copied to clipboard");
-              }}
-              className="h-7 px-2"
-              title="Copy"
-            >
-              <Copy size={14} />
-            </Button>
-          )}
-          
           {/* Generate Image button */}
           {asset.is_ai_generatable && (asset.type === "b_roll_footage" || asset.type === "b_roll_image" || asset.type === "thumbnail") && (
             <Button
@@ -2130,224 +2093,310 @@ function AssetDetailView({
               <span className="text-xs">{asset.video_url ? "Regen Video" : "Generate Video"}</span>
             </Button>
           )}
+          
+          {/* Overflow menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7">
+                <MoreHorizontal size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* Complete/Incomplete toggle */}
+              <DropdownMenuItem onClick={() => handleToggleAssetComplete(asset.id)}>
+                <div className={cn(
+                  "w-3.5 h-3.5 rounded border flex items-center justify-center mr-2",
+                  asset.is_complete
+                    ? "bg-[#00975a] border-[#00975a] text-white"
+                    : "border-[var(--grey-400)]"
+                )}>
+                  {asset.is_complete && <Check className="h-2.5 w-2.5" />}
+                </div>
+                {asset.is_complete ? "Mark Incomplete" : "Mark Complete"}
+              </DropdownMenuItem>
+              
+              {/* Copy instructions */}
+              {asset.instructions && (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(asset.instructions || "");
+                    toast.success("Copied to clipboard");
+                  }}
+                >
+                  <Copy size={14} className="mr-2" />
+                  Copy Instructions
+                </DropdownMenuItem>
+              )}
+              
+              {/* Download options */}
+              {(asset.image_url || asset.video_url) && <DropdownMenuSeparator />}
+              
+              {asset.image_url && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = asset.image_url!;
+                    link.download = `${asset.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.png`;
+                    link.target = "_blank";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <Download size={14} className="mr-2" />
+                  Download Image
+                </DropdownMenuItem>
+              )}
+              
+              {asset.video_url && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = asset.video_url!;
+                    link.download = `${asset.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.mp4`;
+                    link.target = "_blank";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <Download size={14} className="mr-2" />
+                  Download Video
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        {/* Generated Media Section */}
-        {asset.is_ai_generatable && (asset.type === "b_roll_footage" || asset.type === "b_roll_image" || asset.type === "thumbnail") && (
-          <div className="p-4 border-b border-[var(--border)] max-w-2xl">
-            {/* Empty state - no image yet */}
-            {!asset.image_url && !isGeneratingAssetImage && (
-              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center")}>
-                {asset.type === "b_roll_footage" ? (
-                  <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
-                ) : (
-                  <ImageIcon className="h-8 w-8 text-[var(--grey-300)] mb-3" />
-                )}
-                <p className="text-sm text-[var(--grey-500)] mb-3">
-                  {asset.type === "b_roll_footage" ? "No video generated yet" : "No image generated yet"}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateAssetImage}
-                  className="gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Generate Image
-                </Button>
-              </div>
-            )}
-            
-            {/* Loading state for image generation */}
-            {isGeneratingAssetImage && !asset.image_url && (
-              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center")}>
-                <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
-              </div>
-            )}
-            
-            {/* Loading state for video generation */}
-            {isGeneratingAssetVideo && !asset.video_url && asset.image_url && (
-              <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
-                <Image 
-                  src={asset.image_url} 
-                  alt={asset.title} 
-                  fill 
-                  className="object-contain opacity-50" 
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
-                  <p className="text-sm text-[var(--grey-700)]">Generating video...</p>
+      {/* Content - Two column layout */}
+      <div className="flex-1 min-h-0 flex">
+        {/* Main area - Media Preview */}
+        <div className="flex-1 min-w-0 overflow-hidden p-4 flex items-center justify-center bg-[var(--grey-50)]">
+          {/* Generated Media Section */}
+          {asset.is_ai_generatable && (asset.type === "b_roll_footage" || asset.type === "b_roll_image" || asset.type === "thumbnail") && (
+            <div className="h-full w-full flex items-center justify-center">
+              {/* Empty state - no image yet */}
+              {!asset.image_url && !isGeneratingAssetImage && (
+                <div className="w-full max-w-md rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-white p-8 flex flex-col items-center justify-center">
+                  {asset.type === "b_roll_footage" ? (
+                    <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-[var(--grey-300)] mb-3" />
+                  )}
+                  <p className="text-sm text-[var(--grey-500)] mb-3">
+                    {asset.type === "b_roll_footage" ? "No video generated yet" : "No image generated yet"}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateAssetImage}
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Generate Image
+                  </Button>
                 </div>
-              </div>
-            )}
-            
-            {/* Generated Media */}
-            {asset.image_url && !isGeneratingAssetVideo && (
-              <div className="relative group">
-                {asset.type === "b_roll_footage" && asset.video_url ? (
-                  <div className="relative">
-                    <video 
-                      src={asset.video_url}
-                      poster={asset.image_url}
-                      controls 
-                      className={cn("w-full rounded-lg", getAspectRatioClass(idea.template?.orientation))}
-                    />
-                    <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                      <Film className="h-3 w-3" />
-                      Video
-                    </div>
-                    {isGeneratingAssetVideo && (
-                      <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
-                        <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                        <p className="text-sm text-[var(--grey-600)]">Regenerating video...</p>
-                      </div>
-                    )}
+              )}
+              
+              {/* Loading state for image generation */}
+              {isGeneratingAssetImage && !asset.image_url && (
+                <div className="w-full max-w-md rounded-lg bg-[var(--grey-100)] p-8 flex flex-col items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                  <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
+                </div>
+              )}
+              
+              {/* Loading state for video generation */}
+              {isGeneratingAssetVideo && !asset.video_url && asset.image_url && (
+                <div className="relative h-full w-full flex items-center justify-center">
+                  <img 
+                    src={asset.image_url} 
+                    alt={asset.title} 
+                    className="max-h-full max-w-full object-contain rounded-lg opacity-50" 
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
+                    <p className="text-sm text-[var(--grey-700)]">Generating video...</p>
                   </div>
-                ) : (
-                  <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
-                    <Image 
-                      src={asset.image_url} 
-                      alt={asset.title} 
-                      fill 
-                      className="object-contain" 
-                    />
-                    {asset.type === "b_roll_footage" && (
-                      <div className="absolute top-2 left-2 bg-black/40 text-white/80 px-2 py-1 rounded text-xs flex items-center gap-1">
+                </div>
+              )}
+              
+              {/* Generated Media */}
+              {asset.image_url && !isGeneratingAssetVideo && (
+                <div className="relative h-full w-full flex items-center justify-center group">
+                  {asset.type === "b_roll_footage" && asset.video_url ? (
+                    <div className="relative max-h-full max-w-full">
+                      <video 
+                        src={asset.video_url}
+                        poster={asset.image_url}
+                        controls 
+                        className="max-h-full max-w-full rounded-lg"
+                        style={{ maxHeight: 'calc(100vh - 200px)' }}
+                      />
+                      <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                         <Film className="h-3 w-3" />
-                        <span className="opacity-75">Video pending</span>
+                        Video
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      {asset.type === "b_roll_footage" && !asset.video_url ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleGenerateAssetVideo}
-                          disabled={isGeneratingAssetVideo}
-                          className="gap-2"
-                        >
-                          {isGeneratingAssetVideo ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Film className="h-4 w-4" />
-                          )}
-                          Generate Video
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleGenerateAssetImage}
-                          disabled={isGeneratingAssetImage}
-                          className="gap-2"
-                        >
-                          {isGeneratingAssetImage ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4" />
-                          )}
-                          Regenerate
-                        </Button>
+                      {isGeneratingAssetVideo && (
+                        <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                          <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                          <p className="text-sm text-[var(--grey-600)]">Regenerating video...</p>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
-                {isGeneratingAssetImage && (
-                  <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
-                    <p className="text-sm text-[var(--grey-600)]">Regenerating image...</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        
-        {/* Instructions section */}
-        {asset.instructions && (
-          <div className="p-4 border-b border-[var(--border)]">
-            <h5 className="text-xs font-semibold text-[var(--grey-500)] uppercase tracking-wider mb-2">
-              Instructions
-            </h5>
-            <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
-              <MarkdownDisplay content={asset.instructions} />
+                  ) : (
+                    <div className="relative max-h-full max-w-full">
+                      <img 
+                        src={asset.image_url} 
+                        alt={asset.title} 
+                        className="max-h-full max-w-full object-contain rounded-lg"
+                        style={{ maxHeight: 'calc(100vh - 200px)' }}
+                      />
+                      {asset.type === "b_roll_footage" && (
+                        <div className="absolute top-2 left-2 bg-black/40 text-white/80 px-2 py-1 rounded text-xs flex items-center gap-1">
+                          <Film className="h-3 w-3" />
+                          <span className="opacity-75">Video pending</span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        {asset.type === "b_roll_footage" && !asset.video_url ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleGenerateAssetVideo}
+                            disabled={isGeneratingAssetVideo}
+                            className="gap-2"
+                          >
+                            {isGeneratingAssetVideo ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Film className="h-4 w-4" />
+                            )}
+                            Generate Video
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleGenerateAssetImage}
+                            disabled={isGeneratingAssetImage}
+                            className="gap-2"
+                          >
+                            {isGeneratingAssetImage ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4" />
+                            )}
+                            Regenerate
+                          </Button>
+                        )}
+                      </div>
+                      {isGeneratingAssetImage && (
+                        <div className="absolute inset-0 rounded-lg bg-white/80 flex flex-col items-center justify-center">
+                          <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
+                          <p className="text-sm text-[var(--grey-600)]">Regenerating image...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        )}
-        
-        {/* Reference Images section */}
-        {(asset.type === "b_roll_footage" || asset.type === "b_roll_image") && (
-          <div className="border-b border-[var(--border)]">
-            <AssetReferenceImages
-              referenceImages={asset.reference_images || []}
-              projectImages={projectImages}
-              assetId={asset.id}
-              onLinkImage={async (refImageId, projectImageId) => {
-                const result = await linkReferenceImage(refImageId, projectImageId);
-                if (result.error) {
-                  toast.error(result.error);
-                } else {
-                  router.refresh();
-                }
-              }}
-              onUnlinkImage={async (refImageId) => {
-                const result = await unlinkReferenceImage(refImageId);
-                if (result.error) {
-                  toast.error(result.error);
-                } else {
-                  router.refresh();
-                }
-              }}
-              onUploadImage={async (refImageId, file) => {
-                const formData = new FormData();
-                formData.append("file", file);
-                const result = await uploadReferenceImage(refImageId, formData);
-                if (result.error) {
-                  toast.error(result.error);
-                } else {
-                  router.refresh();
-                }
-              }}
-              onDeleteImage={async (refImageId) => {
-                const result = await deleteReferenceImage(refImageId);
-                if (result.error) {
-                  toast.error(result.error);
-                } else {
-                  router.refresh();
-                }
-              }}
-              onAddImage={async (description, projectImageId) => {
-                const result = await addReferenceImage(asset.id, description, projectImageId);
-                if (result.error) {
-                  toast.error(result.error);
-                } else {
-                  router.refresh();
-                }
-              }}
-            />
-          </div>
-        )}
-        
-        {/* Upload placeholder for non-AI-generatable assets */}
-        {(!asset.is_ai_generatable || (asset.type !== "b_roll_footage" && asset.type !== "b_roll_image" && asset.type !== "thumbnail")) && (
-          <div className="p-4">
-            <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                <Upload className="h-6 w-6 text-[var(--grey-300)]" />
+          )}
+          
+          {/* Upload placeholder for non-AI-generatable assets */}
+          {(!asset.is_ai_generatable || (asset.type !== "b_roll_footage" && asset.type !== "b_roll_image" && asset.type !== "thumbnail")) && (
+            <div className="w-full max-w-md">
+              <div className="border-2 border-dashed border-[var(--grey-200)] rounded-lg p-8 text-center bg-white">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
+                  <Upload className="h-6 w-6 text-[var(--grey-300)]" />
+                </div>
+                <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
+                  Media Upload Coming Soon
+                </h3>
+                <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
+                  You&apos;ll be able to upload {asset.type === "thumbnail" || asset.type === "b_roll_image" ? "images" : "video files"} here.
+                </p>
               </div>
-              <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                Media Upload Coming Soon
-              </h3>
-              <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
-                You&apos;ll be able to upload {asset.type === "thumbnail" || asset.type === "b_roll_image" ? "images" : "video files"} here.
-              </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        
+        {/* Properties Sidebar */}
+        <div className="w-[300px] border-l border-[var(--border)] overflow-auto bg-white">
+          {/* Instructions section */}
+          {asset.instructions && (
+            <div className="p-4 border-b border-[var(--border)]">
+              <h5 className="text-xs font-semibold text-[var(--grey-500)] uppercase tracking-wider mb-2">
+                Instructions
+              </h5>
+              <div className="prose prose-sm max-w-none text-[var(--grey-700)]">
+                <MarkdownDisplay content={asset.instructions} />
+              </div>
+            </div>
+          )}
+          
+          {/* Reference Images section */}
+          {(asset.type === "b_roll_footage" || asset.type === "b_roll_image") && (
+            <div className="border-b border-[var(--border)]">
+              <AssetReferenceImages
+                referenceImages={asset.reference_images || []}
+                projectImages={projectImages}
+                assetId={asset.id}
+                onLinkImage={async (refImageId, projectImageId) => {
+                  const result = await linkReferenceImage(refImageId, projectImageId);
+                  if (result.error) {
+                    toast.error(result.error);
+                  } else {
+                    router.refresh();
+                  }
+                }}
+                onUnlinkImage={async (refImageId) => {
+                  const result = await unlinkReferenceImage(refImageId);
+                  if (result.error) {
+                    toast.error(result.error);
+                  } else {
+                    router.refresh();
+                  }
+                }}
+                onUploadImage={async (refImageId, file) => {
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const result = await uploadReferenceImage(refImageId, formData);
+                  if (result.error) {
+                    toast.error(result.error);
+                  } else {
+                    router.refresh();
+                  }
+                }}
+                onDeleteImage={async (refImageId) => {
+                  const result = await deleteReferenceImage(refImageId);
+                  if (result.error) {
+                    toast.error(result.error);
+                  } else {
+                    router.refresh();
+                  }
+                }}
+                onAddImage={async (description, projectImageId) => {
+                  const result = await addReferenceImage(asset.id, description, projectImageId);
+                  if (result.error) {
+                    toast.error(result.error);
+                  } else {
+                    router.refresh();
+                  }
+                }}
+              />
+            </div>
+          )}
+          
+          {/* Empty state when no properties to show */}
+          {!asset.instructions && asset.type !== "b_roll_footage" && asset.type !== "b_roll_image" && (
+            <div className="p-4 text-center text-[var(--grey-400)] text-sm">
+              No properties available
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
