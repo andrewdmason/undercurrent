@@ -1394,7 +1394,7 @@ insert into public.project_images (
   updated_at
 ) values
   (
-    'img00001-1111-1111-1111-111111111111',
+    'a0000001-1111-1111-1111-111111111111',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/branded-gaming-table.jpg',
     'Branded Gaming Table',
@@ -1403,7 +1403,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00002-2222-2222-2222-222222222222',
+    'a0000002-2222-2222-2222-222222222222',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/corner-booth.jpg',
     'Green Leather Corner Booth',
@@ -1412,7 +1412,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00003-3333-3333-3333-333333333333',
+    'a0000003-3333-3333-3333-333333333333',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/vinyl-listening-station.jpg',
     'Vinyl & Games Station',
@@ -1421,7 +1421,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00004-4444-4444-4444-444444444444',
+    'a0000004-4444-4444-4444-444444444444',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/lounge-area.jpg',
     'Main Lounge Area',
@@ -1430,7 +1430,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00005-5555-5555-5555-555555555555',
+    'a0000005-5555-5555-5555-555555555555',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/lounge-alternate-view.jpg',
     'Lounge Wide Shot',
@@ -1439,7 +1439,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00006-6666-6666-6666-666666666666',
+    'a0000006-6666-6666-6666-666666666666',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/elegant-booth-render.jpg',
     'Premium Booth Concept',
@@ -1448,7 +1448,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00007-7777-7777-7777-777777777777',
+    'a0000007-7777-7777-7777-777777777777',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/cafe-seating-mural.jpg',
     'Café Seating with Mural',
@@ -1457,7 +1457,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00008-8888-8888-8888-888888888888',
+    'a0000008-8888-8888-8888-888888888888',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/library-nook-render.jpg',
     'Library Nook Concept',
@@ -1466,7 +1466,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00009-9999-9999-9999-999999999999',
+    'a0000009-9999-9999-9999-999999999999',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/card-catalog-counter.jpg',
     'Card Catalog Counter',
@@ -1475,7 +1475,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00010-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'a000000a-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/storefront-sign-painting.jpg',
     'Storefront Sign Painting',
@@ -1484,7 +1484,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00011-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    'a000000b-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/brick-lounge-render.jpg',
     'Brick Wall Lounge Concept',
@@ -1493,7 +1493,7 @@ insert into public.project_images (
     now()
   ),
   (
-    'img00012-cccc-cccc-cccc-cccccccccccc',
+    'a000000c-cccc-cccc-cccc-cccccccccccc',
     'b1c2d3e4-f5a6-7890-bcde-f12345678901',
     '/seed/images/game-night-action.jpg',
     'Game Night in Action',

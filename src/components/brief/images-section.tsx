@@ -15,7 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, ImageIcon, X, Loader2, Pencil } from "lucide-react";
+import { Plus, Trash2, ImageIcon, X, Loader2, Pencil, Sparkles } from "lucide-react";
+import { useBrief } from "@/components/brief/brief-context";
 import { cn } from "@/lib/utils";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -26,10 +27,12 @@ interface ImagesSectionProps {
 }
 
 export function ImagesSection({ projectId, images }: ImagesSectionProps) {
+  const { project } = useBrief();
   const [imageList, setImageList] = useState<ProjectImage[]>(images);
-  const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [editingImage, setEditingImage] = useState<ProjectImage | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,23 +52,18 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
     }
 
     setUploadError(null);
-    setIsUploading(true);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const result = await uploadProjectImage(projectId, formData);
-
-    setIsUploading(false);
-
-    if (result.error) {
-      setUploadError(result.error);
-    } else if (result.image) {
-      setImageList([result.image, ...imageList]);
-    }
+    
+    // Create a preview URL and open the dialog
+    const previewUrl = URL.createObjectURL(file);
+    setPendingFile(file);
+    setPendingPreviewUrl(previewUrl);
+    setEditingImage(null);
+    setIsDialogOpen(true);
   };
 
   const handleEdit = (image: ProjectImage) => {
+    setPendingFile(null);
+    setPendingPreviewUrl(null);
     setEditingImage(image);
     setIsDialogOpen(true);
   };
@@ -73,9 +71,14 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingImage(null);
+    if (pendingPreviewUrl) {
+      URL.revokeObjectURL(pendingPreviewUrl);
+    }
+    setPendingFile(null);
+    setPendingPreviewUrl(null);
   };
 
-  const handleSave = async (data: { title: string; description: string }) => {
+  const handleSaveExisting = async (data: { title: string; description: string }) => {
     if (!editingImage) return;
 
     await updateProjectImage(editingImage.id, projectId, {
@@ -90,6 +93,40 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
           : img
       )
     );
+
+    handleCloseDialog();
+  };
+
+  const handleSaveNew = async (data: { title: string; description: string }) => {
+    if (!pendingFile) return;
+
+    const formData = new FormData();
+    formData.append("file", pendingFile);
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+
+    const result = await uploadProjectImage(projectId, formData);
+
+    if (result.error) {
+      throw new Error(result.error);
+    } else if (result.image) {
+      // Override with user-provided title/description
+      const imageWithUserData = {
+        ...result.image,
+        title: data.title || result.image.title,
+        description: data.description || result.image.description,
+      };
+      
+      // Update the record if user provided custom values
+      if (data.title || data.description) {
+        await updateProjectImage(result.image.id, projectId, {
+          title: data.title || null,
+          description: data.description || null,
+        });
+      }
+      
+      setImageList([imageWithUserData, ...imageList]);
+    }
 
     handleCloseDialog();
   };
@@ -115,20 +152,10 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
             className="h-8 text-xs"
           >
-            {isUploading ? (
-              <>
-                <Loader2 size={14} className="mr-1 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Plus size={14} className="mr-1" />
-                Add Image
-              </>
-            )}
+            <Plus size={14} className="mr-1" />
+            Add Image
           </Button>
           <input
             ref={fileInputRef}
@@ -165,24 +192,16 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
         {/* Upload placeholder card */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
           className={cn(
             "aspect-[4/3] rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-25)]",
             "flex flex-col items-center justify-center gap-2",
             "hover:border-[var(--grey-300)] hover:bg-[var(--grey-50)] transition-colors",
-            "cursor-pointer",
-            isUploading && "opacity-50 cursor-not-allowed"
+            "cursor-pointer"
           )}
         >
-          {isUploading ? (
-            <Loader2 size={24} className="text-[var(--grey-400)] animate-spin" />
-          ) : (
-            <>
-              <ImageIcon size={24} className="text-[var(--grey-400)]" />
-              <span className="text-xs text-[var(--grey-400)]">Upload Image</span>
-              <span className="text-[10px] text-[var(--grey-300)]">Max 5MB</span>
-            </>
-          )}
+          <ImageIcon size={24} className="text-[var(--grey-400)]" />
+          <span className="text-xs text-[var(--grey-400)]">Upload Image</span>
+          <span className="text-[10px] text-[var(--grey-300)]">Max 5MB</span>
         </button>
       </div>
 
@@ -195,8 +214,12 @@ export function ImagesSection({ projectId, images }: ImagesSectionProps) {
       <ImageEditDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
-        onSave={handleSave}
+        onSave={editingImage ? handleSaveExisting : handleSaveNew}
         image={editingImage}
+        pendingFile={pendingFile}
+        pendingPreviewUrl={pendingPreviewUrl}
+        projectDescription={project.description || ""}
+        isNewImage={!!pendingFile}
       />
     </div>
   );
@@ -259,22 +282,30 @@ interface ImageEditDialogProps {
   onClose: () => void;
   onSave: (data: { title: string; description: string }) => Promise<void>;
   image: ProjectImage | null;
+  pendingFile: File | null;
+  pendingPreviewUrl: string | null;
+  projectDescription: string;
+  isNewImage: boolean;
 }
 
-function ImageEditDialog({ isOpen, onClose, onSave, image }: ImageEditDialogProps) {
+function ImageEditDialog({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  image, 
+  pendingFile,
+  pendingPreviewUrl,
+  projectDescription,
+  isNewImage,
+}: ImageEditDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Reset form when dialog opens/closes
-  useState(() => {
-    if (isOpen && image) {
-      setTitle(image.title || "");
-      setDescription(image.description || "");
-    }
-  });
-
-  // Update form when image changes
+  // Update form when image changes (for editing existing)
   if (isOpen && image && title === "" && description === "" && (image.title || image.description)) {
     setTitle(image.title || "");
     setDescription(image.description || "");
@@ -282,29 +313,92 @@ function ImageEditDialog({ isOpen, onClose, onSave, image }: ImageEditDialogProp
 
   const handleSubmit = async () => {
     setIsSaving(true);
-    await onSave({
-      title: title.trim(),
-      description: description.trim(),
-    });
-    setIsSaving(false);
-    setTitle("");
-    setDescription("");
+    setSaveError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        description: description.trim(),
+      });
+      setTitle("");
+      setDescription("");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClose = () => {
     setTitle("");
     setDescription("");
+    setAiError(null);
+    setSaveError(null);
     onClose();
   };
 
-  if (!image) return null;
+  const handleGenerateWithAI = async () => {
+    setIsGenerating(true);
+    setAiError(null);
+    
+    try {
+      let dataUrl: string;
+      
+      if (pendingFile) {
+        // For new images, use the pending file
+        const arrayBuffer = await pendingFile.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        const mimeType = pendingFile.type || "image/jpeg";
+        dataUrl = `data:${mimeType};base64,${base64}`;
+      } else if (image) {
+        // For existing images, fetch from URL
+        const imageResponse = await fetch(image.image_url);
+        const blob = await imageResponse.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        const mimeType = blob.type || "image/jpeg";
+        dataUrl = `data:${mimeType};base64,${base64}`;
+      } else {
+        throw new Error("No image to analyze");
+      }
+      
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: dataUrl,
+          projectDescription,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze image");
+      }
+
+      const result = await response.json();
+      if (result.title) setTitle(result.title);
+      if (result.description) setDescription(result.description);
+    } catch (e) {
+      console.error("Error generating with AI:", e);
+      setAiError(e instanceof Error ? e.message : "Failed to generate with AI");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const imageUrl = pendingPreviewUrl || image?.image_url;
+  if (!imageUrl) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[520px] rounded-lg">
         <DialogHeader className="px-4 min-h-8">
           <DialogTitle className="text-xs font-semibold text-[var(--grey-800)]">
-            Edit Image Details
+            {isNewImage ? "Add Image" : "Edit Image Details"}
           </DialogTitle>
         </DialogHeader>
 
@@ -313,12 +407,41 @@ function ImageEditDialog({ isOpen, onClose, onSave, image }: ImageEditDialogProp
           <div className="flex justify-center">
             <div className="w-full max-w-[280px] aspect-[4/3] rounded-lg overflow-hidden bg-[var(--grey-100)]">
               <img
-                src={image.image_url}
-                alt={image.title || "Reference image"}
+                src={imageUrl}
+                alt={title || "Reference image"}
                 className="w-full h-full object-cover"
               />
             </div>
           </div>
+
+          {/* AI Generation button */}
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateWithAI}
+              disabled={isGenerating || isSaving}
+              className="h-8 text-xs"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} className="mr-1.5" />
+                  Generate with AI
+                </>
+              )}
+            </Button>
+          </div>
+
+          {(aiError || saveError) && (
+            <div className="p-2 rounded-lg bg-red-50 border border-red-200">
+              <p className="text-xs text-red-600">{aiError || saveError}</p>
+            </div>
+          )}
 
           {/* Title input */}
           <div className="space-y-1.5">
@@ -363,10 +486,10 @@ function ImageEditDialog({ isOpen, onClose, onSave, image }: ImageEditDialogProp
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={isSaving}
+              disabled={isSaving || isGenerating}
               className="h-8 text-xs"
             >
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? (isNewImage ? "Uploading..." : "Saving...") : (isNewImage ? "Upload Image" : "Save Changes")}
             </Button>
           </div>
         </div>

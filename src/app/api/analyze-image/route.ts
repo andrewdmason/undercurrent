@@ -49,7 +49,6 @@ export async function POST(request: Request) {
         },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 500,
     });
 
     const responseText = completion.choices[0]?.message?.content;

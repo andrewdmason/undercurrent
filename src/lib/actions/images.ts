@@ -181,11 +181,17 @@ export async function uploadProjectImage(
   let description: string | null = null;
 
   try {
+    // Convert file to base64 for AI analysis (OpenAI can't access local URLs)
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const mimeType = file.type || "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analyze-image`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        imageUrl: publicUrl,
+        imageUrl: dataUrl,
         projectDescription: project?.description || "",
       }),
     });
@@ -194,6 +200,8 @@ export async function uploadProjectImage(
       const result = await response.json();
       title = result.title;
       description = result.description;
+    } else {
+      console.error("AI analysis failed:", await response.text());
     }
   } catch (e) {
     console.error("Error analyzing image:", e);
