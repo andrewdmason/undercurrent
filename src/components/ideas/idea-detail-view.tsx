@@ -233,24 +233,21 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     if (isGeneratingAssets) return;
 
     setIsGeneratingAssets(true);
-    
-    const promise = generateProductionAssets(idea.id).then((result) => {
-      setIsGeneratingAssets(false);
+
+    try {
+      const result = await generateProductionAssets(idea.id);
       if (result.error) {
-        throw new Error(result.error);
+        toast.error(result.error);
+      } else {
+        toast.success("Production assets generated");
+        router.refresh();
       }
-      router.refresh();
-      return result;
-    }).catch((err) => {
+    } catch (error) {
+      toast.error("Failed to generate production assets");
+      console.error(error);
+    } finally {
       setIsGeneratingAssets(false);
-      throw err;
-    });
-    
-    toast.promise(promise, {
-      loading: "Generating production assets...",
-      success: "Production assets generated",
-      error: (err) => err.message || "Failed to generate production assets",
-    });
+    }
   };
 
   const handleGenerateTalkingPoints = async (notes?: string) => {
