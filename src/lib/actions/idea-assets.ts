@@ -678,7 +678,7 @@ export async function generateProductionAssets(
     }
 
     // Filter to only production asset types
-    const productionTypes: AssetType[] = ["a_roll", "b_roll_footage", "b_roll_screen_recording", "thumbnail"];
+    const productionTypes: AssetType[] = ["a_roll", "b_roll_footage", "b_roll_image", "b_roll_screen_recording", "thumbnail"];
     const validAssets = generatedAssets.filter(a => productionTypes.includes(a.type));
 
     // Delete existing production assets (keep talking_points and script)

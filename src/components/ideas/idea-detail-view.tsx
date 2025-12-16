@@ -719,6 +719,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                     {(asset.type === "talking_points" || asset.type === "script") && <FileText className="h-3.5 w-3.5" />}
                                     {asset.type === "a_roll" && <User className="h-3.5 w-3.5" />}
                                     {asset.type === "b_roll_footage" && <Film className="h-3.5 w-3.5" />}
+                                    {asset.type === "b_roll_image" && <ImageIcon className="h-3.5 w-3.5" />}
                                     {asset.type === "b_roll_screen_recording" && <Monitor className="h-3.5 w-3.5" />}
                                     {asset.type === "thumbnail" && <ImageIcon className="h-3.5 w-3.5" />}
                                   </span>
@@ -1009,7 +1010,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                               Media Upload Coming Soon
                             </h3>
                             <p className="text-xs text-[var(--grey-400)] max-w-[200px] mx-auto">
-                              You&apos;ll be able to upload {selectedAsset.type === "thumbnail" ? "images" : "video files"} here.
+                              You&apos;ll be able to upload {selectedAsset.type === "thumbnail" || selectedAsset.type === "b_roll_image" ? "images" : "video files"} here.
                             </p>
                           </div>
                         </div>
