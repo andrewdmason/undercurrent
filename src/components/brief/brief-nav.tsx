@@ -14,6 +14,7 @@ const tabs = [
   { label: "Channels", href: "/channels" },
   { label: "Characters", href: "/characters" },
   { label: "Templates", href: "/templates" },
+  { label: "Images", href: "/images" },
 ];
 
 export function BriefNav({ slug }: BriefNavProps) {

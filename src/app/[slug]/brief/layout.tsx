@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole } from "@/lib/types";
+import { Project, ProjectCharacter, DistributionChannel, ProjectTopic, ProjectTemplateWithChannels, ProjectRole, ProjectImage } from "@/lib/types";
 import { BriefNav } from "@/components/brief/brief-nav";
 import { BriefProvider } from "@/components/brief/brief-context";
 
@@ -93,10 +93,18 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
+  // Get images for this project
+  const { data: images } = await supabase
+    .from("project_images")
+    .select("*")
+    .eq("project_id", project.id)
+    .order("created_at", { ascending: false });
+
   const typedProject = project as Project;
   const typedCharacters = (characters || []) as ProjectCharacter[];
   const typedChannels = (distributionChannels || []) as DistributionChannel[];
   const typedTopics = (topics || []) as ProjectTopic[];
+  const typedImages = (images || []) as ProjectImage[];
   const typedRejectedIdeas = (rejectedIdeas || []).map((idea) => ({
     id: idea.id,
     title: idea.title,
@@ -148,6 +156,7 @@ export default async function BriefLayout({ children, params }: BriefLayoutProps
               channels={typedChannels}
               topics={typedTopics}
               templates={typedTemplates}
+              images={typedImages}
               rejectedIdeas={typedRejectedIdeas}
               userRole={userRole}
             >

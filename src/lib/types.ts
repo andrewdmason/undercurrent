@@ -63,6 +63,16 @@ export interface ProjectCharacter {
   updated_at: string;
 }
 
+export interface ProjectImage {
+  id: string;
+  project_id: string;
+  image_url: string;
+  title: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;
