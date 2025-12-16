@@ -10,6 +10,9 @@ export const TEXT_MODEL = "gemini-3-pro-preview";
 // Model for image generation (Nano Banana Pro Preview - Gemini 3 Pro Image)
 export const IMAGE_MODEL = "gemini-3-pro-image-preview";
 
+// Model for video generation (Veo 3)
+export const VIDEO_MODEL = "veo-3.0-generate-preview";
+
 // Standard aspect ratio for all thumbnails (landscape)
 export const THUMBNAIL_ASPECT_RATIO = "16:9";
 

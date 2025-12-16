@@ -5,7 +5,9 @@ import { openai, DEFAULT_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
-import { IdeaAsset, GeneratedAsset, AssetType } from "@/lib/types";
+import { IdeaAsset, GeneratedAsset, AssetType, ProjectImage, IdeaAssetReferenceImage } from "@/lib/types";
+import { findBestMatches, MATCH_THRESHOLD } from "@/lib/embeddings";
+import { genai, IMAGE_MODEL, VIDEO_MODEL } from "@/lib/gemini";
 
 // Helper to get project slug and revalidate paths
 async function revalidateIdeaPaths(ideaId: string) {
@@ -80,7 +82,8 @@ export async function toggleAssetComplete(
 export async function updateAssetContent(
   assetId: string,
   contentText?: string | null,
-  contentUrl?: string | null
+  imageUrl?: string | null,
+  videoUrl?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
@@ -101,8 +104,11 @@ export async function updateAssetContent(
   if (contentText !== undefined) {
     updateData.content_text = contentText;
   }
-  if (contentUrl !== undefined) {
-    updateData.content_url = contentUrl;
+  if (imageUrl !== undefined) {
+    updateData.image_url = imageUrl;
+  }
+  if (videoUrl !== undefined) {
+    updateData.video_url = videoUrl;
   }
 
   const { error } = await supabase
@@ -598,6 +604,72 @@ export async function generateScript(
   }
 }
 
+// Helper to process reference images for generated assets
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function processReferenceImages(
+  supabase: any,
+  generatedAssets: GeneratedAsset[],
+  insertedAssets: IdeaAsset[],
+  projectId: string
+): Promise<void> {
+  // Collect all reference image descriptions across all assets
+  const allRefImages: { assetIndex: number; description: string }[] = [];
+  
+  for (let i = 0; i < generatedAssets.length; i++) {
+    const genAsset = generatedAssets[i];
+    if (genAsset.reference_images && genAsset.reference_images.length > 0) {
+      for (const refImg of genAsset.reference_images) {
+        allRefImages.push({ assetIndex: i, description: refImg.description });
+      }
+    }
+  }
+  
+  if (allRefImages.length === 0) return;
+  
+  // Fetch project images for matching
+  const { data: projectImages } = await supabase
+    .from("project_images")
+    .select("*")
+    .eq("project_id", projectId);
+  
+  const projectImagesTyped = (projectImages || []) as ProjectImage[];
+  
+  // Find matches using embeddings
+  let matches: Map<string, { item: ProjectImage; similarity: number } | null>;
+  
+  if (projectImagesTyped.length > 0) {
+    const descriptions = allRefImages.map((r) => r.description);
+    matches = await findBestMatches(descriptions, projectImagesTyped, MATCH_THRESHOLD);
+  } else {
+    // No project images, all will be unmatched
+    matches = new Map(allRefImages.map((r) => [r.description, null]));
+  }
+  
+  // Create reference image records
+  const refImagesToInsert = allRefImages.map((refImg) => {
+    const match = matches.get(refImg.description);
+    const insertedAsset = insertedAssets[refImg.assetIndex];
+    
+    return {
+      idea_asset_id: insertedAsset.id,
+      description: refImg.description,
+      project_image_id: match?.item.id || null,
+      uploaded_url: null,
+    };
+  });
+  
+  if (refImagesToInsert.length > 0) {
+    const { error: refImgError } = await supabase
+      .from("idea_asset_reference_images")
+      .insert(refImagesToInsert);
+    
+    if (refImgError) {
+      console.error("Error inserting reference images:", refImgError);
+      // Non-fatal - assets were still created
+    }
+  }
+}
+
 // Generate production assets (a_roll, b_roll, thumbnail) based on talking points/script
 export async function generateProductionAssets(
   ideaId: string
@@ -722,6 +794,14 @@ export async function generateProductionAssets(
       throw new Error(`Failed to save assets: ${insertError.message}`);
     }
 
+    // Process reference images for each asset
+    await processReferenceImages(
+      supabase,
+      validAssets,
+      insertedAssets as IdeaAsset[],
+      idea.project_id
+    );
+
     await revalidateIdeaPaths(ideaId);
     return { success: true, assets: insertedAssets as IdeaAsset[] };
   } catch (error) {
@@ -789,4 +869,324 @@ export async function deleteIdeaAssets(ideaId: string): Promise<{ success: boole
   return { success: true };
 }
 
+// Helper to fetch image as base64 for Gemini multimodal input
+async function fetchImageAsBase64(
+  imageUrl: string
+): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    // Handle local seed images (they start with /seed/)
+    if (imageUrl.startsWith("/seed/")) {
+      const fs = await import("fs/promises");
+      const pathModule = await import("path");
+      const filePath = pathModule.join(process.cwd(), "public", imageUrl);
+      const buffer = await fs.readFile(filePath);
+      const base64 = buffer.toString("base64");
+      const ext = imageUrl.split(".").pop()?.toLowerCase();
+      const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+      return { data: base64, mimeType };
+    }
+
+    // Handle remote URLs
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.error(`Failed to fetch image: ${response.statusText}`);
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    return { data: base64, mimeType: contentType };
+  } catch (error) {
+    console.error("Error fetching image:", error);
+    return null;
+  }
+}
+
+// Helper to extract a section from markdown-style instructions
+function extractPromptSection(instructions: string | null, sectionName: string): string | null {
+  if (!instructions) return null;
+  
+  const regex = new RegExp(`\\*\\*${sectionName}\\*\\*\\s*\\n([\\s\\S]*?)(?=\\n\\*\\*|$)`, "i");
+  const match = instructions.match(regex);
+  return match ? match[1].trim() : null;
+}
+
+// Generate an image for an asset using Nano Banana (Gemini 3 Pro Image Preview)
+export async function generateAssetImage(
+  assetId: string
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  const supabase = await createClient();
+
+  // Fetch the asset with its reference images
+  const { data: asset, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select(`
+      *,
+      ideas!inner(id, project_id, projects(slug))
+    `)
+    .eq("id", assetId)
+    .single();
+
+  if (fetchError || !asset) {
+    return { success: false, error: "Asset not found" };
+  }
+
+  // Only allow image generation for AI-generatable assets
+  if (!asset.is_ai_generatable) {
+    return { success: false, error: "This asset type does not support AI image generation" };
+  }
+
+  // Extract the Image Prompt from instructions
+  const imagePrompt = extractPromptSection(asset.instructions, "Image Prompt");
+  if (!imagePrompt) {
+    return { success: false, error: "No Image Prompt found in asset instructions" };
+  }
+
+  // Fetch reference images for this asset
+  const { data: refImages } = await supabase
+    .from("idea_asset_reference_images")
+    .select(`
+      *,
+      project_images(*)
+    `)
+    .eq("idea_asset_id", assetId);
+
+  const refImagesTyped = (refImages || []) as (IdeaAssetReferenceImage & { 
+    project_images: ProjectImage | null 
+  })[];
+
+  // Build the prompt with context
+  let promptText = `Generate an image based on this description:\n\n${imagePrompt}`;
+  
+  if (refImagesTyped.length > 0) {
+    promptText += `\n\nI'm providing reference images to help guide the style and subject matter. Use these as visual reference for accuracy.`;
+  }
+
+  try {
+    // Build the content parts for Gemini
+    const contents: (string | { inlineData: { data: string; mimeType: string } })[] = [promptText];
+
+    // Add reference images as multimodal input
+    for (const refImg of refImagesTyped) {
+      // Get the image URL (either from project_images or uploaded_url)
+      const imgUrl = refImg.project_images?.image_url || refImg.uploaded_url;
+      if (imgUrl) {
+        const imageData = await fetchImageAsBase64(imgUrl);
+        if (imageData) {
+          contents.push({
+            inlineData: {
+              data: imageData.data,
+              mimeType: imageData.mimeType,
+            },
+          });
+        }
+      }
+    }
+
+    // Call Gemini for image generation
+    const response = await genai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: contents,
+    });
+
+    // Extract the generated image from the response
+    let imageData: string | null = null;
+    let imageMimeType: string = "image/png";
+
+    if (response.candidates && response.candidates[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          imageData = part.inlineData.data || null;
+          imageMimeType = part.inlineData.mimeType || "image/png";
+          break;
+        }
+      }
+    }
+
+    if (!imageData) {
+      console.error("No image generated in response:", response);
+      return { success: false, error: "No image was generated" };
+    }
+
+    // Convert base64 to buffer for upload
+    const imageBuffer = Buffer.from(imageData, "base64");
+    const fileExt = imageMimeType === "image/png" ? "png" : "jpg";
+    const idea = asset.ideas as { id: string; project_id: string; projects: { slug: string } | null };
+    const fileName = `${idea.project_id}/${asset.idea_id}/${assetId}-${Date.now()}.${fileExt}`;
+
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from("asset-images")
+      .upload(fileName, imageBuffer, {
+        contentType: imageMimeType,
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Error uploading image:", uploadError);
+      return { success: false, error: `Failed to upload image: ${uploadError.message}` };
+    }
+
+    // Get the public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("asset-images").getPublicUrl(fileName);
+
+    // Update the asset with the new image URL
+    const { error: updateError } = await supabase
+      .from("idea_assets")
+      .update({ image_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", assetId);
+
+    if (updateError) {
+      console.error("Error updating asset:", updateError);
+      return { success: false, error: `Failed to update asset: ${updateError.message}` };
+    }
+
+    // Revalidate paths
+    if (idea.projects?.slug) {
+      revalidatePath(`/${idea.projects.slug}`);
+      revalidatePath(`/${idea.projects.slug}/ideas/${asset.idea_id}`);
+    }
+
+    return { success: true, imageUrl: publicUrl };
+  } catch (error) {
+    console.error("Error generating asset image:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    return { success: false, error: errorMessage };
+  }
+}
+
+// Generate a video for an asset using Veo3
+export async function generateAssetVideo(
+  assetId: string
+): Promise<{ success: boolean; videoUrl?: string; error?: string }> {
+  const supabase = await createClient();
+
+  // Fetch the asset
+  const { data: asset, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select(`
+      *,
+      ideas!inner(id, project_id, projects(slug))
+    `)
+    .eq("id", assetId)
+    .single();
+
+  if (fetchError || !asset) {
+    return { success: false, error: "Asset not found" };
+  }
+
+  // Require an image to exist first (image-to-video workflow)
+  if (!asset.image_url) {
+    return { success: false, error: "Asset must have an image before generating video. Generate the image first." };
+  }
+
+  // Only allow for b_roll_footage type
+  if (asset.type !== "b_roll_footage") {
+    return { success: false, error: "Video generation is only supported for b_roll_footage assets" };
+  }
+
+  // Extract the Video Prompt from instructions
+  const videoPrompt = extractPromptSection(asset.instructions, "Video Prompt");
+  if (!videoPrompt) {
+    return { success: false, error: "No Video Prompt found in asset instructions" };
+  }
+
+  try {
+    // Fetch the source image
+    const sourceImage = await fetchImageAsBase64(asset.image_url);
+    if (!sourceImage) {
+      return { success: false, error: "Failed to fetch source image for video generation" };
+    }
+
+    // Build the content for Veo3 - image + video prompt
+    const contents = [
+      {
+        inlineData: {
+          data: sourceImage.data,
+          mimeType: sourceImage.mimeType,
+        },
+      },
+      `Animate this image into a video. ${videoPrompt}`,
+    ];
+
+    // Call Veo3 for video generation
+    const response = await genai.models.generateContent({
+      model: VIDEO_MODEL,
+      contents: contents,
+    });
+
+    // Extract the generated video from the response
+    let videoData: string | null = null;
+    let videoMimeType: string = "video/mp4";
+
+    if (response.candidates && response.candidates[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        // Veo3 returns video data in inlineData
+        if (part.inlineData && part.inlineData.mimeType?.startsWith("video/")) {
+          videoData = part.inlineData.data || null;
+          videoMimeType = part.inlineData.mimeType || "video/mp4";
+          break;
+        }
+      }
+    }
+
+    if (!videoData) {
+      console.error("No video generated in response:", response);
+      return { success: false, error: "No video was generated" };
+    }
+
+    // Convert base64 to buffer for upload
+    const videoBuffer = Buffer.from(videoData, "base64");
+    const fileExt = videoMimeType === "video/webm" ? "webm" : "mp4";
+    const idea = asset.ideas as { id: string; project_id: string; projects: { slug: string } | null };
+    const fileName = `${idea.project_id}/${asset.idea_id}/${assetId}-${Date.now()}.${fileExt}`;
+
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from("asset-videos")
+      .upload(fileName, videoBuffer, {
+        contentType: videoMimeType,
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Error uploading video:", uploadError);
+      return { success: false, error: `Failed to upload video: ${uploadError.message}` };
+    }
+
+    // Get the public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("asset-videos").getPublicUrl(fileName);
+
+    // Update the asset with the new video URL
+    const { error: updateError } = await supabase
+      .from("idea_assets")
+      .update({ video_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", assetId);
+
+    if (updateError) {
+      console.error("Error updating asset:", updateError);
+      return { success: false, error: `Failed to update asset: ${updateError.message}` };
+    }
+
+    // Revalidate paths
+    if (idea.projects?.slug) {
+      revalidatePath(`/${idea.projects.slug}`);
+      revalidatePath(`/${idea.projects.slug}/ideas/${asset.idea_id}`);
+    }
+
+    return { success: true, videoUrl: publicUrl };
+  } catch (error) {
+    console.error("Error generating asset video:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    return { success: false, error: errorMessage };
+  }
+}
 
