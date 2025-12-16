@@ -43,6 +43,11 @@ import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 import { AssetReferenceImages } from "./asset-reference-images";
 
+// Helper to get aspect ratio class based on template orientation
+function getAspectRatioClass(orientation: "vertical" | "horizontal" | null | undefined): string {
+  return orientation === "vertical" ? "aspect-[9/16]" : "aspect-video";
+}
+
 interface IdeaDetailViewProps {
   idea: IdeaWithChannels;
   projectId: string;
@@ -1083,7 +1088,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                           <div className="p-4 border-b border-[var(--border)]">
                             {/* Empty state - no image yet */}
                             {!selectedAsset.image_url && !isGeneratingAssetImage && (
-                              <div className="aspect-video rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center">
+                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg border-2 border-dashed border-[var(--grey-200)] bg-[var(--grey-50)] flex flex-col items-center justify-center")}>
                                 {selectedAsset.type === "b_roll_footage" ? (
                                   <Film className="h-8 w-8 text-[var(--grey-300)] mb-3" />
                                 ) : (
@@ -1106,7 +1111,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             
                             {/* Loading state for image generation */}
                             {isGeneratingAssetImage && !selectedAsset.image_url && (
-                              <div className="aspect-video rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center">
+                              <div className={cn(getAspectRatioClass(idea.template?.orientation), "rounded-lg bg-[var(--grey-100)] flex flex-col items-center justify-center")}>
                                 <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
                                 <p className="text-sm text-[var(--grey-600)]">Generating image...</p>
                               </div>
@@ -1114,12 +1119,12 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                             
                             {/* Loading state for video generation */}
                             {isGeneratingAssetVideo && !selectedAsset.video_url && selectedAsset.image_url && (
-                              <div className="relative aspect-video rounded-lg overflow-hidden bg-[var(--grey-100)]">
+                              <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
                                 <Image 
                                   src={selectedAsset.image_url} 
                                   alt={selectedAsset.title} 
                                   fill 
-                                  className="object-cover opacity-50" 
+                                  className="object-contain opacity-50" 
                                 />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                   <Loader2 className="h-8 w-8 text-[var(--grey-600)] animate-spin mb-3" />
@@ -1138,7 +1143,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                       src={selectedAsset.video_url}
                                       poster={selectedAsset.image_url}
                                       controls 
-                                      className="w-full aspect-video rounded-lg object-cover"
+                                      className={cn("w-full rounded-lg", getAspectRatioClass(idea.template?.orientation))}
                                     />
                                     {/* Video indicator badge */}
                                     <div className="absolute top-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
@@ -1155,12 +1160,12 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                                   </div>
                                 ) : (
                                   /* Image only (or b_roll_footage without video yet) */
-                                  <div className="relative aspect-video rounded-lg overflow-hidden bg-[var(--grey-100)]">
+                                  <div className={cn("relative rounded-lg overflow-hidden bg-[var(--grey-100)]", getAspectRatioClass(idea.template?.orientation))}>
                                     <Image 
                                       src={selectedAsset.image_url} 
                                       alt={selectedAsset.title} 
                                       fill 
-                                      className="object-cover" 
+                                      className="object-contain" 
                                     />
                                     
                                     {/* Video type indicator (subtle, always visible for b_roll_footage) */}

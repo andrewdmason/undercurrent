@@ -7,7 +7,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { IdeaAsset, GeneratedAsset, GeneratedAssetsResponse, AssetType, ProjectImage, IdeaAssetReferenceImage } from "@/lib/types";
 import { findBestMatches, MATCH_THRESHOLD } from "@/lib/embeddings";
-import { genai, IMAGE_MODEL, VIDEO_MODEL } from "@/lib/gemini";
+import { genai, IMAGE_MODEL, VIDEO_MODEL, getAspectRatioFromOrientation } from "@/lib/gemini";
 
 // Helper to get project slug and revalidate paths
 async function revalidateIdeaPaths(ideaId: string) {
@@ -919,12 +919,17 @@ export async function generateAssetImage(
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const supabase = await createClient();
 
-  // Fetch the asset with its reference images
+  // Fetch the asset with its idea and template orientation
   const { data: asset, error: fetchError } = await supabase
     .from("idea_assets")
     .select(`
       *,
-      ideas!inner(id, project_id, projects(slug))
+      ideas!inner(
+        id, 
+        project_id, 
+        projects(slug),
+        project_templates(orientation)
+      )
     `)
     .eq("id", assetId)
     .single();
@@ -943,6 +948,12 @@ export async function generateAssetImage(
   if (!imagePrompt) {
     return { success: false, error: "No Image Prompt found in asset instructions" };
   }
+
+  // Get aspect ratio from template orientation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ideaData = asset.ideas as any;
+  const orientation = ideaData?.project_templates?.orientation as "vertical" | "horizontal" | null;
+  const aspectRatio = getAspectRatioFromOrientation(orientation);
 
   // Fetch reference images for this asset
   const { data: refImages } = await supabase
@@ -985,10 +996,15 @@ export async function generateAssetImage(
       }
     }
 
-    // Call Gemini for image generation
+    // Call Gemini for image generation with aspect ratio from template
     const response = await genai.models.generateContent({
       model: IMAGE_MODEL,
       contents: contents,
+      config: {
+        responseModalities: ["image", "text"],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        imageConfig: { aspectRatio } as any,
+      },
     });
 
     // Extract the generated image from the response
@@ -1060,18 +1076,24 @@ export async function generateAssetImage(
   }
 }
 
-// Generate a video for an asset using Veo3
+// Generate a video for an asset using Veo 3.1
+// Note: Veo uses async operations with polling - this can take 1-3 minutes
 export async function generateAssetVideo(
   assetId: string
 ): Promise<{ success: boolean; videoUrl?: string; error?: string }> {
   const supabase = await createClient();
 
-  // Fetch the asset
+  // Fetch the asset with template orientation
   const { data: asset, error: fetchError } = await supabase
     .from("idea_assets")
     .select(`
       *,
-      ideas!inner(id, project_id, projects(slug))
+      ideas!inner(
+        id, 
+        project_id, 
+        projects(slug),
+        project_templates(orientation)
+      )
     `)
     .eq("id", assetId)
     .single();
@@ -1096,61 +1118,79 @@ export async function generateAssetVideo(
     return { success: false, error: "No Video Prompt found in asset instructions" };
   }
 
+  // Get aspect ratio from template orientation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ideaData = asset.ideas as any;
+  const orientation = ideaData?.project_templates?.orientation as "vertical" | "horizontal" | null;
+  const aspectRatio = getAspectRatioFromOrientation(orientation);
+
   try {
-    // Fetch the source image
+    // Fetch the source image as base64
     const sourceImage = await fetchImageAsBase64(asset.image_url);
     if (!sourceImage) {
       return { success: false, error: "Failed to fetch source image for video generation" };
     }
 
-    // Build the content for Veo3 - image + video prompt
-    const contents = [
-      {
-        inlineData: {
-          data: sourceImage.data,
-          mimeType: sourceImage.mimeType,
-        },
-      },
-      `Animate this image into a video. ${videoPrompt}`,
-    ];
-
-    // Call Veo3 for video generation
-    const response = await genai.models.generateContent({
+    // Start the video generation operation using Veo 3.1
+    // Veo uses an async operation model that requires polling
+    let operation = await genai.models.generateVideos({
       model: VIDEO_MODEL,
-      contents: contents,
+      prompt: `Animate this image into a video. ${videoPrompt}`,
+      image: {
+        imageBytes: sourceImage.data,
+        mimeType: sourceImage.mimeType,
+      },
+      config: {
+        aspectRatio: aspectRatio as "16:9" | "9:16",
+      },
     });
 
-    // Extract the generated video from the response
-    let videoData: string | null = null;
-    let videoMimeType: string = "video/mp4";
+    // Poll the operation status until the video is ready
+    // Veo typically takes 1-3 minutes to generate a video
+    const maxAttempts = 30; // 5 minutes max (10 seconds * 30)
+    let attempts = 0;
 
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        // Veo3 returns video data in inlineData
-        if (part.inlineData && part.inlineData.mimeType?.startsWith("video/")) {
-          videoData = part.inlineData.data || null;
-          videoMimeType = part.inlineData.mimeType || "video/mp4";
-          break;
-        }
-      }
+    while (!operation.done && attempts < maxAttempts) {
+      console.log(`Video generation in progress... attempt ${attempts + 1}/${maxAttempts}`);
+      await new Promise((resolve) => setTimeout(resolve, 10000)); // Wait 10 seconds
+      operation = await genai.operations.getVideosOperation({
+        operation: operation,
+      });
+      attempts++;
     }
 
-    if (!videoData) {
-      console.error("No video generated in response:", response);
+    if (!operation.done) {
+      return { success: false, error: "Video generation timed out. Please try again." };
+    }
+
+    // Check if the operation was successful
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = operation as any;
+    const videoUri = result.response?.generatedVideos?.[0]?.video?.uri;
+    
+    if (!videoUri) {
+      console.error("No video URI in response:", operation);
       return { success: false, error: "No video was generated" };
     }
 
-    // Convert base64 to buffer for upload
-    const videoBuffer = Buffer.from(videoData, "base64");
-    const fileExt = videoMimeType === "video/webm" ? "webm" : "mp4";
+    // Download the video from the URI - requires API key for authentication
+    const downloadUrl = new URL(videoUri);
+    downloadUrl.searchParams.set('key', process.env.GEMINI_API_KEY || '');
+    const videoResponse = await fetch(downloadUrl.toString());
+    if (!videoResponse.ok) {
+      return { success: false, error: `Failed to download video: ${videoResponse.statusText}` };
+    }
+    
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+    
     const idea = asset.ideas as { id: string; project_id: string; projects: { slug: string } | null };
-    const fileName = `${idea.project_id}/${asset.idea_id}/${assetId}-${Date.now()}.${fileExt}`;
+    const fileName = `${idea.project_id}/${asset.idea_id}/${assetId}-${Date.now()}.mp4`;
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
       .from("asset-videos")
       .upload(fileName, videoBuffer, {
-        contentType: videoMimeType,
+        contentType: "video/mp4",
         cacheControl: "3600",
         upsert: true,
       });

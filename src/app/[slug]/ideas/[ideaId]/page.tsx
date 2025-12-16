@@ -80,7 +80,8 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
         name,
         description,
         image_url,
-        source_video_url
+        source_video_url,
+        orientation
       )
     `)
     .eq("id", ideaId)
