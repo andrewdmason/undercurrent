@@ -394,6 +394,16 @@ export async function generateStoryboard(
       throw new Error(`Failed to save scenes: ${insertScenesError.message}`);
     }
 
+    if (!insertedScenes || insertedScenes.length === 0) {
+      throw new Error("No scenes were inserted");
+    }
+
+    // Create a lookup map for inserted scenes by scene_number for reliable matching
+    const sceneLookup = new Map<number, (typeof insertedScenes)[0]>();
+    for (const scene of insertedScenes) {
+      sceneLookup.set(scene.scene_number, scene);
+    }
+
     // Collect all unique assets across all scenes (by title + type)
     const uniqueAssets = new Map<string, GeneratedScene["assets"][0]>();
     for (const scene of generatedScenes) {
@@ -433,18 +443,22 @@ export async function generateStoryboard(
       throw new Error(`Failed to save assets: ${insertAssetsError.message}`);
     }
 
-    // Create asset lookup map
+    // Create asset lookup map (handle null/empty insertedAssets)
     const assetLookup = new Map<string, IdeaAsset>();
-    for (const asset of insertedAssets as IdeaAsset[]) {
+    const safeInsertedAssets = (insertedAssets || []) as IdeaAsset[];
+    for (const asset of safeInsertedAssets) {
       const key = `${asset.type}:${asset.title}`;
       assetLookup.set(key, asset);
     }
 
-    // Create scene-asset links
+    // Create scene-asset links using scene_number for reliable matching
     const sceneAssetLinks: { scene_id: string; asset_id: string; sort_order: number }[] = [];
-    for (let i = 0; i < generatedScenes.length; i++) {
-      const scene = generatedScenes[i];
-      const insertedScene = insertedScenes[i];
+    for (const scene of generatedScenes) {
+      const insertedScene = sceneLookup.get(scene.scene_number);
+      if (!insertedScene) {
+        console.warn(`Could not find inserted scene for scene_number ${scene.scene_number}`);
+        continue;
+      }
       for (let j = 0; j < scene.assets.length; j++) {
         const asset = scene.assets[j];
         const key = `${asset.type}:${asset.title}`;
@@ -474,7 +488,7 @@ export async function generateStoryboard(
     await processReferenceImages(
       supabase,
       Array.from(uniqueAssets.values()),
-      insertedAssets as IdeaAsset[],
+      safeInsertedAssets,
       idea.project_id
     );
 

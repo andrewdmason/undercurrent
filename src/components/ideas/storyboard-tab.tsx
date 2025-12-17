@@ -20,7 +20,6 @@ import { User, Type, BarChart3, Video, ImageIcon as ImagePlaceholder, Monitor } 
 import {
   generateStoryboard,
   generateSceneThumbnail,
-  generateAllSceneThumbnails,
   getSceneThumbnailLog,
 } from "@/lib/actions/storyboard";
 import {
@@ -248,20 +247,49 @@ export function StoryboardTab({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
+            onClick={async () => {
               setIsGeneratingThumbnails(true);
-              toast.loading("Generating sketches...", { id: "thumbnails" });
-              generateAllSceneThumbnails(ideaId)
-                .then(() => {
-                  toast.success("Sketches generated", { id: "thumbnails" });
-                  router.refresh();
-                  onScenesUpdate();
-                })
-                .catch((err) => {
-                  toast.error("Failed to generate sketches", { id: "thumbnails" });
-                  console.error(err);
-                })
-                .finally(() => setIsGeneratingThumbnails(false));
+              const scenesToGenerate = localScenes.filter((s) => !s.thumbnail_url);
+              const total = scenesToGenerate.length || localScenes.length;
+              const scenesForGen = scenesToGenerate.length > 0 ? scenesToGenerate : localScenes;
+              
+              let completed = 0;
+              let failed = 0;
+              
+              toast.loading(`Generating sketches (0/${total})...`, { id: "thumbnails" });
+              
+              for (const scene of scenesForGen) {
+                try {
+                  const result = await generateSceneThumbnail(scene.id);
+                  if (result.success && result.thumbnailUrl) {
+                    // Update local state immediately
+                    setLocalScenes((prev) =>
+                      prev.map((s) =>
+                        s.id === scene.id ? { ...s, thumbnail_url: result.thumbnailUrl! } : s
+                      )
+                    );
+                    completed++;
+                  } else {
+                    failed++;
+                    console.error(`Failed to generate thumbnail for scene ${scene.id}:`, result.error);
+                  }
+                } catch (err) {
+                  failed++;
+                  console.error(`Error generating thumbnail for scene ${scene.id}:`, err);
+                }
+                toast.loading(`Generating sketches (${completed + failed}/${total})...`, { id: "thumbnails" });
+              }
+              
+              if (failed === 0) {
+                toast.success(`Generated ${completed} sketches`, { id: "thumbnails" });
+              } else if (completed > 0) {
+                toast.success(`Generated ${completed} sketches (${failed} failed)`, { id: "thumbnails" });
+              } else {
+                toast.error("Failed to generate sketches", { id: "thumbnails" });
+              }
+              
+              setIsGeneratingThumbnails(false);
+              onScenesUpdate();
             }}
             disabled={isGeneratingThumbnails || !!generatingSceneId}
             className="h-7 px-2 gap-1.5"
