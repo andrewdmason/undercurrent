@@ -13,6 +13,10 @@ export const IMAGE_MODEL = "gemini-3-pro-image-preview";
 // Model for video generation (Veo 3.1)
 export const VIDEO_MODEL = "veo-3.1-generate-preview";
 
+// Model for fast/cheap sketch images (Imagen 4 Fast)
+// ~$0.02/image, ideal for storyboard scene thumbnails
+export const SKETCH_IMAGE_MODEL = "imagen-4.0-fast-generate-001";
+
 // Standard aspect ratio for all thumbnails (landscape)
 export const THUMBNAIL_ASPECT_RATIO = "16:9";
 

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { IdeaWithChannels, IdeaAsset, AssetType, ProjectImage } from "@/lib/types";
+import { IdeaWithChannels, IdeaAsset, IdeaScene, IdeaSceneAsset, AssetType, ProjectImage } from "@/lib/types";
 import { IdeaDetailView } from "@/components/ideas/idea-detail-view";
 import { calculateIdeaStatus } from "@/lib/utils";
 
@@ -167,6 +167,19 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     .eq("idea_id", ideaId)
     .order("sort_order", { ascending: true });
 
+  // Fetch idea scenes with their linked assets
+  const { data: ideaScenes } = await supabase
+    .from("idea_scenes")
+    .select(`
+      *,
+      idea_scene_assets (
+        *,
+        idea_assets (*)
+      )
+    `)
+    .eq("idea_id", ideaId)
+    .order("scene_number", { ascending: true });
+
   if (!idea) {
     notFound();
   }
@@ -233,6 +246,15 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     }).filter(Boolean) as Array<{ id: string; platform: string; custom_label: string | null }>,
   } : null;
 
+  // Transform scenes to include properly typed assets
+  const scenes: IdeaScene[] = (ideaScenes || []).map((scene: Record<string, unknown>) => ({
+    ...scene,
+    assets: ((scene.idea_scene_assets as Array<Record<string, unknown>>) || []).map((sa) => ({
+      ...sa,
+      asset: sa.idea_assets || null,
+    })),
+  })) as IdeaScene[];
+
   return (
     <IdeaDetailView 
       idea={typedIdea} 
@@ -245,6 +267,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       projectImages={projectImages || []}
       fullTemplate={fullTemplate}
       initialAssets={assets}
+      initialScenes={scenes}
     />
   );
 }

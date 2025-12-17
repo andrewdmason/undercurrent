@@ -141,6 +141,7 @@ export function IdeaCard({
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const hasImage = !!idea.image_url;
   const showShimmer = isLoadingImage || isGenerating || isRemixing || !hasImage;
+  const isVertical = idea.template?.orientation === "vertical";
   const timeAgo = formatDistanceToNow(new Date(idea.created_at), { addSuffix: true });
 
   // Fetch assets on hover
@@ -302,7 +303,7 @@ export function IdeaCard({
   // Card content (shared between Link and article variants)
   const cardContent = (
     <>
-      {/* Image - Fixed 4:3 aspect ratio container, crops tall images */}
+      {/* Image - Fixed landscape aspect ratio, vertical images letterboxed */}
       <div className="relative w-full aspect-video overflow-hidden bg-[var(--grey-100)]">
         {hasImage ? (
           <Image
@@ -310,7 +311,8 @@ export function IdeaCard({
             alt=""
             fill
             className={cn(
-              "object-cover transition-transform duration-300 group-hover:scale-[1.02]",
+              "transition-transform duration-300 group-hover:scale-[1.02]",
+              isVertical ? "object-contain" : "object-cover",
               showShimmer && "opacity-0"
             )}
             sizes="(max-width: 540px) 100vw, 540px"

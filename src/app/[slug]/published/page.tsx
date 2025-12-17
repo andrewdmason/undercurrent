@@ -74,7 +74,8 @@ export default async function PublishedPage({ params }: PublishedPageProps) {
       project_templates (
         id,
         name,
-        description
+        description,
+        orientation
       )
     `)
     .eq("project_id", project.id)

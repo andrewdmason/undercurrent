@@ -505,7 +505,7 @@ export function IdeaReviewer({
         {step === "review" && (
           // Review step - show idea content
           <div className="space-y-4">
-            {/* Image container - landscape aspect ratio */}
+            {/* Image container - aspect ratio based on template */}
             <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[var(--grey-100)]">
               {hasImage ? (
                 <Image
@@ -513,7 +513,8 @@ export function IdeaReviewer({
                   alt=""
                   fill
                   className={cn(
-                    "object-cover transition-opacity duration-150",
+                    "transition-opacity duration-150",
+                    currentIdea?.template?.orientation === "vertical" ? "object-contain" : "object-cover",
                     (!imageLoaded || showShimmer) && "opacity-0"
                   )}
                   sizes="(max-width: 768px) 100vw, 700px"

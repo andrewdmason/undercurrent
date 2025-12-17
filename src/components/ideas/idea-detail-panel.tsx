@@ -193,7 +193,7 @@ export function IdeaDetailPanel({
                 alt=""
                   fill
                   className={cn(
-                    "object-cover",
+                    idea.template?.orientation === "vertical" ? "object-contain" : "object-cover",
                     showShimmer && "opacity-0"
                   )}
                 sizes="(max-width: 768px) 100vw, 480px"
