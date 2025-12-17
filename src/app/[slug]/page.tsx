@@ -99,13 +99,18 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
         project_templates (
           id,
           name,
-          description
+          description,
+          orientation
         ),
         idea_assets (
           id,
           type,
           is_complete,
-          time_estimate_minutes
+          time_estimate_minutes,
+          content_text
+        ),
+        idea_scenes (
+          id
         )
       `)
       .eq("project_id", project.id)
@@ -146,13 +151,18 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
         project_templates (
           id,
           name,
-          description
+          description,
+          orientation
         ),
         idea_assets (
           id,
           type,
           is_complete,
-          time_estimate_minutes
+          time_estimate_minutes,
+          content_text
+        ),
+        idea_scenes (
+          id
         )
       `)
       .eq("project_id", project.id)
@@ -214,7 +224,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const transformIdea = (idea: any): IdeaWithChannels => {
     // Transform assets for status calculation
-    const assets: IdeaAsset[] = (idea.idea_assets || []).map((a: { id: string; type: string; is_complete: boolean; time_estimate_minutes: number | null }) => ({
+    const assets: IdeaAsset[] = (idea.idea_assets || []).map((a: { id: string; type: string; is_complete: boolean; time_estimate_minutes: number | null; content_text: string | null }) => ({
       ...a,
       type: a.type as AssetType,
     }));
@@ -234,6 +244,9 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
       },
       assets.map(a => ({ type: a.type, is_complete: a.is_complete }))
     );
+
+    // Count scenes for content state
+    const sceneCount = (idea.idea_scenes || []).length;
 
     return {
       ...idea,
@@ -259,6 +272,7 @@ export default async function IdeasPage({ params, searchParams }: IdeasPageProps
         .filter(Boolean) as Array<{ id: string; name: string }>,
       assets,
       prepTimeMinutes,
+      sceneCount,
     };
   };
 

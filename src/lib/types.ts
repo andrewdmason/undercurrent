@@ -83,7 +83,7 @@ export interface Profile {
 
 export type ProjectRole = "admin" | "member";
 
-export type GenerationLogType = "idea_generation" | "idea_remix" | "ai_character" | "thumbnail" | "talking_points_generation" | "script_generation" | "script_update" | "asset_generation" | "other";
+export type GenerationLogType = "idea_generation" | "idea_remix" | "ai_character" | "thumbnail" | "talking_points_generation" | "script_generation" | "script_update" | "asset_generation" | "storyboard_generation" | "other";
 
 export interface GenerationLog {
   id: string;
@@ -207,6 +207,7 @@ export interface IdeaWithChannels extends Idea {
   // Asset data for status calculation
   assets?: IdeaAsset[];
   prepTimeMinutes?: number; // Total remaining prep time in minutes
+  sceneCount?: number; // Number of storyboard scenes
 }
 
 // Platform options for distribution channels
@@ -361,6 +362,87 @@ export interface GeneratedReferenceImage {
 // AI response wrapper for asset generation
 export interface GeneratedAssetsResponse {
   assets: GeneratedAsset[];
+}
+
+// ============================================
+// Storyboard Scene Types
+// ============================================
+
+export const SCENE_TYPES = [
+  "a_roll",
+  "title",
+  "graphic",
+  "b_roll_footage",
+  "b_roll_image",
+  "screen_recording",
+] as const;
+export type SceneType = (typeof SCENE_TYPES)[number];
+
+// Human-readable labels for scene types
+export const SCENE_TYPE_LABELS: Record<SceneType, string> = {
+  a_roll: "A-Roll",
+  title: "Title",
+  graphic: "Graphic",
+  b_roll_footage: "B-Roll Footage",
+  b_roll_image: "B-Roll Image",
+  screen_recording: "Screen Recording",
+};
+
+export interface IdeaScene {
+  id: string;
+  idea_id: string;
+  scene_number: number;
+  section_title: string | null; // Groups shots under chapter headers (e.g., "Hook", "Problem")
+  scene_type: SceneType; // Type of shot: a_roll, title, graphic, b_roll_footage, b_roll_image, screen_recording
+  title: string;
+  dialogue: string | null; // Spoken words for this scene (null for b-roll only scenes)
+  direction: string | null; // Visual direction, action descriptions, b-roll notes
+  start_time_seconds: number;
+  end_time_seconds: number;
+  thumbnail_url: string | null;
+  thumbnail_prompt: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  assets?: IdeaSceneAsset[];
+}
+
+export interface IdeaSceneAsset {
+  id: string;
+  scene_id: string;
+  asset_id: string;
+  sort_order: number;
+  created_at: string;
+  // Joined data
+  asset?: IdeaAsset;
+}
+
+// For AI-generated storyboard (from generate-storyboard.md prompt)
+export interface GeneratedScene {
+  scene_number: number;
+  section_title?: string; // Groups shots under chapter headers (e.g., "Hook", "Problem")
+  scene_type: SceneType; // Type of shot: a_roll, title, graphic, b_roll_footage, b_roll_image, screen_recording
+  title: string;
+  dialogue?: string; // Spoken words for this scene (null for b-roll only scenes)
+  direction?: string; // Visual direction, action descriptions, b-roll notes
+  start_time_seconds: number;
+  end_time_seconds: number;
+  thumbnail_prompt: string;
+  assets: GeneratedSceneAsset[];
+}
+
+export interface GeneratedSceneAsset {
+  type: AssetType;
+  title: string;
+  instructions?: string;
+  time_estimate_minutes?: number;
+  is_ai_generatable?: boolean;
+  reference_images?: GeneratedReferenceImage[];
+}
+
+// AI response wrapper for storyboard generation
+export interface GeneratedStoryboardResponse {
+  scenes: GeneratedScene[];
 }
 
 // ============================================

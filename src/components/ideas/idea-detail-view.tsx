@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
@@ -25,10 +25,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, AssetType, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
+import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, IdeaScene, AssetType, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateProductionAssets, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage, batchGenerateAssetImages, batchGenerateAssetVideos } from "@/lib/actions/idea-assets";
+import { generateStoryboard, generateAllSceneThumbnails } from "@/lib/actions/storyboard";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ import { CreateTemplateModal } from "@/components/strategy/create-template-modal
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 import { AssetReferenceImages } from "./asset-reference-images";
+import { StoryboardTab } from "./storyboard-tab";
 
 // Helper to get aspect ratio class based on template orientation
 function getAspectRatioClass(orientation: "vertical" | "horizontal" | null | undefined): string {
@@ -60,6 +62,7 @@ interface IdeaDetailViewProps {
   projectImages: ProjectImage[];
   fullTemplate: ProjectTemplateWithChannels | null;
   initialAssets: IdeaAsset[];
+  initialScenes: IdeaScene[];
 }
 
 // Helper to count dialogue words in a script and estimate duration
@@ -102,9 +105,19 @@ function getScriptStats(script: string): { wordCount: number; duration: string }
   return { wordCount: dialogueWords, duration };
 }
 
-export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, projectImages, fullTemplate, initialAssets }: IdeaDetailViewProps) {
+export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, projectCharacters, projectTemplates, projectTopics, projectImages, fullTemplate, initialAssets, initialScenes }: IdeaDetailViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
+  // Read initial tab from URL, default to "talking_points"
+  const validTabs = ["talking_points", "script", "storyboard", "assets"] as const;
+  type TabType = typeof validTabs[number];
+  const urlTab = searchParams.get("tab") as TabType | null;
+  const initialTab: TabType = urlTab && validTabs.includes(urlTab) ? urlTab : "talking_points";
+  
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [scenes, setScenes] = useState<IdeaScene[]>(initialScenes);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
   const [isGeneratingUnderlordPrompt, setIsGeneratingUnderlordPrompt] = useState(false);
@@ -120,19 +133,45 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingAssetImage, setIsGeneratingAssetImage] = useState(false);
   const [isGeneratingAssetVideo, setIsGeneratingAssetVideo] = useState(false);
+  const [isBatchGeneratingImages, setIsBatchGeneratingImages] = useState(false);
+  const [isBatchGeneratingVideos, setIsBatchGeneratingVideos] = useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
   const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [showChatSidebar, setShowChatSidebar] = useState(false);
-  const [activeTab, setActiveTab] = useState<"talking_points" | "script" | "storyboard" | "assets">("talking_points");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   // When true, Assets tab shows the detail view for selectedAssetId; when false, shows the grid
   const [showAssetDetail, setShowAssetDetail] = useState(false);
+  
+  // Update URL when tab changes
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    // Reset asset detail view when switching away from Assets tab
+    if (tab !== "assets") {
+      setShowAssetDetail(false);
+      setSelectedAssetId(null);
+    }
+    // Update URL without full page reload
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "talking_points") {
+      params.delete("tab"); // Default tab, no need to show in URL
+    } else {
+      params.set("tab", tab);
+    }
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    window.history.replaceState(null, "", newUrl);
+  }, [pathname, searchParams]);
 
   // Sync assets state with initialAssets when server data changes (e.g., after router.refresh())
   useEffect(() => {
     setAssets(initialAssets);
   }, [initialAssets]);
+
+  // Sync scenes state with initialScenes when server data changes
+  useEffect(() => {
+    setScenes(initialScenes);
+  }, [initialScenes]);
 
   // Derive assets early so they can be used in useEffects
   const selectedAsset = selectedAssetId 
@@ -233,17 +272,33 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
     if (isGeneratingAssets) return;
 
     setIsGeneratingAssets(true);
+    const toastId = toast.loading("Generating storyboard...");
 
     try {
-      const result = await generateProductionAssets(idea.id);
+      // Generate storyboard which creates scenes AND assets together
+      const result = await generateStoryboard(idea.id);
       if (result.error) {
-        toast.error(result.error);
+        toast.error(result.error, { id: toastId });
       } else {
-        toast.success("Production assets generated");
+        toast.success(`Storyboard generated with ${result.scenes?.length || 0} scenes`, { id: toastId });
         router.refresh();
+
+        // Generate scene thumbnails in background
+        if (result.scenes && result.scenes.length > 0) {
+          toast.loading("Generating scene thumbnails...", { id: "thumbnails" });
+          generateAllSceneThumbnails(idea.id)
+            .then(() => {
+              toast.success("Scene thumbnails generated", { id: "thumbnails" });
+              router.refresh();
+            })
+            .catch((err) => {
+              toast.error("Failed to generate some thumbnails", { id: "thumbnails" });
+              console.error(err);
+            });
+        }
       }
     } catch (error) {
-      toast.error("Failed to generate production assets");
+      toast.error("Failed to generate storyboard", { id: toastId });
       console.error(error);
     } finally {
       setIsGeneratingAssets(false);
@@ -293,8 +348,6 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
         toast.error(result.error);
       } else {
         toast.success("Script generated");
-        // Also generate production assets in background
-        generateProductionAssets(idea.id).catch(console.error);
         router.refresh();
       }
     } catch (error) {
@@ -342,6 +395,54 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       console.error(error);
     } finally {
       setIsGeneratingAssetVideo(false);
+    }
+  };
+
+  const handleBatchGenerateImages = async () => {
+    if (isBatchGeneratingImages) return;
+
+    setIsBatchGeneratingImages(true);
+    const toastId = toast.loading("Generating images for all assets...");
+    try {
+      const result = await batchGenerateAssetImages(idea.id);
+      if (result.error) {
+        toast.error(result.error, { id: toastId });
+      } else {
+        const message = result.generated > 0
+          ? `Generated ${result.generated} image${result.generated !== 1 ? "s" : ""}${result.failed > 0 ? `, ${result.failed} failed` : ""}`
+          : "No assets needed image generation";
+        toast.success(message, { id: toastId });
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to batch generate images", { id: toastId });
+      console.error(error);
+    } finally {
+      setIsBatchGeneratingImages(false);
+    }
+  };
+
+  const handleBatchGenerateVideos = async () => {
+    if (isBatchGeneratingVideos) return;
+
+    setIsBatchGeneratingVideos(true);
+    const toastId = toast.loading("Generating videos for all assets (this may take a while)...");
+    try {
+      const result = await batchGenerateAssetVideos(idea.id);
+      if (result.error) {
+        toast.error(result.error, { id: toastId });
+      } else {
+        const message = result.generated > 0
+          ? `Generated ${result.generated} video${result.generated !== 1 ? "s" : ""}${result.failed > 0 ? `, ${result.failed} failed` : ""}`
+          : "No assets needed video generation";
+        toast.success(message, { id: toastId });
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to batch generate videos", { id: toastId });
+      console.error(error);
+    } finally {
+      setIsBatchGeneratingVideos(false);
     }
   };
 
@@ -562,7 +663,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                   ) : (
                     <Sparkles className="h-3.5 w-3.5" />
                   )}
-                  Regenerate Assets
+                  {scenes.length > 0 ? "Regenerate Storyboard" : "Generate Storyboard"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[var(--grey-100-a)] -mx-1 my-1" />
                 <DropdownMenuItem
@@ -604,7 +705,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                     alt=""
                     fill
                     className={cn(
-                      "object-cover",
+                      fullTemplate?.orientation === "vertical" ? "object-contain" : "object-cover",
                       showShimmer && "opacity-0"
                     )}
                     sizes="(max-width: 768px) 100vw, 400px"
@@ -659,16 +760,9 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
 
             {/* Middle Column - Tabs */}
             <div className="flex flex-col min-h-0 h-full">
-              <Tabs 
-                value={activeTab} 
-                onValueChange={(v) => {
-                  setActiveTab(v as "talking_points" | "script" | "storyboard" | "assets");
-                  // Reset asset detail view when switching away from Assets tab
-                  if (v !== "assets") {
-                    setShowAssetDetail(false);
-                    setSelectedAssetId(null);
-                  }
-                }}
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) => handleTabChange(v as typeof activeTab)}
                 className="flex-1 flex flex-col min-h-0"
               >
                 {/* Tab Bar - Pill/Segmented style matching Creative Brief */}
@@ -726,28 +820,21 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                       isScriptUpdating={isScriptUpdating}
                       handleGenerateScript={handleGenerateScript}
                       setRegenerateDialogOpen={setRegenerateDialogOpen}
-                      setActiveTab={setActiveTab}
+                      setActiveTab={handleTabChange}
                     />
                   </div>
                 </TabsContent>
 
                 {/* Storyboard Tab */}
                 <TabsContent value="storyboard" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
-                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                      <h4 className="text-sm font-medium text-[var(--grey-800)]">Storyboard</h4>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--grey-50)] mb-4">
-                        <Film className="h-6 w-6 text-[var(--grey-300)]" />
-                      </div>
-                      <h3 className="text-sm font-medium text-[var(--grey-600)] mb-1">
-                        Coming Soon
-                      </h3>
-                      <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                        Visual storyboard generation will be available here.
-                      </p>
-                    </div>
+                  <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden relative">
+                    <StoryboardTab
+                      ideaId={idea.id}
+                      scenes={scenes}
+                      hasScript={!!scriptAsset?.content_text}
+                      onScenesUpdate={() => router.refresh()}
+                      orientation={fullTemplate?.orientation}
+                    />
                   </div>
                 </TabsContent>
 
@@ -764,14 +851,19 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                       handleGenerateAssetImage={handleGenerateAssetImage}
                       handleGenerateAssetVideo={handleGenerateAssetVideo}
                       handleGenerateAssets={handleGenerateAssets}
+                      handleBatchGenerateImages={handleBatchGenerateImages}
+                      handleBatchGenerateVideos={handleBatchGenerateVideos}
                       isGeneratingAssetImage={isGeneratingAssetImage}
                       isGeneratingAssetVideo={isGeneratingAssetVideo}
                       isGeneratingAssets={isGeneratingAssets}
+                      isBatchGeneratingImages={isBatchGeneratingImages}
+                      isBatchGeneratingVideos={isBatchGeneratingVideos}
                       hasScript={!!scriptAsset?.content_text}
                       projectImages={projectImages}
                       idea={idea}
                       router={router}
                       assetsLikelyGenerating={assetsLikelyGenerating}
+                      templateOrientation={fullTemplate?.orientation ?? null}
                     />
                   </div>
                 </TabsContent>
@@ -1807,14 +1899,19 @@ interface AssetsTabContentProps {
   handleGenerateAssetImage: () => Promise<void>;
   handleGenerateAssetVideo: () => Promise<void>;
   handleGenerateAssets: () => Promise<void>;
+  handleBatchGenerateImages: () => Promise<void>;
+  handleBatchGenerateVideos: () => Promise<void>;
   isGeneratingAssetImage: boolean;
   isGeneratingAssetVideo: boolean;
   isGeneratingAssets: boolean;
+  isBatchGeneratingImages: boolean;
+  isBatchGeneratingVideos: boolean;
   hasScript: boolean;
   projectImages: ProjectImage[];
   idea: IdeaWithChannels;
   router: ReturnType<typeof useRouter>;
   assetsLikelyGenerating: boolean;
+  templateOrientation: "vertical" | "horizontal" | null;
 }
 
 function AssetsTabContent({
@@ -1827,14 +1924,19 @@ function AssetsTabContent({
   handleGenerateAssetImage,
   handleGenerateAssetVideo,
   handleGenerateAssets,
+  handleBatchGenerateImages,
+  handleBatchGenerateVideos,
   isGeneratingAssetImage,
   isGeneratingAssetVideo,
   isGeneratingAssets,
+  isBatchGeneratingImages,
+  isBatchGeneratingVideos,
   hasScript,
   projectImages,
   idea,
   router,
   assetsLikelyGenerating,
+  templateOrientation,
 }: AssetsTabContentProps) {
   // Asset detail view
   if (showAssetDetail && selectedAsset) {
@@ -1862,13 +1964,49 @@ function AssetsTabContent({
     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
       <h4 className="text-sm font-medium text-[var(--grey-800)]">Assets</h4>
       <div className="flex items-center gap-2">
+        {/* Batch generate images button - only show if there are assets */}
+        {productionAssets.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBatchGenerateImages}
+            disabled={isBatchGeneratingImages || isBatchGeneratingVideos}
+            className="h-7 px-2 gap-1.5"
+            title="Generate images for all assets that don't have one"
+          >
+            {isBatchGeneratingImages ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <ImageIcon size={14} />
+            )}
+            <span className="text-xs">Gen All Images</span>
+          </Button>
+        )}
+        {/* Batch generate videos button - only show if there are assets */}
+        {productionAssets.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBatchGenerateVideos}
+            disabled={isBatchGeneratingVideos || isBatchGeneratingImages}
+            className="h-7 px-2 gap-1.5"
+            title="Generate videos for all b-roll assets that have images"
+          >
+            {isBatchGeneratingVideos ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Film size={14} />
+            )}
+            <span className="text-xs">Gen All Videos</span>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
           onClick={handleGenerateAssets}
           disabled={isGeneratingAssets || !hasScript}
           className="h-7 px-2 gap-1.5"
-          title={!hasScript ? "Generate a script first" : productionAssets.length > 0 ? "Regenerate Assets" : "Generate Assets"}
+          title={!hasScript ? "Generate a script first" : productionAssets.length > 0 ? "Regenerate Storyboard" : "Generate Storyboard"}
         >
           {isGeneratingAssets ? (
             <Loader2 size={14} className="animate-spin" />
@@ -1877,7 +2015,7 @@ function AssetsTabContent({
           ) : (
             <Sparkles size={14} />
           )}
-          <span className="text-xs">{productionAssets.length > 0 ? "Regenerate" : "Generate"}</span>
+          <span className="text-xs">{productionAssets.length > 0 ? "Regen Storyboard" : "Generate"}</span>
         </Button>
       </div>
     </div>
@@ -1910,7 +2048,7 @@ function AssetsTabContent({
                 No Production Assets
               </h3>
               <p className="text-xs text-[var(--grey-400)] max-w-[200px]">
-                {hasScript ? "Generate assets from your script." : "Assets will appear here once a script is generated."}
+                {hasScript ? "Generate a storyboard to create assets." : "Assets will appear here once a script is generated."}
               </p>
               {hasScript && (
                 <Button
@@ -1925,7 +2063,7 @@ function AssetsTabContent({
                   ) : (
                     <Sparkles className="h-4 w-4" />
                   )}
-                  Generate Assets
+                  Generate Storyboard
                 </Button>
               )}
             </>
@@ -1935,11 +2073,18 @@ function AssetsTabContent({
     );
   }
 
+  // Determine if this is a vertical video based on template
+  const isVertical = templateOrientation === "vertical";
+  
   return (
     <>
       {header}
       <div className="flex-1 min-h-0 overflow-auto p-4">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl">
+        <div className={`grid gap-4 ${
+          isVertical 
+            ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" 
+            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        }`}>
         {productionAssets.map((asset) => (
           <button
             key={asset.id}
@@ -1950,13 +2095,13 @@ function AssetsTabContent({
             className="group relative rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden text-left hover:border-[var(--grey-300)] transition-colors"
           >
             {/* Image or placeholder */}
-            <div className="aspect-video bg-[var(--grey-50)] relative">
+            <div className={`${getAspectRatioClass(templateOrientation)} bg-[var(--grey-50)] relative`}>
               {asset.image_url ? (
                 <Image
                   src={asset.image_url}
                   alt={asset.title}
                   fill
-                  className="object-cover"
+                  className={isVertical ? "object-contain" : "object-cover"}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -1992,14 +2137,6 @@ function AssetsTabContent({
                 <span className="text-xs text-[var(--grey-400)]">
                   {ASSET_TYPE_LABELS[asset.type as AssetType]}
                 </span>
-                {asset.time_estimate_minutes && (
-                  <>
-                    <span className="text-[var(--grey-300)]">·</span>
-                    <span className="text-xs text-[var(--grey-400)]">
-                      {asset.time_estimate_minutes}min
-                    </span>
-                  </>
-                )}
               </div>
             </div>
           </button>

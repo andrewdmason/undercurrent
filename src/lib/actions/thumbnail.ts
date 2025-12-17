@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { genai, IMAGE_MODEL, THUMBNAIL_ASPECT_RATIO } from "@/lib/gemini";
+import { genai, IMAGE_MODEL, getAspectRatioFromOrientation } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
 
 interface CharacterMatch {
@@ -98,10 +98,10 @@ async function fetchImageAsBase64(
 export async function generateThumbnail(ideaId: string, projectId: string) {
   const supabase = await createClient();
 
-  // Fetch the idea
+  // Fetch the idea with template orientation
   const { data: idea, error: ideaError } = await supabase
     .from("ideas")
-    .select("id, title, description")
+    .select("id, title, description, project_templates(orientation)")
     .eq("id", ideaId)
     .single();
 
@@ -109,6 +109,12 @@ export async function generateThumbnail(ideaId: string, projectId: string) {
     console.error("Error fetching idea:", ideaError);
     return { error: "Idea not found" };
   }
+
+  // Get aspect ratio from template orientation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orientation = (idea.project_templates as any)?.orientation as "vertical" | "horizontal" | null;
+  const aspectRatio = getAspectRatioFromOrientation(orientation);
+  const orientationLabel = orientation === "vertical" ? "portrait/vertical" : "landscape/horizontal";
 
   // Detect characters mentioned in the idea
   const characterMatches = await detectCharactersInIdea(
@@ -125,7 +131,7 @@ export async function generateThumbnail(ideaId: string, projectId: string) {
     .single();
 
   // Build the generation prompt
-  let promptText = `Create a compelling video thumbnail image. The aspect ratio should be ${THUMBNAIL_ASPECT_RATIO} (landscape).
+  let promptText = `Create a compelling video thumbnail image. The aspect ratio should be ${aspectRatio} (${orientationLabel}).
 
 Title: ${idea.title}
 ${idea.description ? `Description: ${idea.description}` : ""}

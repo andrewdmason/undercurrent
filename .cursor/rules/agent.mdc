@@ -31,14 +31,27 @@ A video marketing idea generator for small businesses, powered by AI.
 
 ## Database Changes (CRITICAL)
 
-### ⚠️ NEVER Directly Modify Production Database
+### ⚠️ NEVER Touch Production Database
 
-**Do NOT use Supabase MCP tools (`apply_migration`, `execute_sql`) to make changes to the production database.** 
+**FORBIDDEN COMMANDS - Never run these:**
+- `supabase db reset --linked` - WIPES PRODUCTION DATA
+- `supabase db push --linked` - Pushes directly to production
+- `supabase link` - Do NOT link to production
+- Any command with `--linked` flag
+- Supabase MCP tools (`apply_migration`, `execute_sql`)
 
-All database changes must go through the migration workflow:
+**This project uses LOCAL Supabase only.** The production database is managed via CI/CD on merge to main.
+
+### Local Database Commands (SAFE)
+- `supabase db reset` or `supabase db reset --local` - Resets local DB ✓
+- `supabase start` / `supabase stop` - Manage local containers ✓
+- `supabase migration new` - Create new migration file ✓
+
+### Migration Workflow
+All database changes must go through migrations:
 1. Create a migration file in `supabase/migrations/`
-2. Test locally or on a branch
-3. Deploy via the normal CI/CD pipeline
+2. Test locally with `supabase db reset --local`
+3. Commit and merge to main - CI/CD handles production
 
 
 ### Migration File Rules

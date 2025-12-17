@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, Trash2, Send, Sparkles, RefreshCw } from "lucide-react";
+import { Trash2, Send, Sparkles, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { IdeaWithChannels, PRODUCTION_STATUS_LABELS, ProductionStatus } from "@/lib/types";
+import { IdeaWithChannels } from "@/lib/types";
 import { PlatformIcon } from "@/components/strategy/platform-icon";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { deleteIdea } from "@/lib/actions/ideas";
@@ -21,6 +21,29 @@ import {
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { remixIdea } from "@/lib/actions/ideas";
+
+// Content state for grouping ideas by generation progress
+type ContentState = "new" | "talking_points" | "script" | "storyboard";
+
+const CONTENT_STATE_LABELS: Record<ContentState, string> = {
+  new: "New",
+  talking_points: "Talking Points",
+  script: "Script",
+  storyboard: "Storyboard",
+};
+
+// Determine the content state of an idea based on what's been generated
+function getContentState(idea: IdeaWithChannels): ContentState {
+  const assets = idea.assets || [];
+  const hasScenes = (idea.sceneCount || 0) > 0;
+  const hasScript = assets.some(a => a.type === "script" && a.content_text);
+  const hasTalkingPoints = assets.some(a => a.type === "talking_points" && a.content_text);
+
+  if (hasScenes) return "storyboard";
+  if (hasScript) return "script";
+  if (hasTalkingPoints) return "talking_points";
+  return "new";
+}
 
 interface StatusColumnsProps {
   ideas: IdeaWithChannels[];
@@ -44,11 +67,12 @@ export function StatusColumns({
   const [publishModalIdea, setPublishModalIdea] = useState<IdeaWithChannels | null>(null);
   const [isRemixing, setIsRemixing] = useState(false);
 
-  // Group ideas by status
-  const ideasByStatus = {
-    preproduction: ideas.filter((idea) => idea.status === "preproduction"),
-    production: ideas.filter((idea) => idea.status === "production"),
-    postproduction: ideas.filter((idea) => idea.status === "postproduction"),
+  // Group ideas by content state (generation progress)
+  const ideasByContentState = {
+    new: ideas.filter((idea) => getContentState(idea) === "new"),
+    talking_points: ideas.filter((idea) => getContentState(idea) === "talking_points"),
+    script: ideas.filter((idea) => getContentState(idea) === "script"),
+    storyboard: ideas.filter((idea) => getContentState(idea) === "storyboard"),
   };
 
   const handleRemix = async (options: RemixOptions) => {
@@ -85,12 +109,12 @@ export function StatusColumns({
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-4">
-        {(["preproduction", "production", "postproduction"] as const).map((status) => (
-          <StatusColumn
-            key={status}
-            status={status}
-            ideas={ideasByStatus[status]}
+      <div className="grid grid-cols-4 gap-4">
+        {(["new", "talking_points", "script", "storyboard"] as const).map((contentState) => (
+          <ContentStateColumn
+            key={contentState}
+            contentState={contentState}
+            ideas={ideasByContentState[contentState]}
             projectSlug={projectSlug}
             projectId={projectId}
             onRemix={(idea) => setRemixModalIdea(idea)}
@@ -136,8 +160,8 @@ export function StatusColumns({
   );
 }
 
-interface StatusColumnProps {
-  status: ProductionStatus;
+interface ContentStateColumnProps {
+  contentState: ContentState;
   ideas: IdeaWithChannels[];
   projectSlug: string;
   projectId?: string;
@@ -145,13 +169,13 @@ interface StatusColumnProps {
   onPublish: (idea: IdeaWithChannels) => void;
 }
 
-function StatusColumn({ status, ideas, projectSlug, projectId, onRemix, onPublish }: StatusColumnProps) {
+function ContentStateColumn({ contentState, ideas, projectSlug, projectId, onRemix, onPublish }: ContentStateColumnProps) {
   return (
     <div className="flex flex-col min-h-[400px]">
       {/* Column Header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <h3 className="text-sm font-medium text-[var(--grey-600)]">
-          {PRODUCTION_STATUS_LABELS[status]}
+          {CONTENT_STATE_LABELS[contentState]}
         </h3>
         <span className="text-xs text-[var(--grey-400)] tabular-nums">
           {ideas.length}
@@ -243,7 +267,10 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
                 src={idea.image_url}
                 alt={idea.title}
                 fill
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                className={cn(
+                  "transition-transform duration-300 group-hover:scale-[1.02]",
+                  idea.template?.orientation === "vertical" ? "object-contain" : "object-cover"
+                )}
                 sizes="(max-width: 768px) 100vw, 33vw"
               />
               {/* Channel icons overlay */}
@@ -271,13 +298,7 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
               {idea.title}
             </h4>
             
-            {/* Prep time */}
-            {idea.prepTimeMinutes !== undefined && idea.prepTimeMinutes > 0 && (
-              <div className="flex items-center gap-1 mt-2 text-xs text-[var(--grey-400)]">
-                <Clock className="h-3 w-3" />
-                <span>{idea.prepTimeMinutes}min remaining</span>
-              </div>
-            )}
+            {/* Time estimates hidden for now */}
           </div>
         </Link>
       </ContextMenuTrigger>
