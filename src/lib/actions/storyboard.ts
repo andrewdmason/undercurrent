@@ -21,8 +21,21 @@ import { findBestMatches, MATCH_THRESHOLD } from "@/lib/embeddings";
 // Helper to fetch an image URL as base64
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    // Handle relative URLs by prepending the app base URL
+    let absoluteUrl = url;
+    if (url.startsWith("/")) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : "http://localhost:3000";
+      absoluteUrl = `${baseUrl}${url}`;
+      console.log(`Converting relative URL to absolute: ${absoluteUrl}`);
+    }
+    
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) {
+      console.error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      return null;
+    }
     const arrayBuffer = await response.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const contentType = response.headers.get("content-type") || "image/jpeg";
@@ -609,7 +622,11 @@ export async function generateSceneThumbnail(
 
   // For A-roll scenes, get the idea's linked character image as reference
   let characterImageBase64: string | null = null;
+  let characterName: string | null = null;
+  let referenceImageSource: string | null = null;
   const ideaId = scene.idea_id;
+  
+  console.log(`Scene ${sceneId}: scene_type="${scene.scene_type}", checking for character reference...`);
   
   if (scene.scene_type === "a_roll" && ideaId) {
     // First try to get the character linked to this specific idea
@@ -627,7 +644,13 @@ export async function generateSceneThumbnail(
     if (linkedCharacter?.image_url) {
       console.log(`A-roll scene: using idea's linked character "${linkedCharacter.name}" as reference`);
       characterImageBase64 = await fetchImageAsBase64(linkedCharacter.image_url);
+      characterName = linkedCharacter.name;
+      referenceImageSource = "idea_character";
+      if (!characterImageBase64) {
+        console.log(`Failed to fetch character image from: ${linkedCharacter.image_url}`);
+      }
     } else if (projectId) {
+      console.log(`No idea-linked character found, checking project characters...`);
       // Fallback: use any project character with an image
       const { data: projectCharacters } = await supabase
         .from("project_characters")
@@ -639,37 +662,68 @@ export async function generateSceneThumbnail(
       if (projectCharacters && projectCharacters.length > 0 && projectCharacters[0].image_url) {
         console.log(`A-roll scene: using project character "${projectCharacters[0].name}" as reference (fallback)`);
         characterImageBase64 = await fetchImageAsBase64(projectCharacters[0].image_url);
+        characterName = projectCharacters[0].name;
+        referenceImageSource = "project_character";
+        if (!characterImageBase64) {
+          console.log(`Failed to fetch character image from: ${projectCharacters[0].image_url}`);
+        }
+      } else {
+        console.log(`No project characters with images found for project ${projectId}`);
       }
     }
+  } else {
+    console.log(`Skipping character reference: scene_type="${scene.scene_type}" (not a_roll)`);
   }
 
   try {
-    // Build the prompt with storyboard style
-    const stylePrefix = "Storyboard sketch in pencil/charcoal style, black and white with muted tones, rough hand-drawn look: ";
-    const styledPrompt = scene.thumbnail_prompt.toLowerCase().startsWith("storyboard sketch")
-      ? scene.thumbnail_prompt
-      : stylePrefix + scene.thumbnail_prompt;
+    // Build the prompt with consistent storyboard style suffix
+    const styleSuffix = `\n\nStyle: Black-and-white cinematic storyboard sketch, hand-drawn pencil and ink, rough confident linework, visible construction lines, light cross-hatching, high contrast. Simplified figures and environments, loose anatomy, imperfect lines. Focus on camera framing, composition, and blocking over detail. White paper texture, no color, no gradients, no photorealism, no polish—professional film pre-production storyboard style.`;
+    
+    // Clean up the thumbnail prompt (remove any existing style prefixes)
+    let basePrompt = scene.thumbnail_prompt;
+    if (basePrompt.toLowerCase().startsWith("storyboard sketch")) {
+      // Strip old-style prefix if present
+      basePrompt = basePrompt.replace(/^storyboard sketch[^:]*:\s*/i, "");
+    }
+    
+    // Build final prompt: description + style + optional character reference
+    let styledPrompt = basePrompt + styleSuffix;
+    if (characterImageBase64) {
+      styledPrompt += "\n\nUse the reference image as the basis for the person/character's appearance in this sketch. Maintain their likeness.";
+    }
 
     const client = getOpenAI();
     
-    // Build the request - include reference image if we have one
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const requestParams: any = {
-      model: IMAGE_GEN_MODEL,
-      prompt: characterImageBase64 
-        ? `${styledPrompt}\n\nUse the attached reference image as the basis for the person/character in this storyboard sketch.`
-        : styledPrompt,
-      n: 1,
-      size: size as "1024x1024" | "1024x1536" | "1536x1024",
-      quality: "low", // Fast generation for storyboard sketches
-    };
-
-    // Add reference image if available
+    let response;
+    
     if (characterImageBase64) {
-      requestParams.image = characterImageBase64;
+      // Use images.edit endpoint for reference images
+      // Convert base64 data URL to buffer for the API
+      const base64Data = characterImageBase64.split(",")[1];
+      const imageBuffer = Buffer.from(base64Data, "base64");
+      
+      // Create a File-like object from the buffer
+      const file = new File([imageBuffer], "reference.png", { type: "image/png" });
+      
+      console.log("Using images.edit with reference image");
+      response = await client.images.edit({
+        model: IMAGE_GEN_MODEL,
+        image: file,
+        prompt: styledPrompt,
+        n: 1,
+        size: size as "1024x1024" | "1024x1536" | "1536x1024",
+      });
+    } else {
+      // Use images.generate for prompts without reference images
+      console.log("Using images.generate (no reference image)");
+      response = await client.images.generate({
+        model: IMAGE_GEN_MODEL,
+        prompt: styledPrompt,
+        n: 1,
+        size: size as "1024x1024" | "1024x1536" | "1536x1024",
+        quality: "low",
+      });
     }
-
-    const response = await client.images.generate(requestParams);
 
     const imageData = response.data?.[0];
     if (!imageData) {
@@ -720,11 +774,15 @@ export async function generateSceneThumbnail(
       throw new Error(`Failed to update scene: ${updateError.message}`);
     }
 
-    // Log the generation
+    // Log the generation with reference image details
+    const referenceInfo = characterImageBase64 
+      ? `\n\n[Reference Image: ${characterName} (${referenceImageSource})]`
+      : `\n\n[No reference image: scene_type="${scene.scene_type}"]`;
+    
     await supabase.from("generation_logs").insert({
       project_id: projectId,
       type: "storyboard_generation",
-      prompt_sent: styledPrompt + (characterImageBase64 ? " [with character reference image]" : ""),
+      prompt_sent: styledPrompt + referenceInfo,
       response_raw: `Image generated: ${publicUrl}`,
       model: IMAGE_GEN_MODEL,
       idea_id: scene.idea_id,

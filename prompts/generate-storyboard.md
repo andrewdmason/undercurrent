@@ -113,13 +113,12 @@ Each scene gets realistic timing for that shot:
 
 ### Thumbnail Prompts
 
-Write prompts for sketch-style thumbnails:
+Write prompts that describe **what's happening in the image**. Do NOT include style instructions—those are added automatically during generation.
 
-**Style:** Storyboard sketch, pencil/charcoal style, black and white
-
-**A-roll sketches:** Show the speaker with the relevant expression/gesture
-**B-roll sketches:** Show the cutaway subject
-**Title sketches:** Show text/graphic concept
+**A-roll scenes:** Describe the speaker's framing and expression (e.g., "Medium close-up of speaker gesturing while explaining")
+**B-roll scenes:** Describe the subject and composition (e.g., "Wide shot of busy board game cafe with groups at tables")
+**Title scenes:** Describe the text and layout (e.g., "Bold title text 'WHY A CLUB?' centered on screen")
+**Graphic scenes:** Describe the visual concept (e.g., "Split screen comparing two approaches")
 
 ### Assets
 
@@ -156,7 +155,7 @@ Return a JSON object with a `scenes` array. **Extract dialogue and direction ver
       "direction": null,
       "start_time_seconds": 0,
       "end_time_seconds": 3,
-      "thumbnail_prompt": "Storyboard sketch: Speaker talking to camera",
+      "thumbnail_prompt": "Medium close-up of speaker talking directly to camera, friendly expression",
       "assets": [
         {
           "type": "a_roll",
@@ -175,7 +174,7 @@ Return a JSON object with a `scenes` array. **Extract dialogue and direction ver
       "direction": "Cut to B-roll: bustling cafe atmosphere, groups at tables, colorful game boxes",
       "start_time_seconds": 3,
       "end_time_seconds": 6,
-      "thumbnail_prompt": "Storyboard sketch: Wide shot of busy board game cafe",
+      "thumbnail_prompt": "Wide shot of busy board game cafe interior, groups gathered around tables with colorful game boxes",
       "assets": [
         {
           "type": "b_roll_footage",
@@ -195,7 +194,7 @@ Return a JSON object with a `scenes` array. **Extract dialogue and direction ver
       "direction": "TEXT: \"The Real Challenge\" with quick glitch animation",
       "start_time_seconds": 6,
       "end_time_seconds": 8,
-      "thumbnail_prompt": "Storyboard sketch: Title card with text",
+      "thumbnail_prompt": "Bold title text 'The Real Challenge' centered on screen with glitch effect",
       "assets": []
     },
     {
@@ -207,7 +206,7 @@ Return a JSON object with a `scenes` array. **Extract dialogue and direction ver
       "direction": null,
       "start_time_seconds": 8,
       "end_time_seconds": 12,
-      "thumbnail_prompt": "Storyboard sketch: Speaker talking",
+      "thumbnail_prompt": "Medium shot of speaker with serious expression, slight head tilt",
       "assets": [
         {
           "type": "a_roll",
@@ -226,7 +225,7 @@ Return a JSON object with a `scenes` array. **Extract dialogue and direction ver
       "direction": "Show the coffee station—espresso machine, cups, wood counter",
       "start_time_seconds": 12,
       "end_time_seconds": 16,
-      "thumbnail_prompt": "Storyboard sketch: Coffee bar",
+      "thumbnail_prompt": "Close-up of coffee station with espresso machine, cups, and warm wood counter",
       "assets": [
         {
           "type": "b_roll_footage",

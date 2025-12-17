@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Loader2,
   Sparkles,
@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   LayoutList,
   FileText,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IdeaScene, IdeaAsset, ASSET_TYPE_LABELS, AssetType, SceneType, SCENE_TYPE_LABELS, GenerationLog } from "@/lib/types";
@@ -61,6 +62,8 @@ interface StoryboardTabProps {
   orientation?: "vertical" | "horizontal" | null;
 }
 
+const STORYBOARD_VIEW_KEY = "storyboard-view-mode";
+
 export function StoryboardTab({
   ideaId,
   scenes,
@@ -69,16 +72,50 @@ export function StoryboardTab({
   orientation,
 }: StoryboardTabProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
   const [generatingSceneId, setGeneratingSceneId] = useState<string | null>(null);
   const [localScenes, setLocalScenes] = useState<IdeaScene[]>(scenes);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  
+  // Initialize view mode from URL param first, then default to "list"
+  // localStorage is checked in useEffect to avoid hydration mismatch
+  const urlView = searchParams.get("view");
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    urlView === "list" || urlView === "grid" ? urlView : "list"
+  );
+
+  // On mount, check localStorage if URL doesn't have a view param
+  useEffect(() => {
+    if (!urlView) {
+      const stored = localStorage.getItem(STORYBOARD_VIEW_KEY);
+      if (stored === "list" || stored === "grid") {
+        setViewMode(stored);
+      }
+    }
+  }, [urlView]);
+
+  // Update URL and localStorage when view mode changes
+  const handleViewModeChange = (newMode: ViewMode) => {
+    setViewMode(newMode);
+    
+    // Save to localStorage
+    localStorage.setItem(STORYBOARD_VIEW_KEY, newMode);
+    
+    // Update URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", newMode);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  };
   
   // Generation log dialog state
   const [logDialogOpen, setLogDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<GenerationLog | null>(null);
   const [isLoadingLog, setIsLoadingLog] = useState(false);
+  
+  // Image preview modal state
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const handleViewLog = async (sceneId: string) => {
     setIsLoadingLog(true);
@@ -165,7 +202,7 @@ export function StoryboardTab({
         {localScenes.length > 0 && (
           <div className="flex items-center border border-[var(--border)] rounded-md overflow-hidden">
             <button
-              onClick={() => setViewMode("list")}
+              onClick={() => handleViewModeChange("list")}
               className={cn(
                 "p-1.5 transition-colors",
                 viewMode === "list"
@@ -177,7 +214,7 @@ export function StoryboardTab({
               <LayoutList size={14} />
             </button>
             <button
-              onClick={() => setViewMode("grid")}
+              onClick={() => handleViewModeChange("grid")}
               className={cn(
                 "p-1.5 transition-colors",
                 viewMode === "grid"
@@ -334,6 +371,8 @@ export function StoryboardTab({
                 generatingSceneId={generatingSceneId}
                 isGeneratingThumbnails={isGeneratingThumbnails}
                 onGenerateThumbnail={handleGenerateSceneThumbnail}
+                onViewLog={handleViewLog}
+                onPreviewImage={setPreviewImageUrl}
                 orientation={orientation}
               />
             ))}
@@ -349,6 +388,7 @@ export function StoryboardTab({
                 isGeneratingThumbnails={isGeneratingThumbnails}
                 onGenerateThumbnail={handleGenerateSceneThumbnail}
                 onViewLog={handleViewLog}
+                onPreviewImage={setPreviewImageUrl}
                 orientation={orientation}
               />
             ))}
@@ -417,6 +457,24 @@ export function StoryboardTab({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!previewImageUrl} onOpenChange={(open) => !open && setPreviewImageUrl(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          {previewImageUrl && (
+            <div className="relative w-full h-full flex items-center justify-center bg-black">
+              <Image
+                src={previewImageUrl}
+                alt="Thumbnail preview"
+                width={1536}
+                height={1024}
+                className="object-contain max-h-[90vh]"
+                unoptimized
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -427,6 +485,8 @@ interface SectionGroupProps {
   generatingSceneId: string | null;
   isGeneratingThumbnails: boolean;
   onGenerateThumbnail: (sceneId: string) => void;
+  onViewLog: (sceneId: string) => void;
+  onPreviewImage: (url: string) => void;
   orientation?: "vertical" | "horizontal" | null;
 }
 
@@ -436,6 +496,8 @@ function SectionGroup({
   generatingSceneId,
   isGeneratingThumbnails,
   onGenerateThumbnail,
+  onViewLog,
+  onPreviewImage,
   orientation,
 }: SectionGroupProps) {
   // Calculate section duration
@@ -465,6 +527,8 @@ function SectionGroup({
             scene={scene}
             isGeneratingThumbnail={generatingSceneId === scene.id || isGeneratingThumbnails}
             onGenerateThumbnail={() => onGenerateThumbnail(scene.id)}
+            onViewLog={() => onViewLog(scene.id)}
+            onPreviewImage={onPreviewImage}
             orientation={orientation}
           />
         ))}
@@ -477,10 +541,12 @@ interface SceneCardProps {
   scene: IdeaScene;
   isGeneratingThumbnail: boolean;
   onGenerateThumbnail: () => void;
+  onViewLog: () => void;
+  onPreviewImage: (url: string) => void;
   orientation?: "vertical" | "horizontal" | null;
 }
 
-function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientation }: SceneCardProps) {
+function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onViewLog, onPreviewImage, orientation }: SceneCardProps) {
   const hasThumbnail = !!scene.thumbnail_url;
   const isVertical = orientation === "vertical";
 
@@ -489,57 +555,58 @@ function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientat
   const duration = scene.end_time_seconds - scene.start_time_seconds;
 
   return (
-    <div className="flex gap-3 p-3 rounded-lg bg-[var(--grey-50)] hover:bg-[var(--grey-100)] transition-colors">
-      {/* Thumbnail - smaller for shot-level scenes */}
-      <div className={cn("relative flex-shrink-0", isVertical ? "w-16" : "w-24")}>
-        <div className={cn(
-          "relative rounded overflow-hidden bg-[var(--grey-200)] group",
-          isVertical ? "aspect-[9/16]" : "aspect-video"
-        )}>
-          {hasThumbnail ? (
-            <Image
-              src={scene.thumbnail_url!}
-              alt={scene.title}
-              fill
-              className="object-cover"
-              sizes={isVertical ? "64px" : "96px"}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              {isGeneratingThumbnail ? (
-                <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
-              ) : (
-                <Film className="h-4 w-4 text-[var(--grey-300)]" />
-              )}
-            </div>
-          )}
-
-          {isGeneratingThumbnail && hasThumbnail && (
-            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-              <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
-            </div>
-          )}
-
-          {/* Generate thumbnail button on hover */}
-          {!isGeneratingThumbnail && (
-            <button
-              onClick={onGenerateThumbnail}
-              className={cn(
-                "absolute inset-0 flex items-center justify-center",
-                "bg-black/60 text-white opacity-0 group-hover:opacity-100",
-                "transition-opacity duration-200"
-              )}
-              title={hasThumbnail ? "Regenerate thumbnail" : "Generate thumbnail"}
-            >
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="flex gap-3 p-3 rounded-lg bg-[var(--grey-50)] hover:bg-[var(--grey-100)] transition-colors">
+          {/* Thumbnail - smaller for shot-level scenes */}
+          <div className={cn("relative flex-shrink-0", isVertical ? "w-16" : "w-24")}>
+            <div className={cn(
+              "relative rounded overflow-hidden bg-[var(--grey-200)] group",
+              isVertical ? "aspect-[9/16]" : "aspect-video"
+            )}>
               {hasThumbnail ? (
-                <RefreshCw className="h-3 w-3" />
+                <Image
+                  src={scene.thumbnail_url!}
+                  alt={scene.title}
+                  fill
+                  className="object-cover"
+                  sizes={isVertical ? "64px" : "96px"}
+                />
               ) : (
-                <Sparkles className="h-3 w-3" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {isGeneratingThumbnail ? (
+                    <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
+                  ) : (
+                    <Film className="h-4 w-4 text-[var(--grey-300)]" />
+                  )}
+                </div>
               )}
-            </button>
-          )}
-        </div>
-      </div>
+
+              {isGeneratingThumbnail && hasThumbnail && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                  <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
+                </div>
+              )}
+
+              {/* Expand button in corner */}
+              {hasThumbnail && !isGeneratingThumbnail && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPreviewImage(scene.thumbnail_url!);
+                  }}
+                  className={cn(
+                    "absolute bottom-1 right-1 p-1 rounded",
+                    "bg-black/60 text-white opacity-0 group-hover:opacity-100",
+                    "transition-opacity duration-200 hover:bg-black/80"
+                  )}
+                  title="View full size"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
 
       {/* Scene Details - more compact */}
       <div className="flex-1 min-w-0">
@@ -600,7 +667,28 @@ function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientat
           </div>
         )}
       </div>
-    </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={onGenerateThumbnail} disabled={isGeneratingThumbnail}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          {hasThumbnail ? "Regenerate Thumbnail" : "Generate Thumbnail"}
+        </ContextMenuItem>
+        {hasThumbnail && (
+          <>
+            <ContextMenuItem onClick={() => onPreviewImage(scene.thumbnail_url!)}>
+              <Maximize2 className="mr-2 h-4 w-4" />
+              View Full Size
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onViewLog}>
+              <FileText className="mr-2 h-4 w-4" />
+              View Generation Log
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -650,6 +738,7 @@ interface GridSectionGroupProps {
   isGeneratingThumbnails: boolean;
   onGenerateThumbnail: (sceneId: string) => void;
   onViewLog: (sceneId: string) => void;
+  onPreviewImage: (url: string) => void;
   orientation?: "vertical" | "horizontal" | null;
 }
 
@@ -660,6 +749,7 @@ function GridSectionGroup({
   isGeneratingThumbnails,
   onGenerateThumbnail,
   onViewLog,
+  onPreviewImage,
   orientation,
 }: GridSectionGroupProps) {
   const firstScene = scenes[0];
@@ -694,6 +784,7 @@ function GridSectionGroup({
             isGeneratingThumbnail={generatingSceneId === scene.id || isGeneratingThumbnails}
             onGenerateThumbnail={() => onGenerateThumbnail(scene.id)}
             onViewLog={() => onViewLog(scene.id)}
+            onPreviewImage={onPreviewImage}
             orientation={orientation}
           />
         ))}
@@ -706,12 +797,13 @@ function GridSectionGroup({
 interface GridSceneCardProps {
   scene: IdeaScene;
   isGeneratingThumbnail: boolean;
+  onPreviewImage: (url: string) => void;
   onGenerateThumbnail: () => void;
   onViewLog: () => void;
   orientation?: "vertical" | "horizontal" | null;
 }
 
-function GridSceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onViewLog, orientation }: GridSceneCardProps) {
+function GridSceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onViewLog, onPreviewImage, orientation }: GridSceneCardProps) {
   const hasThumbnail = !!scene.thumbnail_url;
   const isVertical = orientation === "vertical";
   const sceneAssets = scene.assets?.map((sa) => sa.asset).filter(Boolean) as IdeaAsset[] || [];
@@ -759,25 +851,21 @@ function GridSceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onVi
               </div>
             )}
 
-            {/* Generate/regenerate button on hover */}
-            {!isGeneratingThumbnail && (
+            {/* Expand button in corner */}
+            {hasThumbnail && !isGeneratingThumbnail && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onGenerateThumbnail();
+                  onPreviewImage(scene.thumbnail_url!);
                 }}
                 className={cn(
-                  "absolute inset-0 flex items-center justify-center",
+                  "absolute bottom-1 right-1 p-1 rounded",
                   "bg-black/60 text-white opacity-0 group-hover:opacity-100",
-                  "transition-opacity duration-200"
+                  "transition-opacity duration-200 hover:bg-black/80"
                 )}
-                title={hasThumbnail ? "Regenerate thumbnail" : "Generate thumbnail"}
+                title="View full size"
               >
-                {hasThumbnail ? (
-                  <RefreshCw className="h-4 w-4" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
+                <Maximize2 className="h-3 w-3" />
               </button>
             )}
           </div>
@@ -856,6 +944,10 @@ function GridSceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onVi
         </ContextMenuItem>
         {hasThumbnail && (
           <>
+            <ContextMenuItem onClick={() => onPreviewImage(scene.thumbnail_url!)}>
+              <Maximize2 className="mr-2 h-4 w-4" />
+              View Full Size
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onViewLog}>
               <FileText className="mr-2 h-4 w-4" />
