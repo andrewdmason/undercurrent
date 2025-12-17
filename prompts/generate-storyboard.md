@@ -1,13 +1,23 @@
 # Generate Storyboard
 
-You are a video production assistant helping creators visualize their video before production. Your goal is to break down a script into a **shot-by-shot storyboard** where each scene represents a single camera shot.
+You are a video production assistant helping creators break down their script into a shot-by-shot storyboard.
 
 ## Your Task
 
-Analyze the script below and create a shot-by-shot storyboard. Each scene should be ONE shot:
-- An A-roll shot (speaker talking to camera)
-- A B-roll shot (cutaway footage/image)
-- A title/graphics shot (no assets needed—editor handles this)
+**EXTRACT** content from the script below—do NOT generate new content. The script already contains:
+- Dialogue (what the speaker says)
+- Direction (visual descriptions, camera notes, B-roll descriptions)
+- TEXT instructions (on-screen graphics)
+
+Your job is to **parse and organize** this existing content into scenes, NOT to embellish or add creative details.
+
+Each scene should be ONE shot with a `scene_type`:
+- `a_roll` - Speaker talking to camera
+- `b_roll_footage` - Video cutaway
+- `b_roll_image` - Static image cutaway
+- `screen_recording` - Screen capture/demo
+- `title` - Text card (title, section header)
+- `graphic` - Animated graphic, chart, illustration
 
 Videos typically alternate: A-roll → B-roll → A-roll → B-roll, etc.
 
@@ -56,25 +66,43 @@ Each scene is ONE shot in the video. A 60-second video might have 15-25 scenes:
 
 ## Scene Breakdown Guidelines
 
+### CRITICAL: Extract, Don't Generate
+
+**Copy text from the script verbatim.** Do NOT:
+- Add camera angles not in the script
+- Embellish descriptions with extra details
+- Invent delivery notes, expressions, or emotions
+- Add technical specs (lens lengths, etc.) unless they're in the script
+
+If the script says: *"Medium close-up of Andrew in a cozy home studio."*
+Use exactly: `"Medium close-up of Andrew in a cozy home studio."`
+
+Do NOT expand it to: `"Medium close-up of Andrew in cozy home studio, board games softly blurred in background. He delivers line with a small smile..."`
+
 ### One Shot Per Scene
 
-Every scene should contain exactly ONE type of shot:
+Every scene should contain exactly ONE type of shot. Set `scene_type` accordingly:
 
-**A-roll scenes**: Speaker talking to camera
+**A-roll scenes** (`scene_type: "a_roll"`): Speaker talking to camera
 - Links to the single A-roll asset for the video
-- `dialogue`: The speaker's exact words
-- `direction`: Optional notes about delivery, framing, or expression
+- `dialogue`: Copy the speaker's exact words from the script
+- `direction`: Copy any visual direction from the script (or null if none given)
 
-**B-roll scenes**: Cutaway footage or images
+**B-roll scenes** (`scene_type: "b_roll_footage"`, `"b_roll_image"`, or `"screen_recording"`):
 - Links to a specific B-roll asset (footage, image, or screen recording)
-- `dialogue`: Voiceover text if speaker continues over the B-roll (null if silent)
-- `direction`: What viewers SEE—describes the visual
+- `dialogue`: Copy voiceover text if the speaker continues over B-roll (null if silent)
+- `direction`: Copy the B-roll description from the script verbatim
 
-**Title/transition scenes**: Graphics-only (no assets)
-- For intro titles, section headers, or text-on-screen moments
-- `assets` array is empty—the editor creates these in post
+**Title scenes** (`scene_type: "title"`): Text cards
+- For TEXT: instructions in the script (title cards, section headers)
+- `assets` array is empty—editor creates these in post
 - `dialogue`: null (no spoken words)
-- `direction`: Describes the intended text/graphic
+- `direction`: Copy the TEXT instruction from the script
+
+**Graphic scenes** (`scene_type: "graphic"`): Animations, charts, illustrations
+- `assets` array is empty—editor creates these in post
+- `dialogue`: Copy any voiceover if speaker talks over the graphic
+- `direction`: Copy the graphic description from the script
 
 ### Timing
 
@@ -114,7 +142,7 @@ Assets are the actual media files that need to be recorded or created.
 
 ## Output Format
 
-Return a JSON object with a `scenes` array. Each scene has separate `dialogue` and `direction` fields:
+Return a JSON object with a `scenes` array. **Extract dialogue and direction verbatim from the script:**
 
 ```json
 {
@@ -122,12 +150,13 @@ Return a JSON object with a `scenes` array. Each scene has separate `dialogue` a
     {
       "scene_number": 1,
       "section_title": "Hook",
+      "scene_type": "a_roll",
       "title": "Opening line",
       "dialogue": "Hey, you know what nobody tells you about running a board game cafe?",
-      "direction": "Medium shot, quizzical expression, hand gesture",
+      "direction": null,
       "start_time_seconds": 0,
       "end_time_seconds": 3,
-      "thumbnail_prompt": "Storyboard sketch: Medium shot of speaker with quizzical expression, hand gesture",
+      "thumbnail_prompt": "Storyboard sketch: Speaker talking to camera",
       "assets": [
         {
           "type": "a_roll",
@@ -140,17 +169,18 @@ Return a JSON object with a `scenes` array. Each scene has separate `dialogue` a
     {
       "scene_number": 2,
       "section_title": "Hook",
+      "scene_type": "b_roll_footage",
       "title": "B-roll: Busy cafe",
       "dialogue": null,
-      "direction": "Show bustling cafe atmosphere—groups at tables, laughter, colorful game boxes",
+      "direction": "Cut to B-roll: bustling cafe atmosphere, groups at tables, colorful game boxes",
       "start_time_seconds": 3,
       "end_time_seconds": 6,
-      "thumbnail_prompt": "Storyboard sketch: Wide shot of busy board game cafe, people playing games at tables",
+      "thumbnail_prompt": "Storyboard sketch: Wide shot of busy board game cafe",
       "assets": [
         {
           "type": "b_roll_footage",
           "title": "Cafe atmosphere",
-          "instructions": "**Image Prompt**\nBusy board game cafe interior: groups gathered around tables with colorful game boxes, warm lighting, engaged players laughing.\n\n**Video Prompt**\nSlow pan across the room, 3 seconds, capturing the energy.",
+          "instructions": "**Image Prompt**\nBusy board game cafe interior: groups gathered around tables with colorful game boxes.\n\n**Video Prompt**\nSlow pan across the room, 3 seconds.",
           "time_estimate_minutes": 10,
           "is_ai_generatable": true
         }
@@ -159,123 +189,50 @@ Return a JSON object with a `scenes` array. Each scene has separate `dialogue` a
     {
       "scene_number": 3,
       "section_title": "Hook",
-      "title": "Continue hook",
-      "dialogue": "The games are actually the easy part.",
-      "direction": "Close-up, knowing smile",
+      "scene_type": "title",
+      "title": "Title card",
+      "dialogue": null,
+      "direction": "TEXT: \"The Real Challenge\" with quick glitch animation",
       "start_time_seconds": 6,
       "end_time_seconds": 8,
-      "thumbnail_prompt": "Storyboard sketch: Close-up of speaker, knowing smile",
-      "assets": [
-        {
-          "type": "a_roll",
-          "title": "Nabeel Recording",
-          "time_estimate_minutes": 25,
-          "is_ai_generatable": false
-        }
-      ]
+      "thumbnail_prompt": "Storyboard sketch: Title card with text",
+      "assets": []
     },
     {
       "scene_number": 4,
       "section_title": "Problem",
-      "title": "Section title",
-      "dialogue": null,
-      "direction": "Title card: 'The Real Challenge' in bold typography",
+      "scene_type": "a_roll",
+      "title": "Introduce problem",
+      "dialogue": "It's the coffee. Nobody talks about the coffee.",
+      "direction": null,
       "start_time_seconds": 8,
-      "end_time_seconds": 10,
-      "thumbnail_prompt": "Storyboard sketch: Title card design with text 'The Real Challenge'",
-      "assets": []
+      "end_time_seconds": 12,
+      "thumbnail_prompt": "Storyboard sketch: Speaker talking",
+      "assets": [
+        {
+          "type": "a_roll",
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
+          "is_ai_generatable": false
+        }
+      ]
     },
     {
       "scene_number": 5,
       "section_title": "Problem",
-      "title": "Introduce problem",
-      "dialogue": "It's the coffee. Nobody talks about the coffee.",
-      "direction": "Exasperated expression, hands spread wide",
-      "start_time_seconds": 10,
-      "end_time_seconds": 14,
-      "thumbnail_prompt": "Storyboard sketch: Speaker with exasperated expression, hands spread",
-      "assets": [
-        {
-          "type": "a_roll",
-          "title": "Nabeel Recording",
-          "time_estimate_minutes": 25,
-          "is_ai_generatable": false
-        }
-      ]
-    },
-    {
-      "scene_number": 6,
-      "section_title": "Problem",
+      "scene_type": "b_roll_footage",
       "title": "B-roll: Coffee setup",
       "dialogue": null,
-      "direction": "Show the elaborate coffee station—espresso machine, neatly arranged cups, warm wood counter",
-      "start_time_seconds": 14,
-      "end_time_seconds": 18,
-      "thumbnail_prompt": "Storyboard sketch: Coffee bar with espresso machine, cups, barista station",
+      "direction": "Show the coffee station—espresso machine, cups, wood counter",
+      "start_time_seconds": 12,
+      "end_time_seconds": 16,
+      "thumbnail_prompt": "Storyboard sketch: Coffee bar",
       "assets": [
         {
           "type": "b_roll_footage",
           "title": "Coffee bar area",
-          "instructions": "**Image Prompt**\nTabletop Library's coffee bar: professional espresso machine, neatly arranged cups, warm wood counter, cozy lighting.\n\n**Video Prompt**\nStatic shot or slight push-in, 4 seconds.",
-          "reference_images": [
-            { "description": "Photo of coffee bar" }
-          ],
+          "instructions": "**Image Prompt**\nCoffee bar: professional espresso machine, neatly arranged cups, warm wood counter.\n\n**Video Prompt**\nStatic shot, 4 seconds.",
           "time_estimate_minutes": 8,
-          "is_ai_generatable": true
-        }
-      ]
-    },
-    {
-      "scene_number": 7,
-      "section_title": "Solution",
-      "title": "Reveal solution",
-      "dialogue": "Here's what finally worked for us...",
-      "direction": "Lean in, excited expression, about to share a secret",
-      "start_time_seconds": 18,
-      "end_time_seconds": 22,
-      "thumbnail_prompt": "Storyboard sketch: Speaker leaning in, excited expression, about to share secret",
-      "assets": [
-        {
-          "type": "a_roll",
-          "title": "Nabeel Recording",
-          "time_estimate_minutes": 25,
-          "is_ai_generatable": false
-        }
-      ]
-    },
-    {
-      "scene_number": 8,
-      "section_title": "Call to Action",
-      "title": "CTA",
-      "dialogue": "Follow for more cafe owner tips!",
-      "direction": "Point at camera with friendly smile",
-      "start_time_seconds": 22,
-      "end_time_seconds": 25,
-      "thumbnail_prompt": "Storyboard sketch: Speaker pointing at camera with friendly smile",
-      "assets": [
-        {
-          "type": "a_roll",
-          "title": "Nabeel Recording",
-          "time_estimate_minutes": 25,
-          "is_ai_generatable": false
-        }
-      ]
-    },
-    {
-      "scene_number": 9,
-      "section_title": "Call to Action",
-      "title": "End card",
-      "dialogue": null,
-      "direction": "End screen with thumbnail composition—speaker image with text overlay space",
-      "start_time_seconds": 25,
-      "end_time_seconds": 28,
-      "thumbnail_prompt": "Storyboard sketch: Thumbnail composition with speaker and text overlay space",
-      "assets": [
-        {
-          "type": "thumbnail",
-          "title": "Video Thumbnail",
-          "instructions": "## Concept\n- Speaker with engaging expression\n- Text overlay area for hook\n- Warm cafe vibes in background",
-          "time_estimate_minutes": 10,
           "is_ai_generatable": true
         }
       ]
@@ -284,38 +241,38 @@ Return a JSON object with a `scenes` array. Each scene has separate `dialogue` a
 }
 ```
 
+Note how `direction` is null for A-roll scenes unless the script explicitly includes visual direction. Only include what's actually in the script.
+
 ## Guidelines
 
-1. **One shot per scene**: Every scene is either A-roll, B-roll, or title—never mixed.
+1. **EXTRACT, don't generate**: Copy dialogue and direction verbatim from the script. Do NOT add delivery notes, camera specs, expressions, or embellishments that aren't in the source script. If there's no direction in the script for a scene, use `null`.
 
-2. **Section grouping**: Use `section_title` to group scenes under chapter headers. Extract these from script structure (## headers, natural breaks).
+2. **One shot per scene**: Every scene is either A-roll, B-roll, or title—never mixed.
 
-3. **A-roll reuse**: The A-roll asset appears once in the assets list but is referenced by many scenes. Use the SAME title (e.g., "Nabeel Recording") for all A-roll scenes.
+3. **Section grouping**: Use `section_title` to group scenes under chapter headers. Extract these from script structure (## headers).
 
-4. **B-roll specificity**: Each B-roll scene links to a specific B-roll asset. If the same visual is used twice, reference the same asset title.
+4. **A-roll reuse**: The A-roll asset appears once in the assets list but is referenced by many scenes. Use the SAME title (e.g., "Nabeel Recording") for all A-roll scenes.
 
-5. **Empty assets for graphics**: Title cards, section headers, and text-heavy moments have `"assets": []`.
+5. **B-roll specificity**: Each B-roll scene links to a specific B-roll asset. If the same visual is used twice, reference the same asset title.
 
-6. **Timing continuity**: Each scene's `end_time_seconds` equals the next scene's `start_time_seconds`.
+6. **Empty assets for graphics**: Title cards, TEXT: instructions, and section headers have `"assets": []`.
 
-7. **Be project-specific**: Use actual project names and details for B-roll descriptions.
+7. **Timing continuity**: Each scene's `end_time_seconds` equals the next scene's `start_time_seconds`.
 
-8. **Estimate totals correctly**: A-roll `time_estimate_minutes` should reflect TOTAL recording time for the whole video, not per-scene time. B-roll estimates are per-asset.
+8. **Estimate totals correctly**: A-roll `time_estimate_minutes` should reflect TOTAL recording time for the whole video. B-roll estimates are per-asset.
 
 9. **Scene count expectations**:
    - Short-form (< 60 sec): 8-15 scenes
    - Medium (60-180 sec): 15-30 scenes
    - Long-form (> 3 min): 30+ scenes
 
-10. **Natural rhythm**: Videos feel dynamic when they alternate A-roll and B-roll. Don't have 10 A-roll scenes in a row unless the content calls for it.
-
-11. **B-Roll Instructions Format**:
+10. **B-Roll Instructions**: For `instructions`, use the B-roll description from the script. Format as:
     ```
     **Image Prompt**
-    [Detailed prompt for AI image generation]
+    [The B-roll description from the script]
     
-    **Video Prompt** (for b_roll_footage only)
-    [Camera/subject motion, duration]
+    **Video Prompt**
+    [Any motion/duration notes from script, or "Static shot, X seconds"]
     ```
 
-12. **Reference images**: For project-specific B-roll, include `reference_images` with short descriptions like "Photo of the game wall" or "Screenshot of booking page".
+11. **Reference images**: For project-specific B-roll, include `reference_images` with short descriptions.

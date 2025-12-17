@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, Trash2, Send, Sparkles, RefreshCw } from "lucide-react";
+import { Trash2, Send, Sparkles, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { IdeaWithChannels } from "@/lib/types";
 import { PlatformIcon } from "@/components/strategy/platform-icon";
@@ -298,13 +298,7 @@ function ColumnCard({ idea, projectSlug, projectId, onRemix, onPublish }: Column
               {idea.title}
             </h4>
             
-            {/* Prep time */}
-            {idea.prepTimeMinutes !== undefined && idea.prepTimeMinutes > 0 && (
-              <div className="flex items-center gap-1 mt-2 text-xs text-[var(--grey-400)]">
-                <Clock className="h-3 w-3" />
-                <span>{idea.prepTimeMinutes}min remaining</span>
-              </div>
-            )}
+            {/* Time estimates hidden for now */}
           </div>
         </Link>
       </ContextMenuTrigger>

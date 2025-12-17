@@ -10,6 +10,7 @@ create table if not exists public.idea_scenes (
   idea_id uuid not null references public.ideas(id) on delete cascade,
   scene_number integer not null,
   section_title text, -- Groups shots under chapter headers (e.g., "Hook", "Problem", "Solution")
+  scene_type text not null default 'a_roll', -- Type of shot: a_roll, title, graphic, b_roll_footage, b_roll_image, screen_recording
   title text not null,
   dialogue text, -- Spoken words for this scene (null for b-roll only scenes)
   direction text, -- Visual direction, action descriptions, b-roll notes

@@ -368,11 +368,32 @@ export interface GeneratedAssetsResponse {
 // Storyboard Scene Types
 // ============================================
 
+export const SCENE_TYPES = [
+  "a_roll",
+  "title",
+  "graphic",
+  "b_roll_footage",
+  "b_roll_image",
+  "screen_recording",
+] as const;
+export type SceneType = (typeof SCENE_TYPES)[number];
+
+// Human-readable labels for scene types
+export const SCENE_TYPE_LABELS: Record<SceneType, string> = {
+  a_roll: "A-Roll",
+  title: "Title",
+  graphic: "Graphic",
+  b_roll_footage: "B-Roll Footage",
+  b_roll_image: "B-Roll Image",
+  screen_recording: "Screen Recording",
+};
+
 export interface IdeaScene {
   id: string;
   idea_id: string;
   scene_number: number;
   section_title: string | null; // Groups shots under chapter headers (e.g., "Hook", "Problem")
+  scene_type: SceneType; // Type of shot: a_roll, title, graphic, b_roll_footage, b_roll_image, screen_recording
   title: string;
   dialogue: string | null; // Spoken words for this scene (null for b-roll only scenes)
   direction: string | null; // Visual direction, action descriptions, b-roll notes
@@ -400,6 +421,7 @@ export interface IdeaSceneAsset {
 export interface GeneratedScene {
   scene_number: number;
   section_title?: string; // Groups shots under chapter headers (e.g., "Hook", "Problem")
+  scene_type: SceneType; // Type of shot: a_roll, title, graphic, b_roll_footage, b_roll_image, screen_recording
   title: string;
   dialogue?: string; // Spoken words for this scene (null for b-roll only scenes)
   direction?: string; // Visual direction, action descriptions, b-roll notes

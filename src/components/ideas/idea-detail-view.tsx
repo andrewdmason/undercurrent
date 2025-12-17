@@ -2137,14 +2137,6 @@ function AssetsTabContent({
                 <span className="text-xs text-[var(--grey-400)]">
                   {ASSET_TYPE_LABELS[asset.type as AssetType]}
                 </span>
-                {asset.time_estimate_minutes && (
-                  <>
-                    <span className="text-[var(--grey-300)]">·</span>
-                    <span className="text-xs text-[var(--grey-400)]">
-                      {asset.time_estimate_minutes}min
-                    </span>
-                  </>
-                )}
               </div>
             </div>
           </button>

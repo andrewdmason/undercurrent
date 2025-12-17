@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { openai, DEFAULT_MODEL } from "@/lib/openai";
+import { openai, DEFAULT_MODEL, getOpenAI, IMAGE_GEN_MODEL } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { readFile } from "fs/promises";
 import path from "path";
@@ -13,9 +13,25 @@ import {
   GeneratedScene,
   AssetType,
   ProjectImage,
+  GenerationLog,
 } from "@/lib/types";
-import { genai, SKETCH_IMAGE_MODEL, getAspectRatioFromOrientation } from "@/lib/gemini";
+// Note: We switched from Gemini/Imagen to OpenAI gpt-image-1 for thumbnail generation
 import { findBestMatches, MATCH_THRESHOLD } from "@/lib/embeddings";
+
+// Helper to fetch an image URL as base64
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error("Error fetching image:", error);
+    return null;
+  }
+}
 
 // Helper to get project slug and revalidate paths
 async function revalidateIdeaPaths(ideaId: string) {
@@ -346,6 +362,7 @@ export async function generateStoryboard(
       idea_id: ideaId,
       scene_number: scene.scene_number,
       section_title: scene.section_title || null,
+      scene_type: scene.scene_type || "a_roll",
       title: scene.title,
       dialogue: scene.dialogue || null,
       direction: scene.direction || null,
@@ -546,16 +563,31 @@ async function processReferenceImages(
   }
 }
 
-// Generate thumbnail for a single scene using Imagen 4 Fast
+// Generate thumbnail for a single scene using OpenAI's gpt-image-1
 export async function generateSceneThumbnail(
   sceneId: string
 ): Promise<{ success: boolean; thumbnailUrl?: string; error?: string }> {
   const supabase = await createClient();
 
-  // Fetch the scene with idea and template info for aspect ratio
+  // Fetch the scene with idea, template, assets, and character info for reference images
   const { data: scene, error: fetchError } = await supabase
     .from("idea_scenes")
-    .select("*, ideas(project_id, project_templates(orientation))")
+    .select(`
+      *,
+      ideas(
+        id,
+        project_id,
+        project_templates(orientation),
+        projects(id)
+      ),
+      idea_scene_assets(
+        idea_assets(
+          id,
+          type,
+          title
+        )
+      )
+    `)
     .eq("id", sceneId)
     .single();
 
@@ -571,60 +603,91 @@ export async function generateSceneThumbnail(
   const ideaData = scene.ideas as any;
   const projectId = ideaData?.project_id;
   const orientation = ideaData?.project_templates?.orientation as "vertical" | "horizontal" | null;
-  const aspectRatio = getAspectRatioFromOrientation(orientation);
+  
+  // Map orientation to OpenAI size
+  const size = orientation === "vertical" ? "1024x1536" : "1536x1024";
 
-  try {
-    // Ensure consistent storyboard sketch style by prepending style directive
-    const stylePrefix = "Storyboard sketch in pencil/charcoal style, black and white with muted tones, rough hand-drawn look: ";
-    const styledPrompt = scene.thumbnail_prompt.toLowerCase().startsWith("storyboard sketch")
-      ? scene.thumbnail_prompt // Already has the prefix
-      : stylePrefix + scene.thumbnail_prompt;
-
-    // Generate image using Imagen 4 Fast with template's aspect ratio
-    // Includes retry logic for rate limiting (429 errors)
-    const MAX_RETRIES = 3;
-    let response;
-    let lastError;
+  // For A-roll scenes, get the idea's linked character image as reference
+  let characterImageBase64: string | null = null;
+  const ideaId = scene.idea_id;
+  
+  if (scene.scene_type === "a_roll" && ideaId) {
+    // First try to get the character linked to this specific idea
+    const { data: ideaCharacters } = await supabase
+      .from("idea_characters")
+      .select(`
+        project_characters(id, name, image_url)
+      `)
+      .eq("idea_id", ideaId)
+      .limit(1);
     
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        response = await genai.models.generateImages({
-          model: SKETCH_IMAGE_MODEL,
-          prompt: styledPrompt,
-          config: {
-            numberOfImages: 1,
-            aspectRatio: aspectRatio,
-          },
-        });
-        break; // Success, exit retry loop
-      } catch (apiError) {
-        lastError = apiError;
-        // Check if it's a rate limit error (429)
-        const errorMessage = String(apiError);
-        if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
-          // Parse retry delay from error if available, otherwise use exponential backoff
-          const retryMatch = errorMessage.match(/retryDelay[":]*\s*"?(\d+)s/i);
-          const waitSeconds = retryMatch ? parseInt(retryMatch[1], 10) + 5 : (attempt + 1) * 30;
-          console.log(`Rate limited (attempt ${attempt + 1}/${MAX_RETRIES}), waiting ${waitSeconds}s before retry...`);
-          await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
-        } else {
-          // Not a rate limit error, don't retry
-          throw apiError;
-        }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const linkedCharacter = (ideaCharacters?.[0] as any)?.project_characters;
+    
+    if (linkedCharacter?.image_url) {
+      console.log(`A-roll scene: using idea's linked character "${linkedCharacter.name}" as reference`);
+      characterImageBase64 = await fetchImageAsBase64(linkedCharacter.image_url);
+    } else if (projectId) {
+      // Fallback: use any project character with an image
+      const { data: projectCharacters } = await supabase
+        .from("project_characters")
+        .select("id, name, image_url")
+        .eq("project_id", projectId)
+        .not("image_url", "is", null)
+        .limit(1);
+      
+      if (projectCharacters && projectCharacters.length > 0 && projectCharacters[0].image_url) {
+        console.log(`A-roll scene: using project character "${projectCharacters[0].name}" as reference (fallback)`);
+        characterImageBase64 = await fetchImageAsBase64(projectCharacters[0].image_url);
       }
     }
+  }
+
+  try {
+    // Build the prompt with storyboard style
+    const stylePrefix = "Storyboard sketch in pencil/charcoal style, black and white with muted tones, rough hand-drawn look: ";
+    const styledPrompt = scene.thumbnail_prompt.toLowerCase().startsWith("storyboard sketch")
+      ? scene.thumbnail_prompt
+      : stylePrefix + scene.thumbnail_prompt;
+
+    const client = getOpenAI();
     
-    if (!response) {
-      throw lastError || new Error("Failed to generate image after retries");
+    // Build the request - include reference image if we have one
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const requestParams: any = {
+      model: IMAGE_GEN_MODEL,
+      prompt: characterImageBase64 
+        ? `${styledPrompt}\n\nUse the attached reference image as the basis for the person/character in this storyboard sketch.`
+        : styledPrompt,
+      n: 1,
+      size: size as "1024x1024" | "1024x1536" | "1536x1024",
+      quality: "low", // Fast generation for storyboard sketches
+    };
+
+    // Add reference image if available
+    if (characterImageBase64) {
+      requestParams.image = characterImageBase64;
     }
 
-    const generatedImage = response.generatedImages?.[0];
-    if (!generatedImage?.image?.imageBytes) {
+    const response = await client.images.generate(requestParams);
+
+    const imageData = response.data?.[0];
+    if (!imageData) {
       return { success: false, error: "No image was generated" };
     }
 
-    // Convert base64 to buffer and upload to Supabase storage
-    const imageBuffer = Buffer.from(generatedImage.image.imageBytes, "base64");
+    // Get the image - either base64 or URL
+    let imageBuffer: Buffer;
+    if (imageData.b64_json) {
+      imageBuffer = Buffer.from(imageData.b64_json, "base64");
+    } else if (imageData.url) {
+      const imgResponse = await fetch(imageData.url);
+      const arrayBuffer = await imgResponse.arrayBuffer();
+      imageBuffer = Buffer.from(arrayBuffer);
+    } else {
+      return { success: false, error: "No image data in response" };
+    }
+
     const fileName = `scene-${sceneId}-${Date.now()}.png`;
     const filePath = `storyboard-thumbnails/${fileName}`;
 
@@ -661,9 +724,9 @@ export async function generateSceneThumbnail(
     await supabase.from("generation_logs").insert({
       project_id: projectId,
       type: "storyboard_generation",
-      prompt_sent: scene.thumbnail_prompt,
+      prompt_sent: styledPrompt + (characterImageBase64 ? " [with character reference image]" : ""),
       response_raw: `Image generated: ${publicUrl}`,
-      model: SKETCH_IMAGE_MODEL,
+      model: IMAGE_GEN_MODEL,
       idea_id: scene.idea_id,
     });
 
@@ -679,13 +742,52 @@ export async function generateSceneThumbnail(
       type: "storyboard_generation",
       prompt_sent: scene.thumbnail_prompt,
       response_raw: null,
-      model: SKETCH_IMAGE_MODEL,
+      model: IMAGE_GEN_MODEL,
       error: errorMessage,
       idea_id: scene.idea_id,
     });
 
     return { success: false, error: errorMessage };
   }
+}
+
+// Fetch the most recent generation log for a scene's thumbnail
+export async function getSceneThumbnailLog(
+  sceneId: string
+): Promise<{ log: GenerationLog | null; error?: string }> {
+  const supabase = await createClient();
+
+  // First get the scene to find its idea_id and thumbnail_prompt
+  const { data: scene, error: sceneError } = await supabase
+    .from("idea_scenes")
+    .select("idea_id, thumbnail_prompt, thumbnail_url")
+    .eq("id", sceneId)
+    .single();
+
+  if (sceneError || !scene) {
+    return { log: null, error: "Scene not found" };
+  }
+
+  if (!scene.thumbnail_url) {
+    return { log: null, error: "No thumbnail has been generated for this scene" };
+  }
+
+  // Find the most recent generation log for this scene's thumbnail
+  // Match by idea_id, type, and that prompt_sent contains the thumbnail_prompt
+  const { data: logs, error: logError } = await supabase
+    .from("generation_logs")
+    .select("*")
+    .eq("idea_id", scene.idea_id)
+    .eq("type", "storyboard_generation")
+    .ilike("response_raw", `%${scene.thumbnail_url}%`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (logError) {
+    return { log: null, error: "Failed to fetch generation log" };
+  }
+
+  return { log: (logs?.[0] as GenerationLog) || null };
 }
 
 // Generate thumbnails for all scenes in an idea
@@ -708,27 +810,41 @@ export async function generateAllSceneThumbnails(
   // Generate thumbnails for scenes that don't have one
   const scenesNeedingThumbnails = (scenes || []).filter((s) => !s.thumbnail_url);
 
-  // Imagen 4 Fast has a rate limit of 10 requests per minute
-  // Process with 7 second delays to stay safely under the limit
-  const DELAY_BETWEEN_REQUESTS_MS = 7000;
+  if (scenesNeedingThumbnails.length === 0) {
+    return { success: true };
+  }
+
+  // OpenAI has higher rate limits than Imagen, but we still add a small delay
+  // to avoid overwhelming the API and to give the UI time to update
+  const DELAY_BETWEEN_REQUESTS_MS = 1000;
+  let generatedCount = 0;
+  let failedCount = 0;
 
   for (let i = 0; i < scenesNeedingThumbnails.length; i++) {
     const scene = scenesNeedingThumbnails[i];
     
-    // Add delay between requests (skip delay for first request)
+    // Add small delay between requests (skip delay for first request)
     if (i > 0) {
-      console.log(`Rate limiting: waiting ${DELAY_BETWEEN_REQUESTS_MS / 1000}s before next thumbnail (${i + 1}/${scenesNeedingThumbnails.length})`);
+      console.log(`Generating thumbnail ${i + 1}/${scenesNeedingThumbnails.length}...`);
       await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_REQUESTS_MS));
     }
     
     const result = await generateSceneThumbnail(scene.id);
     if (!result.success) {
       console.error(`Failed to generate thumbnail for scene ${scene.id}:`, result.error);
-      // Continue with other scenes even if one fails
+      failedCount++;
+      // Continue with other scenes on error
+    } else {
+      generatedCount++;
     }
   }
 
   await revalidateIdeaPaths(ideaId);
+  
+  if (failedCount > 0 && generatedCount === 0) {
+    return { success: false, error: `Failed to generate all ${failedCount} thumbnails` };
+  }
+  
   return { success: true };
 }
 
