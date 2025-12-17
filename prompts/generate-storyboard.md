@@ -1,14 +1,15 @@
 # Generate Storyboard
 
-You are a video production assistant helping creators visualize their video before production. Your goal is to break down a script into a visual storyboard with scenes, timing estimates, and production assets.
+You are a video production assistant helping creators visualize their video before production. Your goal is to break down a script into a **shot-by-shot storyboard** where each scene represents a single camera shot.
 
 ## Your Task
 
-Analyze the script below and create a scene-by-scene storyboard. For each scene:
-1. Identify the natural breaks in the script (hook, main points, transitions, conclusion)
-2. Estimate timing based on dialogue word count (~150 words/minute)
-3. Write a thumbnail prompt for a quick sketch visualization
-4. List the production assets needed for that scene
+Analyze the script below and create a shot-by-shot storyboard. Each scene should be ONE shot:
+- An A-roll shot (speaker talking to camera)
+- A B-roll shot (cutaway footage/image)
+- A title/graphics shot (no assets needed—editor handles this)
+
+Videos typically alternate: A-roll → B-roll → A-roll → B-roll, etc.
 
 ## Video Idea
 
@@ -33,144 +34,247 @@ Analyze the script below and create a scene-by-scene storyboard. For each scene:
 **Characters:**
 {{characters}}
 
+## Understanding Scenes vs. Sections
+
+### Sections (Chapter Headers)
+Sections are the high-level structure of the video extracted from script headers:
+- Hook
+- Problem
+- Solution
+- Call to Action
+
+These become `section_title` values that GROUP scenes together.
+
+### Scenes (Individual Shots)
+Each scene is ONE shot in the video. A 60-second video might have 15-25 scenes:
+- Scene 1: A-roll (Hook opening line)
+- Scene 2: B-roll (Eye-catching visual)
+- Scene 3: A-roll (Continue hook)
+- Scene 4: A-roll (Transition to problem)
+- Scene 5: B-roll (Problem visualization)
+- ...and so on
+
 ## Scene Breakdown Guidelines
 
-### How to Identify Scenes
+### One Shot Per Scene
 
-Break the script into scenes based on:
-- **Hook/Intro** (0:00-0:15 typically): The attention-grabbing opening
-- **Main Points**: Each distinct topic or argument gets its own scene
-- **Transitions**: Bridging moments between major sections
-- **Call to Action/Outro**: The closing segment
+Every scene should contain exactly ONE type of shot:
 
-A typical short-form video (60-180 seconds) has 3-7 scenes. Longer videos may have more.
+**A-roll scenes**: Speaker talking to camera
+- Links to the single A-roll asset for the video
+- `dialogue`: The speaker's exact words
+- `direction`: Optional notes about delivery, framing, or expression
 
-### Timing Estimation
+**B-roll scenes**: Cutaway footage or images
+- Links to a specific B-roll asset (footage, image, or screen recording)
+- `dialogue`: Voiceover text if speaker continues over the B-roll (null if silent)
+- `direction`: What viewers SEE—describes the visual
 
-Calculate timing from dialogue word count:
-- Count spoken words in the script excerpt (exclude stage directions)
-- Divide by 150 (average speaking pace: 150 words/minute)
-- Round to nearest 5 seconds
-- Account for pauses, reactions, and visual moments
+**Title/transition scenes**: Graphics-only (no assets)
+- For intro titles, section headers, or text-on-screen moments
+- `assets` array is empty—the editor creates these in post
+- `dialogue`: null (no spoken words)
+- `direction`: Describes the intended text/graphic
+
+### Timing
+
+Each scene gets realistic timing for that shot:
+- A-roll: Based on word count (~150 words/minute)
+- B-roll: Usually 2-8 seconds per clip
+- Title scenes: Usually 2-4 seconds
 
 ### Thumbnail Prompts
 
-Write prompts for quick sketch-style thumbnails that visualize the scene. These are NOT final production images—they're rough storyboard sketches to help visualize the video flow.
+Write prompts for sketch-style thumbnails:
 
-**Style:** Storyboard sketch, pencil/charcoal style, simple composition, black and white or muted tones
+**Style:** Storyboard sketch, pencil/charcoal style, black and white
 
-**Include:**
-- Main visual element (speaker, product, location)
-- Camera framing (close-up, wide shot, over-shoulder)
-- Key action or emotion
+**A-roll sketches:** Show the speaker with the relevant expression/gesture
+**B-roll sketches:** Show the cutaway subject
+**Title sketches:** Show text/graphic concept
 
-**Example prompts:**
-- "Storyboard sketch: Medium shot of presenter speaking directly to camera, enthusiastic expression, hand gesturing, simple background"
-- "Storyboard sketch: Close-up of hands holding product, demonstrating feature, soft lighting"
-- "Storyboard sketch: Wide shot of coffee shop interior, customers at tables, warm atmosphere"
+### Assets
 
-### Assets Per Scene
+Assets are the actual media files that need to be recorded or created.
 
-For each scene, identify what production assets are needed. Assets can appear in multiple scenes.
+**A-roll asset** (ONE per video):
+- Title: "[Character Name] Recording" 
+- Referenced by MULTIPLE A-roll scenes throughout the video
+- time_estimate_minutes reflects TOTAL recording time, not per-scene
 
-Asset types:
-- `a_roll` - Main speaker recording (usually shared across scenes)
-- `b_roll_footage` - AI-generated video clips
-- `b_roll_image` - AI-generated still images
-- `b_roll_screen_recording` - Screen captures (NOT AI-generated)
-- `thumbnail` - Video thumbnail (typically only in final scene or separate)
+**B-roll assets** (one per unique clip needed):
+- Each B-roll scene links to its specific asset
+- Assets can be reused if the same clip appears multiple times
+- Title: Concise subject (e.g., "Coffee bar", "App dashboard")
+
+**No assets for**:
+- Title/transition scenes (editor creates these)
+- Text overlays, graphics, animations
+- Any on-screen text or typography
 
 ## Output Format
 
-Return a JSON object with a `scenes` array:
+Return a JSON object with a `scenes` array. Each scene has separate `dialogue` and `direction` fields:
 
 ```json
 {
   "scenes": [
     {
       "scene_number": 1,
-      "title": "Hook",
-      "script_excerpt": "Hey everyone! Have you ever wondered why your videos aren't getting views? Today I'm going to share the three biggest mistakes...",
+      "section_title": "Hook",
+      "title": "Opening line",
+      "dialogue": "Hey, you know what nobody tells you about running a board game cafe?",
+      "direction": "Medium shot, quizzical expression, hand gesture",
       "start_time_seconds": 0,
-      "end_time_seconds": 12,
-      "thumbnail_prompt": "Storyboard sketch: Close-up of presenter with surprised expression, hand raised, simple background, black and white pencil style",
+      "end_time_seconds": 3,
+      "thumbnail_prompt": "Storyboard sketch: Medium shot of speaker with quizzical expression, hand gesture",
       "assets": [
         {
           "type": "a_roll",
-          "title": "Andrew Mason Recording",
-          "instructions": "Record the hook with high energy. This sets the tone for the whole video.",
-          "time_estimate_minutes": 5,
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
           "is_ai_generatable": false
         }
       ]
     },
     {
       "scene_number": 2,
-      "title": "Mistake #1: No Hook",
-      "script_excerpt": "The first mistake is jumping straight into your content without grabbing attention. You have about 3 seconds before someone scrolls past...",
-      "start_time_seconds": 12,
-      "end_time_seconds": 35,
-      "thumbnail_prompt": "Storyboard sketch: Split frame showing phone screen with social media feed on left, presenter explaining on right, gesture indicating scrolling motion",
+      "section_title": "Hook",
+      "title": "B-roll: Busy cafe",
+      "dialogue": null,
+      "direction": "Show bustling cafe atmosphere—groups at tables, laughter, colorful game boxes",
+      "start_time_seconds": 3,
+      "end_time_seconds": 6,
+      "thumbnail_prompt": "Storyboard sketch: Wide shot of busy board game cafe, people playing games at tables",
       "assets": [
         {
-          "type": "a_roll",
-          "title": "Andrew Mason Recording",
-          "instructions": "Conversational tone explaining the problem.",
-          "time_estimate_minutes": 8,
-          "is_ai_generatable": false
-        },
-        {
-          "type": "b_roll_screen_recording",
-          "title": "Social feed scroll demo",
-          "instructions": "Quick scroll through a social media feed, showing how fast content moves past",
-          "time_estimate_minutes": 5,
-          "is_ai_generatable": false
-        }
-      ]
-    },
-    {
-      "scene_number": 3,
-      "title": "Mistake #2: Poor Audio",
-      "script_excerpt": "Second mistake: bad audio. You can get away with okay video, but if people can't hear you clearly, they're gone...",
-      "start_time_seconds": 35,
-      "end_time_seconds": 58,
-      "thumbnail_prompt": "Storyboard sketch: Presenter holding microphone, sound waves illustrated around head, emphasis on audio equipment",
-      "assets": [
-        {
-          "type": "a_roll",
-          "title": "Andrew Mason Recording",
-          "instructions": "Demonstrate the difference between good and bad audio if possible.",
-          "time_estimate_minutes": 8,
-          "is_ai_generatable": false
-        },
-        {
-          "type": "b_roll_image",
-          "title": "Microphone setup",
-          "instructions": "**Image Prompt**\nProfessional podcasting microphone on desk with pop filter, warm studio lighting, shallow depth of field",
-          "time_estimate_minutes": 5,
+          "type": "b_roll_footage",
+          "title": "Cafe atmosphere",
+          "instructions": "**Image Prompt**\nBusy board game cafe interior: groups gathered around tables with colorful game boxes, warm lighting, engaged players laughing.\n\n**Video Prompt**\nSlow pan across the room, 3 seconds, capturing the energy.",
+          "time_estimate_minutes": 10,
           "is_ai_generatable": true
         }
       ]
     },
     {
-      "scene_number": 4,
-      "title": "Call to Action",
-      "script_excerpt": "If you found this helpful, smash that like button and subscribe for more tips every week!",
-      "start_time_seconds": 58,
-      "end_time_seconds": 68,
-      "thumbnail_prompt": "Storyboard sketch: Presenter pointing at camera with friendly smile, subscribe button graphic indicated in corner",
+      "scene_number": 3,
+      "section_title": "Hook",
+      "title": "Continue hook",
+      "dialogue": "The games are actually the easy part.",
+      "direction": "Close-up, knowing smile",
+      "start_time_seconds": 6,
+      "end_time_seconds": 8,
+      "thumbnail_prompt": "Storyboard sketch: Close-up of speaker, knowing smile",
       "assets": [
         {
           "type": "a_roll",
-          "title": "Andrew Mason Recording",
-          "instructions": "Warm, grateful energy. Direct address to camera.",
-          "time_estimate_minutes": 3,
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
           "is_ai_generatable": false
-        },
+        }
+      ]
+    },
+    {
+      "scene_number": 4,
+      "section_title": "Problem",
+      "title": "Section title",
+      "dialogue": null,
+      "direction": "Title card: 'The Real Challenge' in bold typography",
+      "start_time_seconds": 8,
+      "end_time_seconds": 10,
+      "thumbnail_prompt": "Storyboard sketch: Title card design with text 'The Real Challenge'",
+      "assets": []
+    },
+    {
+      "scene_number": 5,
+      "section_title": "Problem",
+      "title": "Introduce problem",
+      "dialogue": "It's the coffee. Nobody talks about the coffee.",
+      "direction": "Exasperated expression, hands spread wide",
+      "start_time_seconds": 10,
+      "end_time_seconds": 14,
+      "thumbnail_prompt": "Storyboard sketch: Speaker with exasperated expression, hands spread",
+      "assets": [
+        {
+          "type": "a_roll",
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
+          "is_ai_generatable": false
+        }
+      ]
+    },
+    {
+      "scene_number": 6,
+      "section_title": "Problem",
+      "title": "B-roll: Coffee setup",
+      "dialogue": null,
+      "direction": "Show the elaborate coffee station—espresso machine, neatly arranged cups, warm wood counter",
+      "start_time_seconds": 14,
+      "end_time_seconds": 18,
+      "thumbnail_prompt": "Storyboard sketch: Coffee bar with espresso machine, cups, barista station",
+      "assets": [
+        {
+          "type": "b_roll_footage",
+          "title": "Coffee bar area",
+          "instructions": "**Image Prompt**\nTabletop Library's coffee bar: professional espresso machine, neatly arranged cups, warm wood counter, cozy lighting.\n\n**Video Prompt**\nStatic shot or slight push-in, 4 seconds.",
+          "reference_images": [
+            { "description": "Photo of coffee bar" }
+          ],
+          "time_estimate_minutes": 8,
+          "is_ai_generatable": true
+        }
+      ]
+    },
+    {
+      "scene_number": 7,
+      "section_title": "Solution",
+      "title": "Reveal solution",
+      "dialogue": "Here's what finally worked for us...",
+      "direction": "Lean in, excited expression, about to share a secret",
+      "start_time_seconds": 18,
+      "end_time_seconds": 22,
+      "thumbnail_prompt": "Storyboard sketch: Speaker leaning in, excited expression, about to share secret",
+      "assets": [
+        {
+          "type": "a_roll",
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
+          "is_ai_generatable": false
+        }
+      ]
+    },
+    {
+      "scene_number": 8,
+      "section_title": "Call to Action",
+      "title": "CTA",
+      "dialogue": "Follow for more cafe owner tips!",
+      "direction": "Point at camera with friendly smile",
+      "start_time_seconds": 22,
+      "end_time_seconds": 25,
+      "thumbnail_prompt": "Storyboard sketch: Speaker pointing at camera with friendly smile",
+      "assets": [
+        {
+          "type": "a_roll",
+          "title": "Nabeel Recording",
+          "time_estimate_minutes": 25,
+          "is_ai_generatable": false
+        }
+      ]
+    },
+    {
+      "scene_number": 9,
+      "section_title": "Call to Action",
+      "title": "End card",
+      "dialogue": null,
+      "direction": "End screen with thumbnail composition—speaker image with text overlay space",
+      "start_time_seconds": 25,
+      "end_time_seconds": 28,
+      "thumbnail_prompt": "Storyboard sketch: Thumbnail composition with speaker and text overlay space",
+      "assets": [
         {
           "type": "thumbnail",
           "title": "Video Thumbnail",
-          "instructions": "## Concept\n- Speaker with surprised/excited expression\n- Bold text: \"3 MISTAKES\"\n- Bright, high-contrast colors\n\n## Composition\n- Speaker on right third\n- Text on left\n- Clean background",
+          "instructions": "## Concept\n- Speaker with engaging expression\n- Text overlay area for hook\n- Warm cafe vibes in background",
           "time_estimate_minutes": 10,
           "is_ai_generatable": true
         }
@@ -182,23 +286,36 @@ Return a JSON object with a `scenes` array:
 
 ## Guidelines
 
-1. **Scene Continuity**: Scenes should flow naturally. Each `end_time_seconds` should equal the next scene's `start_time_seconds`.
+1. **One shot per scene**: Every scene is either A-roll, B-roll, or title—never mixed.
 
-2. **Asset Reuse**: The same asset (like A-roll) can appear in multiple scenes. Use the same title to indicate it's the same asset being used across scenes.
+2. **Section grouping**: Use `section_title` to group scenes under chapter headers. Extract these from script structure (## headers, natural breaks).
 
-3. **Thumbnail Prompts**: Keep them simple and sketch-like. These are for visualization, not final production. Always include "Storyboard sketch:" prefix and mention the pencil/charcoal style.
+3. **A-roll reuse**: The A-roll asset appears once in the assets list but is referenced by many scenes. Use the SAME title (e.g., "Nabeel Recording") for all A-roll scenes.
 
-4. **Timing Accuracy**: Base timing on actual word counts. Don't guess—count the words in each script excerpt and calculate from ~150 words/minute.
+4. **B-roll specificity**: Each B-roll scene links to a specific B-roll asset. If the same visual is used twice, reference the same asset title.
 
-5. **Be Project-Specific**: When describing B-roll, use details from the project description. Don't write generic prompts.
+5. **Empty assets for graphics**: Title cards, section headers, and text-heavy moments have `"assets": []`.
 
-6. **Reference Images for B-Roll**: For `b_roll_footage` and `b_roll_image` that depict project-specific locations, include a `reference_images` array with short descriptions of the visual elements needed.
+6. **Timing continuity**: Each scene's `end_time_seconds` equals the next scene's `start_time_seconds`.
 
-7. **A-Roll Consolidation**: There's typically ONE A-roll asset per video (the main speaker recording), but it appears in most/all scenes. Keep A-roll instructions minimal—the character description has setup details.
+7. **Be project-specific**: Use actual project names and details for B-roll descriptions.
 
-8. **Scene Count**: 
-   - Short-form (< 90 sec): 3-5 scenes
-   - Medium (90-180 sec): 5-8 scenes  
-   - Long-form (> 3 min): 8+ scenes
+8. **Estimate totals correctly**: A-roll `time_estimate_minutes` should reflect TOTAL recording time for the whole video, not per-scene time. B-roll estimates are per-asset.
 
-9. **Don't Over-Complicate**: Simple talking-head videos may have scenes that are just A-roll with no additional assets. That's fine.
+9. **Scene count expectations**:
+   - Short-form (< 60 sec): 8-15 scenes
+   - Medium (60-180 sec): 15-30 scenes
+   - Long-form (> 3 min): 30+ scenes
+
+10. **Natural rhythm**: Videos feel dynamic when they alternate A-roll and B-roll. Don't have 10 A-roll scenes in a row unless the content calls for it.
+
+11. **B-Roll Instructions Format**:
+    ```
+    **Image Prompt**
+    [Detailed prompt for AI image generation]
+    
+    **Video Prompt** (for b_roll_footage only)
+    [Camera/subject motion, duration]
+    ```
+
+12. **Reference images**: For project-specific B-roll, include `reference_images` with short descriptions like "Photo of the game wall" or "Screenshot of booking page".

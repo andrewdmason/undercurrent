@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, IdeaScene, AssetType, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage, batchGenerateAssetImages, batchGenerateAssetVideos } from "@/lib/actions/idea-assets";
 import { generateStoryboard, generateAllSceneThumbnails } from "@/lib/actions/storyboard";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
@@ -133,6 +133,8 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isGeneratingAssetImage, setIsGeneratingAssetImage] = useState(false);
   const [isGeneratingAssetVideo, setIsGeneratingAssetVideo] = useState(false);
+  const [isBatchGeneratingImages, setIsBatchGeneratingImages] = useState(false);
+  const [isBatchGeneratingVideos, setIsBatchGeneratingVideos] = useState(false);
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState<"talking_points" | "script" | null>(null);
   const [regenerateNotes, setRegenerateNotes] = useState("");
   const [assets, setAssets] = useState<IdeaAsset[]>(initialAssets);
@@ -393,6 +395,54 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
       console.error(error);
     } finally {
       setIsGeneratingAssetVideo(false);
+    }
+  };
+
+  const handleBatchGenerateImages = async () => {
+    if (isBatchGeneratingImages) return;
+
+    setIsBatchGeneratingImages(true);
+    const toastId = toast.loading("Generating images for all assets...");
+    try {
+      const result = await batchGenerateAssetImages(idea.id);
+      if (result.error) {
+        toast.error(result.error, { id: toastId });
+      } else {
+        const message = result.generated > 0
+          ? `Generated ${result.generated} image${result.generated !== 1 ? "s" : ""}${result.failed > 0 ? `, ${result.failed} failed` : ""}`
+          : "No assets needed image generation";
+        toast.success(message, { id: toastId });
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to batch generate images", { id: toastId });
+      console.error(error);
+    } finally {
+      setIsBatchGeneratingImages(false);
+    }
+  };
+
+  const handleBatchGenerateVideos = async () => {
+    if (isBatchGeneratingVideos) return;
+
+    setIsBatchGeneratingVideos(true);
+    const toastId = toast.loading("Generating videos for all assets (this may take a while)...");
+    try {
+      const result = await batchGenerateAssetVideos(idea.id);
+      if (result.error) {
+        toast.error(result.error, { id: toastId });
+      } else {
+        const message = result.generated > 0
+          ? `Generated ${result.generated} video${result.generated !== 1 ? "s" : ""}${result.failed > 0 ? `, ${result.failed} failed` : ""}`
+          : "No assets needed video generation";
+        toast.success(message, { id: toastId });
+        router.refresh();
+      }
+    } catch (error) {
+      toast.error("Failed to batch generate videos", { id: toastId });
+      console.error(error);
+    } finally {
+      setIsBatchGeneratingVideos(false);
     }
   };
 
@@ -801,14 +851,19 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                       handleGenerateAssetImage={handleGenerateAssetImage}
                       handleGenerateAssetVideo={handleGenerateAssetVideo}
                       handleGenerateAssets={handleGenerateAssets}
+                      handleBatchGenerateImages={handleBatchGenerateImages}
+                      handleBatchGenerateVideos={handleBatchGenerateVideos}
                       isGeneratingAssetImage={isGeneratingAssetImage}
                       isGeneratingAssetVideo={isGeneratingAssetVideo}
                       isGeneratingAssets={isGeneratingAssets}
+                      isBatchGeneratingImages={isBatchGeneratingImages}
+                      isBatchGeneratingVideos={isBatchGeneratingVideos}
                       hasScript={!!scriptAsset?.content_text}
                       projectImages={projectImages}
                       idea={idea}
                       router={router}
                       assetsLikelyGenerating={assetsLikelyGenerating}
+                      templateOrientation={fullTemplate?.orientation ?? null}
                     />
                   </div>
                 </TabsContent>
@@ -1844,14 +1899,19 @@ interface AssetsTabContentProps {
   handleGenerateAssetImage: () => Promise<void>;
   handleGenerateAssetVideo: () => Promise<void>;
   handleGenerateAssets: () => Promise<void>;
+  handleBatchGenerateImages: () => Promise<void>;
+  handleBatchGenerateVideos: () => Promise<void>;
   isGeneratingAssetImage: boolean;
   isGeneratingAssetVideo: boolean;
   isGeneratingAssets: boolean;
+  isBatchGeneratingImages: boolean;
+  isBatchGeneratingVideos: boolean;
   hasScript: boolean;
   projectImages: ProjectImage[];
   idea: IdeaWithChannels;
   router: ReturnType<typeof useRouter>;
   assetsLikelyGenerating: boolean;
+  templateOrientation: "vertical" | "horizontal" | null;
 }
 
 function AssetsTabContent({
@@ -1864,14 +1924,19 @@ function AssetsTabContent({
   handleGenerateAssetImage,
   handleGenerateAssetVideo,
   handleGenerateAssets,
+  handleBatchGenerateImages,
+  handleBatchGenerateVideos,
   isGeneratingAssetImage,
   isGeneratingAssetVideo,
   isGeneratingAssets,
+  isBatchGeneratingImages,
+  isBatchGeneratingVideos,
   hasScript,
   projectImages,
   idea,
   router,
   assetsLikelyGenerating,
+  templateOrientation,
 }: AssetsTabContentProps) {
   // Asset detail view
   if (showAssetDetail && selectedAsset) {
@@ -1899,6 +1964,42 @@ function AssetsTabContent({
     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
       <h4 className="text-sm font-medium text-[var(--grey-800)]">Assets</h4>
       <div className="flex items-center gap-2">
+        {/* Batch generate images button - only show if there are assets */}
+        {productionAssets.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBatchGenerateImages}
+            disabled={isBatchGeneratingImages || isBatchGeneratingVideos}
+            className="h-7 px-2 gap-1.5"
+            title="Generate images for all assets that don't have one"
+          >
+            {isBatchGeneratingImages ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <ImageIcon size={14} />
+            )}
+            <span className="text-xs">Gen All Images</span>
+          </Button>
+        )}
+        {/* Batch generate videos button - only show if there are assets */}
+        {productionAssets.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBatchGenerateVideos}
+            disabled={isBatchGeneratingVideos || isBatchGeneratingImages}
+            className="h-7 px-2 gap-1.5"
+            title="Generate videos for all b-roll assets that have images"
+          >
+            {isBatchGeneratingVideos ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Film size={14} />
+            )}
+            <span className="text-xs">Gen All Videos</span>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -1972,11 +2073,18 @@ function AssetsTabContent({
     );
   }
 
+  // Determine if this is a vertical video based on template
+  const isVertical = templateOrientation === "vertical";
+  
   return (
     <>
       {header}
       <div className="flex-1 min-h-0 overflow-auto p-4">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl">
+        <div className={`grid gap-4 ${
+          isVertical 
+            ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" 
+            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        }`}>
         {productionAssets.map((asset) => (
           <button
             key={asset.id}
@@ -1987,13 +2095,13 @@ function AssetsTabContent({
             className="group relative rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden text-left hover:border-[var(--grey-300)] transition-colors"
           >
             {/* Image or placeholder */}
-            <div className="aspect-video bg-[var(--grey-50)] relative">
+            <div className={`${getAspectRatioClass(templateOrientation)} bg-[var(--grey-50)] relative`}>
               {asset.image_url ? (
                 <Image
                   src={asset.image_url}
                   alt={asset.title}
                   fill
-                  className="object-cover"
+                  className={isVertical ? "object-contain" : "object-cover"}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">

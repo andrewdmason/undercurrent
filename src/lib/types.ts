@@ -372,8 +372,10 @@ export interface IdeaScene {
   id: string;
   idea_id: string;
   scene_number: number;
+  section_title: string | null; // Groups shots under chapter headers (e.g., "Hook", "Problem")
   title: string;
-  script_excerpt: string;
+  dialogue: string | null; // Spoken words for this scene (null for b-roll only scenes)
+  direction: string | null; // Visual direction, action descriptions, b-roll notes
   start_time_seconds: number;
   end_time_seconds: number;
   thumbnail_url: string | null;
@@ -397,8 +399,10 @@ export interface IdeaSceneAsset {
 // For AI-generated storyboard (from generate-storyboard.md prompt)
 export interface GeneratedScene {
   scene_number: number;
+  section_title?: string; // Groups shots under chapter headers (e.g., "Hook", "Problem")
   title: string;
-  script_excerpt: string;
+  dialogue?: string; // Spoken words for this scene (null for b-roll only scenes)
+  direction?: string; // Visual direction, action descriptions, b-roll notes
   start_time_seconds: number;
   end_time_seconds: number;
   thumbnail_prompt: string;

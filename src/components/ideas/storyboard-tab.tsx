@@ -133,28 +133,45 @@ export function StoryboardTab({
         )}
       </div>
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={isGenerating || !hasScript}
+          className="h-7 px-2 gap-1.5"
+          title={!hasScript ? "Generate a script first" : localScenes.length > 0 ? "Regenerate storyboard and assets" : "Generate storyboard"}
+        >
+          {isGenerating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : localScenes.length > 0 ? (
+            <RefreshCw size={14} />
+          ) : (
+            <Sparkles size={14} />
+          )}
+          <span className="text-xs">{localScenes.length > 0 ? "Regen Storyboard" : "Generate"}</span>
+        </Button>
         {localScenes.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               setIsGeneratingThumbnails(true);
-              toast.loading("Generating thumbnails...", { id: "thumbnails" });
+              toast.loading("Generating sketches...", { id: "thumbnails" });
               generateAllSceneThumbnails(ideaId)
                 .then(() => {
-                  toast.success("Thumbnails generated", { id: "thumbnails" });
+                  toast.success("Sketches generated", { id: "thumbnails" });
                   router.refresh();
                   onScenesUpdate();
                 })
                 .catch((err) => {
-                  toast.error("Failed to generate thumbnails", { id: "thumbnails" });
+                  toast.error("Failed to generate sketches", { id: "thumbnails" });
                   console.error(err);
                 })
                 .finally(() => setIsGeneratingThumbnails(false));
             }}
             disabled={isGeneratingThumbnails || !!generatingSceneId}
             className="h-7 px-2 gap-1.5"
-            title={localScenes.some((s) => !s.thumbnail_url) ? "Generate all thumbnails" : "Regenerate all thumbnails"}
+            title={localScenes.some((s) => !s.thumbnail_url) ? "Generate scene sketches" : "Regenerate scene sketches"}
           >
             {isGeneratingThumbnails ? (
               <Loader2 size={14} className="animate-spin" />
@@ -164,27 +181,10 @@ export function StoryboardTab({
               <ImageIcon size={14} />
             )}
             <span className="text-xs">
-              {localScenes.every((s) => s.thumbnail_url) ? "Regenerate" : "Generate Thumbnails"}
+              {localScenes.every((s) => s.thumbnail_url) ? "Regen Sketches" : "Gen Sketches"}
             </span>
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleGenerate}
-          disabled={isGenerating || !hasScript}
-          className="h-7 px-2 gap-1.5"
-          title={!hasScript ? "Generate a script first" : localScenes.length > 0 ? "Regenerate" : "Generate"}
-        >
-          {isGenerating ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : localScenes.length > 0 ? (
-            <RefreshCw size={14} />
-          ) : (
-            <Sparkles size={14} />
-          )}
-          <span className="text-xs">{localScenes.length > 0 ? "Regenerate" : "Generate"}</span>
-        </Button>
       </div>
     </div>
   );
@@ -245,18 +245,37 @@ export function StoryboardTab({
     );
   }
 
+  // Group scenes by section_title
+  const groupedScenes = localScenes.reduce((acc, scene) => {
+    const section = scene.section_title || "Untitled Section";
+    if (!acc[section]) {
+      acc[section] = [];
+    }
+    acc[section].push(scene);
+    return acc;
+  }, {} as Record<string, IdeaScene[]>);
+
+  // Preserve section order based on first scene in each section
+  const sectionOrder = Object.keys(groupedScenes).sort((a, b) => {
+    const aFirst = groupedScenes[a][0]?.scene_number || 0;
+    const bFirst = groupedScenes[b][0]?.scene_number || 0;
+    return aFirst - bFirst;
+  });
+
   // Scenes list
   return (
     <>
       {header}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className="divide-y divide-[var(--border)]">
-          {localScenes.map((scene) => (
-            <SceneCard
-              key={scene.id}
-              scene={scene}
-              isGeneratingThumbnail={generatingSceneId === scene.id || isGeneratingThumbnails}
-              onGenerateThumbnail={() => handleGenerateSceneThumbnail(scene.id)}
+        <div className="space-y-6 p-4">
+          {sectionOrder.map((sectionTitle) => (
+            <SectionGroup
+              key={sectionTitle}
+              sectionTitle={sectionTitle}
+              scenes={groupedScenes[sectionTitle]}
+              generatingSceneId={generatingSceneId}
+              isGeneratingThumbnails={isGeneratingThumbnails}
+              onGenerateThumbnail={handleGenerateSceneThumbnail}
               orientation={orientation}
             />
           ))}
@@ -269,6 +288,58 @@ export function StoryboardTab({
         )}
       </div>
     </>
+  );
+}
+
+interface SectionGroupProps {
+  sectionTitle: string;
+  scenes: IdeaScene[];
+  generatingSceneId: string | null;
+  isGeneratingThumbnails: boolean;
+  onGenerateThumbnail: (sceneId: string) => void;
+  orientation?: "vertical" | "horizontal" | null;
+}
+
+function SectionGroup({
+  sectionTitle,
+  scenes,
+  generatingSceneId,
+  isGeneratingThumbnails,
+  onGenerateThumbnail,
+  orientation,
+}: SectionGroupProps) {
+  // Calculate section duration
+  const firstScene = scenes[0];
+  const lastScene = scenes[scenes.length - 1];
+  const startTime = firstScene?.start_time_seconds || 0;
+  const endTime = lastScene?.end_time_seconds || 0;
+  const duration = endTime - startTime;
+
+  return (
+    <div>
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold text-[var(--grey-700)]">
+          {sectionTitle}
+        </h3>
+        <span className="text-xs text-[var(--grey-400)]">
+          {formatTimeCode(startTime)} – {formatTimeCode(endTime)} ({duration}s)
+        </span>
+      </div>
+
+      {/* Scene Cards */}
+      <div className="space-y-2">
+        {scenes.map((scene) => (
+          <SceneCard
+            key={scene.id}
+            scene={scene}
+            isGeneratingThumbnail={generatingSceneId === scene.id || isGeneratingThumbnails}
+            onGenerateThumbnail={() => onGenerateThumbnail(scene.id)}
+            orientation={orientation}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -285,13 +356,14 @@ function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientat
 
   // Get unique assets for this scene
   const sceneAssets = scene.assets?.map((sa) => sa.asset).filter(Boolean) as IdeaAsset[] || [];
+  const duration = scene.end_time_seconds - scene.start_time_seconds;
 
   return (
-    <div className="flex gap-4 p-4">
-      {/* Thumbnail */}
-      <div className={cn("relative flex-shrink-0", isVertical ? "w-24" : "w-40")}>
+    <div className="flex gap-3 p-3 rounded-lg bg-[var(--grey-50)] hover:bg-[var(--grey-100)] transition-colors">
+      {/* Thumbnail - smaller for shot-level scenes */}
+      <div className={cn("relative flex-shrink-0", isVertical ? "w-16" : "w-24")}>
         <div className={cn(
-          "relative rounded-lg overflow-hidden bg-[var(--grey-100)] group",
+          "relative rounded overflow-hidden bg-[var(--grey-200)] group",
           isVertical ? "aspect-[9/16]" : "aspect-video"
         )}>
           {hasThumbnail ? (
@@ -300,21 +372,21 @@ function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientat
               alt={scene.title}
               fill
               className="object-cover"
-              sizes={isVertical ? "96px" : "160px"}
+              sizes={isVertical ? "64px" : "96px"}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               {isGeneratingThumbnail ? (
-                <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+                <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
               ) : (
-                <Film className="h-6 w-6 text-[var(--grey-300)]" />
+                <Film className="h-4 w-4 text-[var(--grey-300)]" />
               )}
             </div>
           )}
 
           {isGeneratingThumbnail && hasThumbnail && (
             <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 text-[var(--grey-400)] animate-spin" />
+              <Loader2 className="h-4 w-4 text-[var(--grey-400)] animate-spin" />
             </div>
           )}
 
@@ -330,47 +402,66 @@ function SceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, orientat
               title={hasThumbnail ? "Regenerate thumbnail" : "Generate thumbnail"}
             >
               {hasThumbnail ? (
-                <RefreshCw className="h-5 w-5" />
+                <RefreshCw className="h-3 w-3" />
               ) : (
-                <Sparkles className="h-5 w-5" />
+                <Sparkles className="h-3 w-3" />
               )}
             </button>
           )}
         </div>
       </div>
 
-      {/* Scene Details */}
+      {/* Scene Details - more compact */}
       <div className="flex-1 min-w-0">
-        {/* Scene header */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <h4 className="text-sm font-medium text-[var(--grey-800)]">
-              Scene {scene.scene_number}: {scene.title}
-            </h4>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="inline-flex items-center gap-1 text-xs text-[var(--grey-500)]">
-                <Clock className="h-3 w-3" />
-                {formatTimeCode(scene.start_time_seconds)} – {formatTimeCode(scene.end_time_seconds)}
-              </span>
-              <span className="text-xs text-[var(--grey-400)]">
-                ({scene.end_time_seconds - scene.start_time_seconds}s)
-              </span>
-            </div>
+        {/* Scene header with inline timing */}
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] font-medium text-[var(--grey-400)] tabular-nums">
+            {scene.scene_number}
+          </span>
+          <h4 className="text-xs font-medium text-[var(--grey-700)] truncate">
+            {scene.title}
+          </h4>
+          <span className="text-[10px] text-[var(--grey-400)] tabular-nums ml-auto flex-shrink-0">
+            {formatTimeCode(scene.start_time_seconds)} ({duration}s)
+          </span>
+        </div>
+
+        {/* Dialogue and Direction in two-column layout */}
+        <div className="grid grid-cols-2 gap-3 mt-1">
+          {/* Dialogue column */}
+          <div className="min-w-0">
+            {scene.dialogue ? (
+              <p className="text-[11px] text-[var(--grey-700)] leading-relaxed line-clamp-3">
+                &ldquo;{scene.dialogue}&rdquo;
+              </p>
+            ) : (
+              <p className="text-[11px] text-[var(--grey-300)] italic">
+                No dialogue
+              </p>
+            )}
+          </div>
+          
+          {/* Direction column */}
+          <div className="min-w-0">
+            {scene.direction ? (
+              <p className="text-[11px] text-[var(--grey-500)] italic leading-relaxed line-clamp-3">
+                {scene.direction}
+              </p>
+            ) : (
+              <p className="text-[11px] text-[var(--grey-300)] italic">
+                No direction
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Script excerpt */}
-        <p className="text-xs text-[var(--grey-600)] leading-relaxed line-clamp-3 mb-3">
-          {scene.script_excerpt}
-        </p>
-
-        {/* Assets */}
+        {/* Assets - inline badges */}
         {sceneAssets.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1 mt-1.5">
             {sceneAssets.map((asset) => (
               <span
                 key={asset.id}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--grey-50)] text-[var(--grey-600)]"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-white text-[var(--grey-600)] border border-[var(--grey-200)]"
               >
                 <AssetTypeIcon type={asset.type} />
                 {asset.title}

@@ -345,8 +345,10 @@ export async function generateStoryboard(
     const scenesToInsert = generatedScenes.map((scene) => ({
       idea_id: ideaId,
       scene_number: scene.scene_number,
+      section_title: scene.section_title || null,
       title: scene.title,
-      script_excerpt: scene.script_excerpt,
+      dialogue: scene.dialogue || null,
+      direction: scene.direction || null,
       start_time_seconds: scene.start_time_seconds,
       end_time_seconds: scene.end_time_seconds,
       thumbnail_prompt: scene.thumbnail_prompt,
@@ -579,14 +581,42 @@ export async function generateSceneThumbnail(
       : stylePrefix + scene.thumbnail_prompt;
 
     // Generate image using Imagen 4 Fast with template's aspect ratio
-    const response = await genai.models.generateImages({
-      model: SKETCH_IMAGE_MODEL,
-      prompt: styledPrompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: aspectRatio,
-      },
-    });
+    // Includes retry logic for rate limiting (429 errors)
+    const MAX_RETRIES = 3;
+    let response;
+    let lastError;
+    
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        response = await genai.models.generateImages({
+          model: SKETCH_IMAGE_MODEL,
+          prompt: styledPrompt,
+          config: {
+            numberOfImages: 1,
+            aspectRatio: aspectRatio,
+          },
+        });
+        break; // Success, exit retry loop
+      } catch (apiError) {
+        lastError = apiError;
+        // Check if it's a rate limit error (429)
+        const errorMessage = String(apiError);
+        if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
+          // Parse retry delay from error if available, otherwise use exponential backoff
+          const retryMatch = errorMessage.match(/retryDelay[":]*\s*"?(\d+)s/i);
+          const waitSeconds = retryMatch ? parseInt(retryMatch[1], 10) + 5 : (attempt + 1) * 30;
+          console.log(`Rate limited (attempt ${attempt + 1}/${MAX_RETRIES}), waiting ${waitSeconds}s before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
+        } else {
+          // Not a rate limit error, don't retry
+          throw apiError;
+        }
+      }
+    }
+    
+    if (!response) {
+      throw lastError || new Error("Failed to generate image after retries");
+    }
 
     const generatedImage = response.generatedImages?.[0];
     if (!generatedImage?.image?.imageBytes) {
@@ -678,7 +708,19 @@ export async function generateAllSceneThumbnails(
   // Generate thumbnails for scenes that don't have one
   const scenesNeedingThumbnails = (scenes || []).filter((s) => !s.thumbnail_url);
 
-  for (const scene of scenesNeedingThumbnails) {
+  // Imagen 4 Fast has a rate limit of 10 requests per minute
+  // Process with 7 second delays to stay safely under the limit
+  const DELAY_BETWEEN_REQUESTS_MS = 7000;
+
+  for (let i = 0; i < scenesNeedingThumbnails.length; i++) {
+    const scene = scenesNeedingThumbnails[i];
+    
+    // Add delay between requests (skip delay for first request)
+    if (i > 0) {
+      console.log(`Rate limiting: waiting ${DELAY_BETWEEN_REQUESTS_MS / 1000}s before next thumbnail (${i + 1}/${scenesNeedingThumbnails.length})`);
+      await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_REQUESTS_MS));
+    }
+    
     const result = await generateSceneThumbnail(scene.id);
     if (!result.success) {
       console.error(`Failed to generate thumbnail for scene ${scene.id}:`, result.error);

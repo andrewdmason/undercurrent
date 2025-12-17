@@ -1473,3 +1473,127 @@ export async function addReferenceImage(
   return { success: true, referenceImage: transformed };
 }
 
+// Batch generate images for all AI-generatable assets that don't have an image
+export async function batchGenerateAssetImages(
+  ideaId: string
+): Promise<{ success: boolean; generated: number; failed: number; skipped: number; error?: string }> {
+  const supabase = await createClient();
+
+  // Fetch all assets for this idea
+  const { data: assets, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select("id, image_url, is_ai_generatable, instructions")
+    .eq("idea_id", ideaId)
+    .order("sort_order", { ascending: true });
+
+  if (fetchError) {
+    return { success: false, generated: 0, failed: 0, skipped: 0, error: "Failed to fetch assets" };
+  }
+
+  // Filter to AI-generatable assets that don't have an image and have an Image Prompt
+  const assetsNeedingImages = (assets || []).filter((a) => {
+    if (!a.is_ai_generatable || a.image_url) return false;
+    const hasImagePrompt = a.instructions?.includes("**Image Prompt:**") || a.instructions?.includes("Image Prompt:");
+    return hasImagePrompt;
+  });
+
+  if (assetsNeedingImages.length === 0) {
+    return { success: true, generated: 0, failed: 0, skipped: assets?.length || 0 };
+  }
+
+  let generated = 0;
+  let failed = 0;
+
+  // Gemini Imagen has rate limits - process with delays
+  const DELAY_BETWEEN_REQUESTS_MS = 7000;
+
+  for (let i = 0; i < assetsNeedingImages.length; i++) {
+    const asset = assetsNeedingImages[i];
+
+    // Add delay between requests (skip delay for first request)
+    if (i > 0) {
+      console.log(`Rate limiting: waiting ${DELAY_BETWEEN_REQUESTS_MS / 1000}s before next image (${i + 1}/${assetsNeedingImages.length})`);
+      await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_REQUESTS_MS));
+    }
+
+    const result = await generateAssetImage(asset.id);
+    if (result.success) {
+      generated++;
+    } else {
+      failed++;
+      console.error(`Failed to generate image for asset ${asset.id}:`, result.error);
+    }
+  }
+
+  await revalidateIdeaPaths(ideaId);
+  return {
+    success: true,
+    generated,
+    failed,
+    skipped: (assets?.length || 0) - assetsNeedingImages.length,
+  };
+}
+
+// Batch generate videos for all b_roll_footage assets that have images but no video
+export async function batchGenerateAssetVideos(
+  ideaId: string
+): Promise<{ success: boolean; generated: number; failed: number; skipped: number; error?: string }> {
+  const supabase = await createClient();
+
+  // Fetch all assets for this idea
+  const { data: assets, error: fetchError } = await supabase
+    .from("idea_assets")
+    .select("id, type, image_url, video_url, instructions")
+    .eq("idea_id", ideaId)
+    .order("sort_order", { ascending: true });
+
+  if (fetchError) {
+    return { success: false, generated: 0, failed: 0, skipped: 0, error: "Failed to fetch assets" };
+  }
+
+  // Filter to b_roll_footage assets that have an image but no video, and have a Video Prompt
+  const assetsNeedingVideos = (assets || []).filter((a) => {
+    if (a.type !== "b_roll_footage") return false;
+    if (!a.image_url || a.video_url) return false;
+    const hasVideoPrompt = a.instructions?.includes("**Video Prompt:**") || a.instructions?.includes("Video Prompt:");
+    return hasVideoPrompt;
+  });
+
+  if (assetsNeedingVideos.length === 0) {
+    return { success: true, generated: 0, failed: 0, skipped: assets?.length || 0 };
+  }
+
+  let generated = 0;
+  let failed = 0;
+
+  // Video generation is slower and more expensive - process sequentially
+  // Veo has its own rate limits
+  const DELAY_BETWEEN_REQUESTS_MS = 5000;
+
+  for (let i = 0; i < assetsNeedingVideos.length; i++) {
+    const asset = assetsNeedingVideos[i];
+
+    // Add delay between requests (skip delay for first request)
+    if (i > 0) {
+      console.log(`Rate limiting: waiting ${DELAY_BETWEEN_REQUESTS_MS / 1000}s before next video (${i + 1}/${assetsNeedingVideos.length})`);
+      await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_REQUESTS_MS));
+    }
+
+    const result = await generateAssetVideo(asset.id);
+    if (result.success) {
+      generated++;
+    } else {
+      failed++;
+      console.error(`Failed to generate video for asset ${asset.id}:`, result.error);
+    }
+  }
+
+  await revalidateIdeaPaths(ideaId);
+  return {
+    success: true,
+    generated,
+    failed,
+    skipped: (assets?.length || 0) - assetsNeedingVideos.length,
+  };
+}
+

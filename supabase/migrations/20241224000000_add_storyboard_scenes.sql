@@ -9,8 +9,10 @@ create table if not exists public.idea_scenes (
   id uuid primary key default gen_random_uuid(),
   idea_id uuid not null references public.ideas(id) on delete cascade,
   scene_number integer not null,
+  section_title text, -- Groups shots under chapter headers (e.g., "Hook", "Problem", "Solution")
   title text not null,
-  script_excerpt text not null,
+  dialogue text, -- Spoken words for this scene (null for b-roll only scenes)
+  direction text, -- Visual direction, action descriptions, b-roll notes
   start_time_seconds integer not null default 0,
   end_time_seconds integer not null default 0,
   thumbnail_url text,
