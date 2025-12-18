@@ -151,3 +151,5 @@ create policy "Users can delete scene assets for ideas in their projects"
       and pm.user_id = auth.uid()
     )
   );
+
+

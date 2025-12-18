@@ -6,7 +6,7 @@ import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
 import Image from "next/image";
 import Link from "next/link";
-import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, FileText, Loader2, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare, Download } from "lucide-react";
+import { Copy, Check, RefreshCw, ArrowLeft, Play, Ban, Sparkles, MoreHorizontal, ListTodo, FileText, Loader2, User, Tag, Trash2, Upload, Film, Monitor, ImageIcon, MessageSquare, Download, Video } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ import { IdeaLogsSubmenu } from "./idea-logs-submenu";
 import { RemixIdeaModal, RemixOptions } from "./remix-idea-modal";
 import { AssetReferenceImages } from "./asset-reference-images";
 import { StoryboardTab } from "./storyboard-tab";
+import { RecordingCoachModal } from "./recording-coach-modal";
 
 // Helper to get aspect ratio class based on template orientation
 function getAspectRatioClass(orientation: "vertical" | "horizontal" | null | undefined): string {
@@ -802,6 +803,7 @@ export function IdeaDetailView({ idea, projectId, projectSlug, projectChannels, 
                 <TabsContent value="talking_points" className="flex-1 min-h-0 m-0 data-[state=inactive]:hidden">
                   <div className="h-full flex flex-col rounded-lg border border-[var(--border)] bg-[var(--grey-0)] overflow-hidden">
                     <TalkingPointsTabContent
+                      ideaId={idea.id}
                       talkingPointsAsset={talkingPointsAsset}
                       isGeneratingTalkingPoints={isGeneratingTalkingPoints}
                       handleGenerateTalkingPoints={handleGenerateTalkingPoints}
@@ -1599,6 +1601,7 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
 // ===========================================
 
 interface TalkingPointsTabContentProps {
+  ideaId: string;
   talkingPointsAsset: IdeaAsset | undefined;
   isGeneratingTalkingPoints: boolean;
   handleGenerateTalkingPoints: (notes?: string) => Promise<void>;
@@ -1606,11 +1609,13 @@ interface TalkingPointsTabContentProps {
 }
 
 function TalkingPointsTabContent({
+  ideaId,
   talkingPointsAsset,
   isGeneratingTalkingPoints,
   handleGenerateTalkingPoints,
   setRegenerateDialogOpen,
 }: TalkingPointsTabContentProps) {
+  const [isCoachModalOpen, setIsCoachModalOpen] = useState(false);
   const content = talkingPointsAsset?.content_text;
 
   // Header with actions
@@ -1619,18 +1624,30 @@ function TalkingPointsTabContent({
       <h4 className="text-sm font-medium text-[var(--grey-800)]">Talking Points</h4>
       <div className="flex items-center gap-2">
         {content && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              await navigator.clipboard.writeText(content);
-              toast.success("Copied to clipboard");
-            }}
-            className="h-7 px-2"
-            title="Copy"
-          >
-            <Copy size={14} />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCoachModalOpen(true)}
+              className="h-7 px-2 gap-1.5"
+              title="Practice with Coach"
+            >
+              <Video size={14} />
+              <span className="text-xs">Practice</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await navigator.clipboard.writeText(content);
+                toast.success("Copied to clipboard");
+              }}
+              className="h-7 px-2"
+              title="Copy"
+            >
+              <Copy size={14} />
+            </Button>
+          </>
         )}
         <Button
           variant="ghost"
@@ -1691,6 +1708,11 @@ function TalkingPointsTabContent({
             </div>
           )}
         </div>
+        <RecordingCoachModal
+          ideaId={ideaId}
+          isOpen={isCoachModalOpen}
+          onClose={() => setIsCoachModalOpen(false)}
+        />
       </>
     );
   }

@@ -9,3 +9,5 @@ export default function BriefCharactersPage() {
   return <CharactersSection projectId={project.id} characters={characters} />;
 }
 
+
+

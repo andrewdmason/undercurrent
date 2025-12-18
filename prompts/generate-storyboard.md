@@ -275,3 +275,5 @@ Note how `direction` is null for A-roll scenes unless the script explicitly incl
     ```
 
 11. **Reference images**: For project-specific B-roll, include `reference_images` with short descriptions.
+
+

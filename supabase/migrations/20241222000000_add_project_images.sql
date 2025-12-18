@@ -97,3 +97,5 @@ CREATE POLICY "Users can delete project images"
     AND auth.uid() IS NOT NULL
   );
 
+
+

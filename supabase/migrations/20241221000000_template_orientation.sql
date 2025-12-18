@@ -58,3 +58,5 @@ AND EXISTS (
 -- Index for filtering templates by orientation
 CREATE INDEX IF NOT EXISTS project_templates_orientation_idx ON public.project_templates(orientation);
 
+
+

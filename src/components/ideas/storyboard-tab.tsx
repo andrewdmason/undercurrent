@@ -987,3 +987,5 @@ function GridSceneCard({ scene, isGeneratingThumbnail, onGenerateThumbnail, onVi
     </ContextMenu>
   );
 }
+
+
