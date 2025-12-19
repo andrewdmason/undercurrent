@@ -1,115 +1,295 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useOnboarding } from "./onboarding-context";
-import { addTopic } from "@/lib/actions/project";
+import { updateProjectInfo, addTopic, deleteTopic } from "@/lib/actions/project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ArrowRight, ArrowLeft, Plus, Sparkles, Trash2, SkipForward } from "lucide-react";
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  SkipForward,
+  Sparkles,
+  Plus,
+  Trash2,
+  Pencil,
+  X,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ProjectTopic } from "@/lib/types";
-import { SuggestTopicsModal } from "@/components/strategy/suggest-topics-modal";
+
+interface TopicItem {
+  id?: string; // Only set for saved topics
+  name: string;
+  description: string;
+  isEditing?: boolean;
+}
 
 export function TopicsStep() {
-  const { project, topics, setTopics, goNext, goBack, addTopic: addTopicToContext } = useOnboarding();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const { project, topics, setTopics, goNext, goBack } = useOnboarding();
 
-  const includedTopics = topics.filter((t) => !t.is_excluded);
+  // Content strategy state
+  const [contentStrategy, setContentStrategy] = useState(project.content_preferences || "");
+  const [topicsToInclude, setTopicsToInclude] = useState<TopicItem[]>([]);
+  const [topicsToAvoid, setTopicsToAvoid] = useState<TopicItem[]>([]);
 
-  const handleSaveTopic = async (data: { name: string; description: string }) => {
-    const result = await addTopic(project.id, {
-      name: data.name,
-      description: data.description || null,
-      is_excluded: false,
-    });
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const hasStartedGeneration = useRef(false);
 
-    if (result.success && result.topic) {
-      addTopicToContext(result.topic);
+  // Initialize from existing topics if available
+  useEffect(() => {
+    if (topics.length > 0 || project.content_preferences) {
+      // Already have data, don't auto-generate
+      const included = topics
+        .filter((t) => !t.is_excluded)
+        .map((t) => ({ id: t.id, name: t.name, description: t.description || "" }));
+      const excluded = topics
+        .filter((t) => t.is_excluded)
+        .map((t) => ({ id: t.id, name: t.name, description: t.description || "" }));
+
+      setTopicsToInclude(included);
+      setTopicsToAvoid(excluded);
+      setHasGenerated(true);
     }
+  }, []);
 
-    setIsDialogOpen(false);
+  // Auto-generate on mount if no existing data
+  useEffect(() => {
+    if (!hasStartedGeneration.current && !project.content_preferences && topics.length === 0) {
+      hasStartedGeneration.current = true;
+      generateContentStrategy();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const generateContentStrategy = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/onboarding/generate-content-strategy/${project.id}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate content strategy");
+      }
+
+      const data = await response.json();
+      if (data.contentStrategy) {
+        setContentStrategy(data.contentStrategy);
+      }
+      if (data.topicsToInclude) {
+        setTopicsToInclude(data.topicsToInclude.map((t: TopicItem) => ({ ...t, id: undefined })));
+      }
+      if (data.topicsToAvoid) {
+        setTopicsToAvoid(data.topicsToAvoid.map((t: TopicItem) => ({ ...t, id: undefined })));
+      }
+    } catch (error) {
+      console.error("Failed to generate content strategy:", error);
+    } finally {
+      setIsLoading(false);
+      setHasGenerated(true);
+    }
   };
 
-  const handleTopicAddedFromModal = (topic: ProjectTopic) => {
-    addTopicToContext(topic);
+  // Topic editing functions
+  const handleAddTopic = (isExcluded: boolean) => {
+    const newTopic: TopicItem = { name: "", description: "", isEditing: true };
+    if (isExcluded) {
+      setTopicsToAvoid([...topicsToAvoid, newTopic]);
+    } else {
+      setTopicsToInclude([...topicsToInclude, newTopic]);
+    }
   };
 
-  const handleDeleteTopic = async (topicId: string) => {
-    // Import deleteTopic dynamically to avoid circular deps
-    const { deleteTopic } = await import("@/lib/actions/project");
-    await deleteTopic(topicId);
-    setTopics(topics.filter((t) => t.id !== topicId));
+  const handleUpdateTopic = (
+    isExcluded: boolean,
+    index: number,
+    field: "name" | "description",
+    value: string
+  ) => {
+    if (isExcluded) {
+      const updated = [...topicsToAvoid];
+      updated[index] = { ...updated[index], [field]: value };
+      setTopicsToAvoid(updated);
+    } else {
+      const updated = [...topicsToInclude];
+      updated[index] = { ...updated[index], [field]: value };
+      setTopicsToInclude(updated);
+    }
   };
+
+  const handleToggleEdit = (isExcluded: boolean, index: number) => {
+    if (isExcluded) {
+      const updated = [...topicsToAvoid];
+      updated[index] = { ...updated[index], isEditing: !updated[index].isEditing };
+      setTopicsToAvoid(updated);
+    } else {
+      const updated = [...topicsToInclude];
+      updated[index] = { ...updated[index], isEditing: !updated[index].isEditing };
+      setTopicsToInclude(updated);
+    }
+  };
+
+  const handleDeleteTopic = (isExcluded: boolean, index: number) => {
+    if (isExcluded) {
+      setTopicsToAvoid(topicsToAvoid.filter((_, i) => i !== index));
+    } else {
+      setTopicsToInclude(topicsToInclude.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleContinue = async () => {
+    setIsSaving(true);
+
+    try {
+      // Save content preferences
+      await updateProjectInfo(project.id, {
+        content_preferences: contentStrategy.trim() || null,
+      });
+
+      // Delete all existing topics first
+      for (const topic of topics) {
+        await deleteTopic(topic.id);
+      }
+
+      // Add new topics
+      const newTopics = [];
+
+      for (const topic of topicsToInclude) {
+        if (topic.name.trim()) {
+          const result = await addTopic(project.id, {
+            name: topic.name.trim(),
+            description: topic.description.trim() || null,
+            is_excluded: false,
+          });
+          if (result.success && result.topic) {
+            newTopics.push(result.topic);
+          }
+        }
+      }
+
+      for (const topic of topicsToAvoid) {
+        if (topic.name.trim()) {
+          const result = await addTopic(project.id, {
+            name: topic.name.trim(),
+            description: topic.description.trim() || null,
+            is_excluded: true,
+          });
+          if (result.success && result.topic) {
+            newTopics.push(result.topic);
+          }
+        }
+      }
+
+      // Update context
+      setTopics(newTopics);
+    } catch (error) {
+      console.error("Failed to save content strategy:", error);
+    } finally {
+      setIsSaving(false);
+      goNext();
+    }
+  };
+
+  const hasContent =
+    contentStrategy.trim() ||
+    topicsToInclude.some((t) => t.name.trim()) ||
+    topicsToAvoid.some((t) => t.name.trim());
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div className="space-y-3">
         <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight">
-          What topics should your videos cover?
+          Your content strategy
         </h1>
         <p className="text-lg text-slate-500">
-          Define content themes to guide idea generation. You can always add more later.
+          We&apos;ve created a content plan based on your business. Edit anything that doesn&apos;t fit.
         </p>
       </div>
 
-      {/* Topic list */}
-      <div className="space-y-3">
-        {includedTopics.map((topic) => (
-          <div
-            key={topic.id}
-            className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 group"
-          >
-            <div>
-              <span className="text-base font-medium text-slate-800">{topic.name}</span>
-              {topic.description && (
-                <p className="text-sm text-slate-400 mt-0.5">{topic.description}</p>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteTopic(topic.id)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-slate-400 hover:text-red-500"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-
-        {/* Add topic buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsDialogOpen(true)}
-            className="h-11"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add topic manually
-          </Button>
-          <Button
-            onClick={() => setIsSuggestModalOpen(true)}
-            className="bg-violet-600 hover:bg-violet-700 text-white h-11"
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Suggest with AI
-          </Button>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center gap-3 text-slate-500">
+          <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+          <span>Creating your content strategy...</span>
         </div>
+      )}
 
-        {/* Empty state */}
-        {includedTopics.length === 0 && (
-          <div className="text-center py-8 text-slate-400">
-            No topics added yet. Add some topics or let AI suggest them for you.
+      {/* Content */}
+      {!isLoading && (
+        <div className="space-y-8">
+          {/* Content Strategy Section */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-700">Content Strategy</label>
+            <textarea
+              value={contentStrategy}
+              onChange={(e) => setContentStrategy(e.target.value)}
+              placeholder="Describe your overall content approach..."
+              rows={6}
+              className={cn(
+                "w-full rounded-xl border border-slate-200 bg-white px-4 py-3",
+                "text-base text-slate-800 placeholder:text-slate-400",
+                "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
+                "resize-none"
+              )}
+            />
           </div>
-        )}
-      </div>
+
+          {/* Topics to Include */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-700">Topics to Cover</label>
+            <div className="space-y-2">
+              {topicsToInclude.map((topic, index) => (
+                <TopicCard
+                  key={index}
+                  topic={topic}
+                  onUpdate={(field, value) => handleUpdateTopic(false, index, field, value)}
+                  onToggleEdit={() => handleToggleEdit(false, index)}
+                  onDelete={() => handleDeleteTopic(false, index)}
+                />
+              ))}
+              <Button
+                variant="outline"
+                onClick={() => handleAddTopic(false)}
+                className="h-10 text-sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add topic
+              </Button>
+            </div>
+          </div>
+
+          {/* Topics to Avoid */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-slate-700">Topics to Avoid</label>
+            <div className="space-y-2">
+              {topicsToAvoid.map((topic, index) => (
+                <TopicCard
+                  key={index}
+                  topic={topic}
+                  onUpdate={(field, value) => handleUpdateTopic(true, index, field, value)}
+                  onToggleEdit={() => handleToggleEdit(true, index)}
+                  onDelete={() => handleDeleteTopic(true, index)}
+                  isExcluded
+                />
+              ))}
+              <Button
+                variant="outline"
+                onClick={() => handleAddTopic(true)}
+                className="h-10 text-sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add topic to avoid
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-4">
@@ -117,8 +297,23 @@ export function TopicsStep() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        <Button onClick={goNext} className="h-11 px-6">
-          {includedTopics.length > 0 ? (
+        {hasGenerated && !isLoading && (
+          <Button variant="outline" onClick={generateContentStrategy} className="h-11">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Regenerate
+          </Button>
+        )}
+        <Button
+          onClick={handleContinue}
+          disabled={isLoading || isSaving}
+          className="h-11 px-6"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : hasContent ? (
             <>
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -131,115 +326,95 @@ export function TopicsStep() {
           )}
         </Button>
       </div>
-
-      {/* Add Topic Dialog */}
-      <AddTopicDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSave={handleSaveTopic}
-      />
-
-      {/* Suggest Topics Modal */}
-      <SuggestTopicsModal
-        open={isSuggestModalOpen}
-        onOpenChange={setIsSuggestModalOpen}
-        projectId={project.id}
-        onTopicAdded={handleTopicAddedFromModal}
-      />
     </div>
   );
 }
 
-interface AddTopicDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (data: { name: string; description: string }) => Promise<void>;
+interface TopicCardProps {
+  topic: TopicItem;
+  onUpdate: (field: "name" | "description", value: string) => void;
+  onToggleEdit: () => void;
+  onDelete: () => void;
+  isExcluded?: boolean;
 }
 
-function AddTopicDialog({ isOpen, onClose, onSave }: AddTopicDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Reset form when dialog opens/closes
-  useEffect(() => {
-    if (isOpen) {
-      setName("");
-      setDescription("");
-    }
-  }, [isOpen]);
-
-  const handleSubmit = async () => {
-    if (!name.trim()) return;
-
-    setIsSaving(true);
-    await onSave({
-      name: name.trim(),
-      description: description.trim(),
-    });
-    setIsSaving(false);
-  };
+function TopicCard({ topic, onUpdate, onToggleEdit, onDelete, isExcluded }: TopicCardProps) {
+  if (topic.isEditing) {
+    return (
+      <div
+        className={cn(
+          "p-4 rounded-xl border-2 space-y-3",
+          isExcluded ? "border-red-200 bg-red-50/50" : "border-violet-200 bg-violet-50/50"
+        )}
+      >
+        <Input
+          value={topic.name}
+          onChange={(e) => onUpdate("name", e.target.value)}
+          placeholder="Topic name"
+          className="h-9"
+          autoFocus
+        />
+        <Input
+          value={topic.description}
+          onChange={(e) => onUpdate("description", e.target.value)}
+          placeholder="Brief description (optional)"
+          className="h-9"
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onDelete} className="h-8 text-slate-500">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            onClick={onToggleEdit}
+            disabled={!topic.name.trim()}
+            className="h-8"
+          >
+            <Check className="mr-1 h-4 w-4" />
+            Done
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[520px] rounded-xl">
-        <DialogHeader className="px-4 min-h-8">
-          <DialogTitle className="text-base font-semibold text-slate-800">
-            Add Topic
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 px-4 pb-4">
-          {/* Name input */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-600">Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Behind the scenes, Product tutorials, Customer stories..."
-              autoFocus
-              className="h-10"
-            />
-          </div>
-
-          {/* Description input */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-600">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what this topic covers and what kind of videos it includes..."
-              rows={4}
-              className={cn(
-                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
-                "text-sm text-slate-800 placeholder:text-slate-400",
-                "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
-                "resize-none"
-              )}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              disabled={isSaving}
-              className="h-10"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!name.trim() || isSaving}
-              className="h-10"
-            >
-              {isSaving ? "Saving..." : "Add Topic"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div
+      className={cn(
+        "flex items-start justify-between p-4 rounded-xl border group",
+        isExcluded
+          ? "border-red-200 bg-red-50/30"
+          : "border-slate-200 bg-white"
+      )}
+    >
+      <div className="flex-1 min-w-0">
+        <span className={cn("font-medium", isExcluded ? "text-red-900" : "text-slate-900")}>
+          {topic.name}
+        </span>
+        {topic.description && (
+          <p className={cn("text-sm mt-0.5", isExcluded ? "text-red-600/70" : "text-slate-500")}>
+            {topic.description}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleEdit}
+          className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
-
