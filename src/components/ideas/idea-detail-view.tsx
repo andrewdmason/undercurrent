@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { usePollThumbnails } from "@/hooks/use-poll-thumbnails";
 import { usePollAssets } from "@/hooks/use-poll-assets";
@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdeaWithChannels, ProjectTemplateWithChannels, DistributionChannel, IdeaAsset, IdeaScene, AssetType, ASSET_TYPE_LABELS, ProjectImage } from "@/lib/types";
 import { generateThumbnail } from "@/lib/actions/thumbnail";
 import { cancelIdea, generateUnderlordPrompt, remixIdea } from "@/lib/actions/ideas";
-import { toggleAssetComplete, generateTalkingPoints, generateScript, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage, batchGenerateAssetImages, batchGenerateAssetVideos } from "@/lib/actions/idea-assets";
+import { toggleAssetComplete, generateTalkingPoints, generateScript, generateAssetImage, generateAssetVideo, linkReferenceImage, unlinkReferenceImage, uploadReferenceImage, deleteReferenceImage, addReferenceImage, batchGenerateAssetImages, batchGenerateAssetVideos, updateAssetContent } from "@/lib/actions/idea-assets";
 import { generateStoryboard, generateAllSceneThumbnails } from "@/lib/actions/storyboard";
 import { updateTopic, deleteTopic, updateDistributionChannel, deleteDistributionChannel } from "@/lib/actions/project";
 import { updateCharacter, deleteCharacter } from "@/lib/actions/characters";
@@ -39,6 +39,7 @@ import { PlatformIcon, getChannelLabel } from "./idea-card";
 import { PublishIdeaModal } from "./publish-idea-modal";
 import { ScriptDisplay } from "./script-display";
 import { MarkdownDisplay } from "@/components/ui/markdown-display";
+import { TiptapEditor } from "@/components/ui/tiptap-editor";
 import { ChatSidebar } from "./chat-sidebar";
 import { CreateTemplateModal } from "@/components/strategy/create-template-modal";
 import { IdeaLogsSubmenu } from "./idea-logs-submenu";
@@ -1605,6 +1606,8 @@ interface TalkingPointsTabContentProps {
   setRegenerateDialogOpen: (type: "talking_points" | "script" | null) => void;
 }
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
 function TalkingPointsTabContent({
   talkingPointsAsset,
   isGeneratingTalkingPoints,
@@ -1612,18 +1615,102 @@ function TalkingPointsTabContent({
   setRegenerateDialogOpen,
 }: TalkingPointsTabContentProps) {
   const content = talkingPointsAsset?.content_text;
+  const assetId = talkingPointsAsset?.id;
+  
+  // Auto-save state
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [localContent, setLocalContent] = useState(content || "");
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Sync local content when external content changes (e.g., regeneration)
+  useEffect(() => {
+    if (content !== undefined && content !== null) {
+      setLocalContent(content);
+    }
+  }, [content]);
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (savedIndicatorTimeoutRef.current) clearTimeout(savedIndicatorTimeoutRef.current);
+    };
+  }, []);
+  
+  // Handle content change with debounced auto-save
+  const handleContentChange = useCallback((newContent: string) => {
+    setLocalContent(newContent);
+    
+    // Don't save if no asset ID or content hasn't actually changed
+    if (!assetId || newContent === content) {
+      return;
+    }
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set saving status immediately to show user we're tracking changes
+    setSaveStatus("saving");
+    
+    // Debounce the actual save
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const result = await updateAssetContent(assetId, newContent);
+        if (result.success) {
+          setSaveStatus("saved");
+          // Clear "Saved" indicator after 2 seconds
+          if (savedIndicatorTimeoutRef.current) {
+            clearTimeout(savedIndicatorTimeoutRef.current);
+          }
+          savedIndicatorTimeoutRef.current = setTimeout(() => {
+            setSaveStatus("idle");
+          }, 2000);
+        } else {
+          setSaveStatus("error");
+          toast.error(result.error || "Failed to save");
+        }
+      } catch (error) {
+        setSaveStatus("error");
+        toast.error("Failed to save changes");
+        console.error("Save error:", error);
+      }
+    }, 1000); // 1 second debounce
+  }, [assetId, content]);
 
   // Header with actions
   const header = (
     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-      <h4 className="text-sm font-medium text-[var(--grey-800)]">Talking Points</h4>
+      <div className="flex items-center gap-3">
+        <h4 className="text-sm font-medium text-[var(--grey-800)]">Talking Points</h4>
+        {/* Save status indicator */}
+        {saveStatus === "saving" && (
+          <span className="text-xs text-[var(--grey-400)] flex items-center gap-1">
+            <Loader2 size={12} className="animate-spin" />
+            Saving...
+          </span>
+        )}
+        {saveStatus === "saved" && (
+          <span className="text-xs text-[var(--grey-400)] flex items-center gap-1">
+            <Check size={12} />
+            Saved
+          </span>
+        )}
+        {saveStatus === "error" && (
+          <span className="text-xs text-[#f72736] flex items-center gap-1">
+            Save failed
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         {content && (
           <Button
             variant="ghost"
             size="sm"
             onClick={async () => {
-              await navigator.clipboard.writeText(content);
+              await navigator.clipboard.writeText(localContent);
               toast.success("Copied to clipboard");
             }}
             className="h-7 px-2"
@@ -1680,18 +1767,23 @@ function TalkingPointsTabContent({
 
   if (content) {
     return (
-      <>
+      <div className="flex flex-col h-full">
         {header}
-        <div className="flex-1 min-h-0 overflow-auto p-4 relative">
-          <MarkdownDisplay content={content} />
+        <div className="flex-1 min-h-0 relative">
+          <TiptapEditor
+            content={localContent}
+            onChange={handleContentChange}
+            placeholder="Start typing your talking points..."
+            className="h-full"
+          />
           {isGeneratingTalkingPoints && (
-            <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+            <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10">
               <Loader2 className="h-8 w-8 text-[var(--grey-400)] animate-spin mb-3" />
               <p className="text-sm text-[var(--grey-600)]">Generating talking points...</p>
             </div>
           )}
         </div>
-      </>
+      </div>
     );
   }
 
