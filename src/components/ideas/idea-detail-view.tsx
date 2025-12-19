@@ -1625,7 +1625,7 @@ function TalkingPointsTabContent({
   
   // Sync local content when external content changes (e.g., regeneration)
   useEffect(() => {
-    if (content !== undefined) {
+    if (content !== undefined && content !== null) {
       setLocalContent(content);
     }
   }, [content]);
