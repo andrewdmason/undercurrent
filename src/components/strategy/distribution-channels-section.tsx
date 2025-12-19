@@ -88,7 +88,7 @@ export function DistributionChannelsSection({
     custom_label?: string;
     goal_count?: number;
     goal_cadence?: "weekly" | "monthly";
-    notes?: string;
+    url?: string;
   }) => {
     const result = await addDistributionChannel(projectId, data);
     if (result.success && result.channel) {
@@ -203,7 +203,7 @@ function ChannelCard({
   const [goalCadence, setGoalCadence] = useState<"weekly" | "monthly" | null>(
     channel.goal_cadence
   );
-  const [notes, setNotes] = useState(channel.notes || "");
+  const [url, setUrl] = useState(channel.url || "");
   const [customLabel, setCustomLabel] = useState(channel.custom_label || "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
@@ -230,10 +230,10 @@ function ChannelCard({
     }
   };
 
-  const handleNotesBlur = () => {
-    if (notes !== channel.notes) {
-      onUpdate({ notes: notes || null });
-      saveChanges({ notes: notes || null });
+  const handleUrlBlur = () => {
+    if (url !== channel.url) {
+      onUpdate({ url: url || null });
+      saveChanges({ url: url || null });
     }
   };
 
@@ -342,23 +342,18 @@ function ChannelCard({
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Channel URL */}
           <div>
             <label className="text-xs text-[var(--grey-600)] mb-1.5 block">
-              Strategy Notes
+              Channel URL
             </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={handleNotesBlur}
-              placeholder="e.g., Cross-post from TikTok, focus on educational content..."
-              rows={2}
-              className={cn(
-                "w-full rounded-lg bg-white border border-[var(--border)] px-3 py-2",
-                "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
-                "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-                "resize-none"
-              )}
+            <Input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onBlur={handleUrlBlur}
+              placeholder="https://youtube.com/@yourchannel"
+              className="h-8 rounded-lg bg-white border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[#007bc2]"
             />
           </div>
         </div>
@@ -392,11 +387,6 @@ function ChannelCard({
               <span className="text-[var(--grey-400)] font-normal"> · No goal set</span>
             </span>
           )}
-          {channel.notes && (
-            <p className="text-xs text-[var(--grey-400)] mt-0.5">
-              {channel.notes}
-            </p>
-          )}
         </div>
 
         {/* Actions */}
@@ -425,7 +415,7 @@ interface NewChannelFormProps {
     custom_label?: string;
     goal_count?: number;
     goal_cadence?: "weekly" | "monthly";
-    notes?: string;
+    url?: string;
   }) => void;
   onCancel: () => void;
 }
@@ -435,7 +425,7 @@ function NewChannelForm({ availablePlatforms, onSave, onCancel }: NewChannelForm
   const [customLabel, setCustomLabel] = useState("");
   const [goalCount, setGoalCount] = useState("");
   const [goalCadence, setGoalCadence] = useState<"weekly" | "monthly">("weekly");
-  const [notes, setNotes] = useState("");
+  const [url, setUrl] = useState("");
 
   const handleSubmit = () => {
     if (!platform) return;
@@ -446,7 +436,7 @@ function NewChannelForm({ availablePlatforms, onSave, onCancel }: NewChannelForm
       custom_label: platform === "custom" ? customLabel.trim() : undefined,
       goal_count: goalCount ? parseInt(goalCount, 10) : undefined,
       goal_cadence: goalCadence,
-      notes: notes.trim() || undefined,
+      url: url.trim() || undefined,
     });
   };
 
@@ -544,22 +534,17 @@ function NewChannelForm({ availablePlatforms, onSave, onCancel }: NewChannelForm
           </div>
         )}
 
-        {/* Notes */}
+        {/* Channel URL */}
         <div>
           <label className="text-xs text-[var(--grey-600)] mb-1.5 block">
-            Strategy Notes (optional)
+            Channel URL (optional)
           </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g., Cross-post from TikTok, focus on educational content..."
-            rows={2}
-            className={cn(
-              "w-full rounded-lg bg-white border border-[var(--border)] px-3 py-2",
-              "text-sm text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
-              "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-              "resize-none"
-            )}
+          <Input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://youtube.com/@yourchannel"
+            className="h-8 rounded-lg bg-white border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[#007bc2]"
           />
         </div>
 
