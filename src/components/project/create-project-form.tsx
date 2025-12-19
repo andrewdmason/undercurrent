@@ -104,7 +104,7 @@ export function CreateProjectForm() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="name">Project name</Label>
+            <Label htmlFor="name">Business name</Label>
             <Input
               id="name"
               type="text"

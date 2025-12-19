@@ -12,13 +12,24 @@ export function DescriptionStep() {
   const [description, setDescription] = useState(project.description || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const hasGenerated = useRef(false);
+  const hasStartedGeneration = useRef(false);
 
-  // Auto-focus the textarea
+  // Auto-generate description on mount if none exists
   useEffect(() => {
-    textareaRef.current?.focus();
+    if (!project.description && !hasStartedGeneration.current) {
+      handleGenerateDraft();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-focus the textarea when not generating
+  useEffect(() => {
+    if (!isGenerating) {
+      textareaRef.current?.focus();
+    }
+  }, [isGenerating]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -31,7 +42,7 @@ export function DescriptionStep() {
 
   const handleGenerateDraft = async () => {
     setIsGenerating(true);
-    hasGenerated.current = true;
+    hasStartedGeneration.current = true;
 
     try {
       const response = await fetch(`/api/onboarding/draft-description/${project.id}`, {
@@ -82,6 +93,7 @@ export function DescriptionStep() {
       console.error("Failed to generate description:", error);
     } finally {
       setIsGenerating(false);
+      setHasGenerated(true);
     }
   };
 
@@ -109,22 +121,11 @@ export function DescriptionStep() {
         </p>
       </div>
 
-      {/* AI Draft Button */}
-      {!description && !isGenerating && (
-        <Button
-          onClick={handleGenerateDraft}
-          className="bg-violet-600 hover:bg-violet-700 text-white h-11 px-5"
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Draft with AI
-        </Button>
-      )}
-
-      {/* Loading state */}
+      {/* Loading state - shown while AI is generating before any text appears */}
       {isGenerating && !description && (
         <div className="flex items-center gap-3 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
-          <span>Analyzing your business...</span>
+          <span>Creating a first draft for you...</span>
         </div>
       )}
 
@@ -150,14 +151,14 @@ export function DescriptionStep() {
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-4">
-        {description && !isGenerating && (
+        {hasGenerated && !isGenerating && (
           <Button
             variant="outline"
             onClick={handleGenerateDraft}
             className="h-11"
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            {hasGenerated.current ? "Regenerate" : "Draft with AI"}
+            Regenerate
           </Button>
         )}
         <Button
