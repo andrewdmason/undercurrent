@@ -1461,7 +1461,7 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
   const [customLabel, setCustomLabel] = useState(channel?.custom_label || "");
   const [goalCount, setGoalCount] = useState(channel?.goal_count?.toString() || "");
   const [goalCadence, setGoalCadence] = useState<"weekly" | "monthly" | null>(channel?.goal_cadence || null);
-  const [notes, setNotes] = useState(channel?.notes || "");
+  const [url, setUrl] = useState(channel?.url || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -1471,7 +1471,7 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
     setCustomLabel(channel.custom_label || "");
     setGoalCount(channel.goal_count?.toString() || "");
     setGoalCadence(channel.goal_cadence);
-    setNotes(channel.notes || "");
+    setUrl(channel.url || "");
     setInitialized(true);
   }
   
@@ -1487,7 +1487,7 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
       custom_label: customLabel.trim() || null,
       goal_count: goalCount ? parseInt(goalCount, 10) : null,
       goal_cadence: goalCadence,
-      notes: notes.trim() || null,
+      url: url.trim() || null,
     });
     setIsSaving(false);
     onUpdate();
@@ -1552,20 +1552,15 @@ function ChannelEditModal({ channel, onClose, onUpdate }: ChannelEditModalProps)
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Channel URL */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--grey-600)]">Strategy Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g., Cross-post from TikTok, focus on educational content..."
-              rows={2}
-              className={cn(
-                "w-full rounded-lg bg-black/[0.03] border-0 px-3 py-2",
-                "text-xs text-[var(--grey-800)] placeholder:text-[var(--grey-400)]",
-                "focus:outline-none focus:ring-2 focus:ring-[#007bc2]",
-                "resize-none"
-              )}
+            <label className="text-xs font-medium text-[var(--grey-600)]">Channel URL</label>
+            <Input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://youtube.com/@yourchannel"
+              className="h-8 rounded-lg bg-black/[0.03] border-0 text-xs focus-visible:ring-2 focus-visible:ring-[#007bc2]"
             />
           </div>
 

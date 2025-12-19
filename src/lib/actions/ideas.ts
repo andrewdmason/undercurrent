@@ -451,9 +451,6 @@ export async function generateIdeas(projectId: string, options: GenerateIdeasOpt
             if (c.goal_count && c.goal_cadence) {
               line += ` - Goal: ${c.goal_count}/${c.goal_cadence === "weekly" ? "week" : "month"}`;
             }
-            if (c.notes) {
-              line += `\n  Strategy: ${c.notes}`;
-            }
             return line;
           })
           .join("\n")

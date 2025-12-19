@@ -105,7 +105,7 @@ export interface DistributionChannel {
   custom_label: string | null;
   goal_count: number | null;
   goal_cadence: "weekly" | "monthly" | null;
-  notes: string | null;
+  url: string | null;
   created_at: string;
   updated_at: string;
 }

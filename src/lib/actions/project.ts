@@ -93,7 +93,7 @@ export async function addDistributionChannel(
     custom_label?: string | null;
     goal_count?: number | null;
     goal_cadence?: "weekly" | "monthly" | null;
-    notes?: string | null;
+    url?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -113,7 +113,7 @@ export async function addDistributionChannel(
       custom_label: data.custom_label || null,
       goal_count: data.goal_count || null,
       goal_cadence: data.goal_cadence || null,
-      notes: data.notes || null,
+      url: data.url || null,
     })
     .select()
     .single();
@@ -135,7 +135,7 @@ export async function updateDistributionChannel(
     custom_label?: string | null;
     goal_count?: number | null;
     goal_cadence?: "weekly" | "monthly" | null;
-    notes?: string | null;
+    url?: string | null;
   }
 ) {
   const supabase = await createClient();

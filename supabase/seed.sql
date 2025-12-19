@@ -326,7 +326,7 @@ insert into public.project_channels (
   custom_label,
   goal_count,
   goal_cadence,
-  notes,
+  url,
   created_at,
   updated_at
 ) values
@@ -337,7 +337,7 @@ insert into public.project_channels (
     null,
     5,
     'weekly',
-    'Local discovery and atmosphere showcase. Behind-the-scenes, event teasers, staff picks. Anchor channel for Tabletop Library.',
+    'https://instagram.com/tabletoplibrary',
     now(),
     now()
   ),
@@ -348,7 +348,7 @@ insert into public.project_channels (
     null,
     3,
     'weekly',
-    'Cross-post best performing TikToks/Reels. Builds YouTube presence for discoverability.',
+    'https://youtube.com/@tabletoplibrary',
     now(),
     now()
   ),
@@ -359,7 +359,7 @@ insert into public.project_channels (
     null,
     1,
     'monthly',
-    'Monthly deep-dive: full game tutorials, event recaps, or game reviews. Vera as primary teaching host.',
+    'https://youtube.com/@tabletoplibrary',
     now(),
     now()
   ),
@@ -370,7 +370,7 @@ insert into public.project_channels (
     null,
     3,
     'weekly',
-    null,
+    'https://x.com/tabletoplibrary',
     now(),
     now()
   );
@@ -726,7 +726,7 @@ insert into public.project_channels (
   custom_label,
   goal_count,
   goal_cadence,
-  notes,
+  url,
   created_at,
   updated_at
 ) values
@@ -737,7 +737,7 @@ insert into public.project_channels (
     null,
     2,
     'weekly',
-    'Main channel for long-form family content: adventures, project builds, travel vlogs, and deeper storytelling.',
+    'https://youtube.com/@masonfamily',
     now(),
     now()
   ),
@@ -748,7 +748,7 @@ insert into public.project_channels (
     null,
     4,
     'weekly',
-    'Behind-the-scenes moments, quick family clips, lifestyle content. Good for local Berkeley community connection.',
+    'https://instagram.com/masonfamily',
     now(),
     now()
   ),
@@ -759,7 +759,7 @@ insert into public.project_channels (
     null,
     5,
     'weekly',
-    'Trending formats, family comedy, relatable parenting content. Kids'' perspectives perform well here.',
+    'https://tiktok.com/@masonfamily',
     now(),
     now()
   ),
@@ -770,7 +770,7 @@ insert into public.project_channels (
     null,
     3,
     'weekly',
-    'Cross-post best performing TikTok/Reels content. Builds YouTube subscriber base.',
+    'https://youtube.com/@masonfamily',
     now(),
     now()
   );
