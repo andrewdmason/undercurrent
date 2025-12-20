@@ -44,3 +44,4 @@ CREATE TABLE IF NOT EXISTS sample_videos (
 
 COMMENT ON TABLE sample_videos IS 'Curated library of example videos shown during onboarding to help users discover template styles';
 
+

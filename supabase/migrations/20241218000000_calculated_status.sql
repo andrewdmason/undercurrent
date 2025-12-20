@@ -61,3 +61,4 @@ ALTER TABLE ideas DROP COLUMN IF EXISTS status;
 -- PostgreSQL doesn't easily allow dropping enum types that may have been used.
 
 
+

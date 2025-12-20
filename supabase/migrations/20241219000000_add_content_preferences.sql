@@ -4,3 +4,4 @@
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS content_preferences TEXT;
 
 
+
