@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Project,
   ProjectCharacter,
@@ -29,6 +30,10 @@ const STEP_ORDER: OnboardingStep[] = [
   "templates",
   "generating",
 ];
+
+function isValidStep(step: string | null): step is OnboardingStep {
+  return step !== null && STEP_ORDER.includes(step as OnboardingStep);
+}
 
 interface OnboardingContextValue {
   project: Project;
@@ -76,12 +81,30 @@ export function OnboardingProvider({
   topics: initialTopics,
   templates: initialTemplates,
 }: OnboardingProviderProps) {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>("description");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Get initial step from URL or default to "description"
+  const stepFromUrl = searchParams.get("step");
+  const initialStep = isValidStep(stepFromUrl) ? stepFromUrl : "description";
+
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep);
   const [project, setProject] = useState<Project>(initialProject);
   const [characters, setCharacters] = useState<ProjectCharacter[]>(initialCharacters);
   const [channels, setChannels] = useState<DistributionChannel[]>(initialChannels);
   const [topics, setTopics] = useState<ProjectTopic[]>(initialTopics);
   const [templates, setTemplates] = useState<ProjectTemplateWithChannels[]>(initialTemplates);
+
+  // Sync step changes to URL
+  useEffect(() => {
+    const currentUrlStep = searchParams.get("step");
+    if (currentUrlStep !== currentStep) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("step", currentStep);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [currentStep, pathname, router, searchParams]);
 
   const stepIndex = STEP_ORDER.indexOf(currentStep);
   const totalSteps = STEP_ORDER.length;

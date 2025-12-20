@@ -216,6 +216,31 @@ export interface ProjectTemplateWithChannels extends ProjectTemplate {
   }>;
 }
 
+// Sample video from the curated library for template discovery
+export interface SampleVideo {
+  id: string;
+  youtube_url: string;
+  youtube_id: string;
+  name: string;
+  description: string;
+  thumbnail_url: string | null;
+  orientation: TemplateOrientation;
+  presenter_type: PresenterType;
+  requires_human: boolean;
+  camera_comfort: CameraComfort | null;
+  script_styles: ScriptStyle[];
+  locations: FilmingLocation[];
+  equipment: Equipment[];
+  movement: MovementCapability[];
+  suggested_platforms: string[];
+  created_at?: string;
+}
+
+// Sample video with a compatibility score (used during discovery)
+export interface ScoredSampleVideo extends SampleVideo {
+  score: number;
+}
+
 // Extended Idea type with all related data for display
 export interface IdeaWithChannels extends Idea {
   // Calculated status (derived from timestamps + assets)

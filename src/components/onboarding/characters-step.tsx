@@ -239,6 +239,7 @@ export function CharactersStep() {
         onTypeSelect={handleTypeSelect}
         onSave={handleSaveCharacter}
         onBack={() => setSelectedType(null)}
+        projectId={project.id}
       />
     </div>
   );
@@ -257,6 +258,7 @@ interface AddCharacterDialogProps {
     memberId?: string;
   }) => Promise<void>;
   onBack: () => void;
+  projectId: string;
 }
 
 function AddCharacterDialog({
@@ -266,6 +268,7 @@ function AddCharacterDialog({
   onTypeSelect,
   onSave,
   onBack,
+  projectId,
 }: AddCharacterDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -275,23 +278,34 @@ function AddCharacterDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [isMe, setIsMe] = useState(false);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch current user info
+  // Fetch current user info and their project member ID
   useEffect(() => {
-    async function fetchUser() {
+    async function fetchUserAndMembership() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setCurrentUserId(user.id);
         // Try to get name from metadata, fallback to email
         const userName = user.user_metadata?.full_name || user.email?.split("@")[0] || "";
         setCurrentUserName(userName);
+
+        // Get the project member ID (not the auth user ID)
+        const { data: member } = await supabase
+          .from("project_members")
+          .select("id")
+          .eq("project_id", projectId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (member) {
+          setCurrentMemberId(member.id);
+        }
       }
     }
-    fetchUser();
-  }, []);
+    fetchUserAndMembership();
+  }, [projectId]);
 
   // Reset form when dialog opens/closes or type changes
   useEffect(() => {
@@ -352,7 +366,7 @@ function AddCharacterDialog({
       description: description.trim(),
       pendingImage: pendingImage || undefined,
       isMe,
-      memberId: isMe ? currentUserId || undefined : undefined,
+      memberId: isMe ? currentMemberId || undefined : undefined,
     });
     setIsSaving(false);
   };
