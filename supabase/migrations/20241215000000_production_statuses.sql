@@ -26,3 +26,4 @@ ALTER TYPE idea_status ADD VALUE IF NOT EXISTS 'postproduction';
 ALTER TABLE ideas ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
 
 
+

@@ -20,8 +20,11 @@ export function GeneratingStep() {
   useEffect(() => {
     let isCancelled = false;
 
+    console.log("[GeneratingStep] Starting generation for project:", project.id);
+
     const generate = async () => {
       try {
+        console.log("[GeneratingStep] Calling generateIdeas...");
         const result = await generateIdeas(project.id, {
           count: 10,
           characterIds: undefined,
@@ -29,17 +32,25 @@ export function GeneratingStep() {
           templateId: undefined,
           topicId: undefined,
         });
+        console.log("[GeneratingStep] generateIdeas result:", JSON.stringify(result, null, 2));
+        console.log("[GeneratingStep] isCancelled:", isCancelled);
 
-        if (isCancelled) return;
+        if (isCancelled) {
+          console.log("[GeneratingStep] Cancelled, returning early");
+          return;
+        }
 
         if (result.error) {
+          console.log("[GeneratingStep] Error in result:", result.error);
           setError(result.error);
           return;
         }
 
+        console.log("[GeneratingStep] Success! Count:", result.count);
         setIdeaCount(result.count || 0);
         setStatus("complete");
       } catch (err) {
+        console.error("[GeneratingStep] Error generating ideas:", err);
         if (!isCancelled) {
           setError("Failed to generate ideas. Please try again.");
         }

@@ -9,3 +9,4 @@ export default function BriefChannelsPage() {
   return <DistributionChannelsSection projectId={project.id} channels={channels} />;
 }
 
+

@@ -50,6 +50,45 @@ export interface Project {
   created_by: string | null;
 }
 
+// Character interview data types
+export type CameraComfort = "new" | "comfortable" | "natural";
+export type ScriptStyle = "word_for_word" | "bullet_points" | "improviser";
+export type FilmingLocation = "home" | "workplace" | "on_location" | "studio";
+export type Equipment = "smartphone" | "webcam" | "dedicated_camera" | "full_production";
+export type MovementCapability = "seated" | "walk_and_talk" | "action_shots" | "on_the_go";
+export type RecordingSetup = "phone_mic" | "usb_mic" | "professional";
+
+// Interview data for on-camera characters
+export interface OnCameraInterviewData {
+  cameraComfort: CameraComfort;
+  scriptStyles: ScriptStyle[];
+  locations: FilmingLocation[];
+  equipment: Equipment[];
+  movement: MovementCapability[];
+}
+
+// Interview data for voiceover-only characters
+export interface VoiceoverInterviewData {
+  scriptStyles: ScriptStyle[];
+  recordingSetup: RecordingSetup;
+}
+
+// Union type for interview data
+export type CharacterInterviewData = OnCameraInterviewData | VoiceoverInterviewData;
+
+// Template production requirements types
+export type PresenterType = "on_camera" | "voiceover_only" | "none";
+
+// Production requirements for templates - mirrors character capabilities for matching
+export interface TemplateProductionRequirements {
+  presenterType: PresenterType;
+  cameraComfort: CameraComfort | null; // null = any level acceptable
+  scriptStyles: ScriptStyle[]; // empty = any style
+  locations: FilmingLocation[]; // empty = any location
+  equipment: Equipment[]; // empty = any equipment
+  movement: MovementCapability[]; // empty = any movement style
+}
+
 export interface ProjectCharacter {
   id: string;
   project_id: string;
@@ -57,8 +96,10 @@ export interface ProjectCharacter {
   description: string | null;
   image_url: string | null;
   is_ai_generated: boolean;
+  is_voiceover_only: boolean;
   ai_style: string | null;
   member_id: string | null;
+  interview_data: CharacterInterviewData | null;
   created_at: string;
   updated_at: string;
 }
@@ -154,6 +195,7 @@ export interface ProjectTemplate {
   image_url: string | null;
   orientation: TemplateOrientation;
   target_duration_seconds: number | null;
+  production_requirements: TemplateProductionRequirements | null;
   created_at: string;
   updated_at: string;
 }
@@ -172,6 +214,31 @@ export interface ProjectTemplateWithChannels extends ProjectTemplate {
     platform: string;
     custom_label: string | null;
   }>;
+}
+
+// Sample video from the curated library for template discovery
+export interface SampleVideo {
+  id: string;
+  youtube_url: string;
+  youtube_id: string;
+  name: string;
+  description: string;
+  thumbnail_url: string | null;
+  orientation: TemplateOrientation;
+  presenter_type: PresenterType;
+  requires_human: boolean;
+  camera_comfort: CameraComfort | null;
+  script_styles: ScriptStyle[];
+  locations: FilmingLocation[];
+  equipment: Equipment[];
+  movement: MovementCapability[];
+  suggested_platforms: string[];
+  created_at?: string;
+}
+
+// Sample video with a compatibility score (used during discovery)
+export interface ScoredSampleVideo extends SampleVideo {
+  score: number;
 }
 
 // Extended Idea type with all related data for display

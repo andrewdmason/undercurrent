@@ -15,6 +15,7 @@ import {
   DistributionChannel, 
   ProjectTemplateWithChannels, 
   TemplateOrientation, 
+  TemplateProductionRequirements,
   platformSupportsOrientation,
   getMinTargetDuration,
   DistributionPlatform,
@@ -79,6 +80,7 @@ export function CreateTemplateModal({
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
   const [orientation, setOrientation] = useState<TemplateOrientation>("vertical");
   const [targetDurationSeconds, setTargetDurationSeconds] = useState<number | null>(null);
+  const [productionRequirements, setProductionRequirements] = useState<TemplateProductionRequirements | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Populate form when editing, or clear when creating new
@@ -92,6 +94,7 @@ export function CreateTemplateModal({
       setSelectedChannelIds(editingTemplate.channels.map((c) => c.id));
       setOrientation(editingTemplate.orientation);
       setTargetDurationSeconds(editingTemplate.target_duration_seconds);
+      setProductionRequirements(editingTemplate.production_requirements);
     } else if (!editingTemplate && open) {
       // Clear all fields when opening for a new template
       setStep("youtube");
@@ -102,6 +105,7 @@ export function CreateTemplateModal({
       setSelectedChannelIds([]);
       setOrientation("vertical");
       setTargetDurationSeconds(null);
+      setProductionRequirements(null);
       setVideoUrl("");
       setAnalyzeError(null);
     }
@@ -141,6 +145,7 @@ export function CreateTemplateModal({
       setSelectedChannelIds([]);
       setOrientation("vertical");
       setTargetDurationSeconds(null);
+      setProductionRequirements(null);
     }
     setIsSaving(false);
   };
@@ -181,6 +186,7 @@ export function CreateTemplateModal({
     if (result.success) {
       setName(result.analysis.name);
       setDescription(result.analysis.description);
+      setProductionRequirements(result.analysis.productionRequirements);
       
       // Map suggested platforms to channel IDs
       const suggestedIds = channels
@@ -281,6 +287,7 @@ export function CreateTemplateModal({
         channelIds: selectedChannelIds,
         orientation,
         target_duration_seconds: targetDurationSeconds,
+        production_requirements: productionRequirements,
       });
 
       if (result.success) {
@@ -299,6 +306,7 @@ export function CreateTemplateModal({
         channelIds: selectedChannelIds,
         orientation,
         target_duration_seconds: targetDurationSeconds,
+        production_requirements: productionRequirements,
       });
 
       if (result.success) {
@@ -525,6 +533,11 @@ export function CreateTemplateModal({
               sourceVideoUrl={isEditing ? sourceVideoUrl : null}
             />
 
+            <ProductionRequirementsEditor
+              requirements={productionRequirements}
+              onChange={setProductionRequirements}
+            />
+
             <div className="flex justify-end gap-2">
               {!isEditing && (
                 <Button
@@ -534,6 +547,7 @@ export function CreateTemplateModal({
                     setName("");
                     setDescription("");
                     setSelectedChannelIds([]);
+                    setProductionRequirements(null);
                   }}
                 >
                   Back
@@ -592,6 +606,11 @@ export function CreateTemplateModal({
               onTargetDurationChange={setTargetDurationSeconds}
             />
 
+            <ProductionRequirementsEditor
+              requirements={productionRequirements}
+              onChange={setProductionRequirements}
+            />
+
             {analyzeError && (
               <div className="flex items-center gap-2 text-xs text-[#f72736]">
                 <AlertCircle className="size-3.5" />
@@ -609,6 +628,7 @@ export function CreateTemplateModal({
                   setImageUrl(null);
                   setSourceVideoUrl(null);
                   setSelectedChannelIds([]);
+                  setProductionRequirements(null);
                 }}
                 disabled={isSaving}
               >
@@ -882,6 +902,280 @@ function TemplateForm({
         </div>
       )}
     </>
+  );
+}
+
+// Helper labels for production requirements
+const PRESENTER_TYPE_LABELS: Record<string, string> = {
+  on_camera: "On Camera",
+  voiceover_only: "Voiceover Only",
+  none: "No Presenter",
+};
+
+const CAMERA_COMFORT_LABELS: Record<string, string> = {
+  new: "Beginner-friendly",
+  comfortable: "Some confidence",
+  natural: "High confidence",
+};
+
+const SCRIPT_STYLE_LABELS: Record<string, string> = {
+  word_for_word: "Scripted",
+  bullet_points: "Bullet points",
+  improviser: "Improvised",
+};
+
+const LOCATION_LABELS: Record<string, string> = {
+  home: "Home",
+  workplace: "Workplace",
+  on_location: "On location",
+  studio: "Studio",
+};
+
+const EQUIPMENT_LABELS: Record<string, string> = {
+  smartphone: "Smartphone",
+  webcam: "Webcam",
+  dedicated_camera: "Dedicated camera",
+  full_production: "Full production",
+};
+
+const MOVEMENT_LABELS: Record<string, string> = {
+  seated: "Seated/stationary",
+  walk_and_talk: "Walk-and-talk",
+  action_shots: "Action shots",
+  on_the_go: "On-the-go",
+};
+
+interface ProductionRequirementsEditorProps {
+  requirements: TemplateProductionRequirements | null;
+  onChange: (requirements: TemplateProductionRequirements | null) => void;
+}
+
+function ProductionRequirementsEditor({
+  requirements,
+  onChange,
+}: ProductionRequirementsEditorProps) {
+  if (!requirements) {
+    return (
+      <div className="rounded-lg border border-dashed border-[var(--grey-200)] p-4 text-center">
+        <p className="text-sm text-[var(--grey-500)]">
+          No production requirements extracted. Create from video analysis or add manually.
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-2"
+          onClick={() =>
+            onChange({
+              presenterType: "on_camera",
+              cameraComfort: null,
+              scriptStyles: [],
+              locations: [],
+              equipment: [],
+              movement: [],
+            })
+          }
+        >
+          Add Requirements
+        </Button>
+      </div>
+    );
+  }
+
+  const updateField = <K extends keyof TemplateProductionRequirements>(
+    field: K,
+    value: TemplateProductionRequirements[K]
+  ) => {
+    onChange({ ...requirements, [field]: value });
+  };
+
+  const toggleArrayItem = <T extends string>(
+    field: keyof TemplateProductionRequirements,
+    item: T
+  ) => {
+    const current = (requirements[field] as T[]) || [];
+    const newValue = current.includes(item)
+      ? current.filter((i) => i !== item)
+      : [...current, item];
+    updateField(field, newValue as TemplateProductionRequirements[typeof field]);
+  };
+
+  return (
+    <div className="space-y-4 rounded-lg border border-[var(--grey-200)] bg-[var(--grey-50)] p-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-[var(--grey-700)]">
+          Production Requirements
+        </h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs text-[var(--grey-500)]"
+          onClick={() => onChange(null)}
+        >
+          Remove
+        </Button>
+      </div>
+
+      {/* Presenter Type */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-[var(--grey-600)]">
+          Presenter Type
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(["on_camera", "voiceover_only", "none"] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => updateField("presenterType", type)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                requirements.presenterType === type
+                  ? "bg-[var(--grey-800)] text-white"
+                  : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+              )}
+            >
+              {PRESENTER_TYPE_LABELS[type]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Camera Comfort - only for on_camera */}
+      {requirements.presenterType === "on_camera" && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--grey-600)]">
+            Camera Comfort Level Required
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(["new", "comfortable", "natural"] as const).map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() =>
+                  updateField(
+                    "cameraComfort",
+                    requirements.cameraComfort === level ? null : level
+                  )
+                }
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  requirements.cameraComfort === level
+                    ? "bg-[var(--grey-800)] text-white"
+                    : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+                )}
+              >
+                {CAMERA_COMFORT_LABELS[level]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Script Styles */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-[var(--grey-600)]">
+          Compatible Script Styles
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(["word_for_word", "bullet_points", "improviser"] as const).map(
+            (style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() => toggleArrayItem("scriptStyles", style)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  requirements.scriptStyles.includes(style)
+                    ? "bg-[var(--grey-800)] text-white"
+                    : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+                )}
+              >
+                {SCRIPT_STYLE_LABELS[style]}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Locations */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-[var(--grey-600)]">
+          Suitable Locations
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(["home", "workplace", "on_location", "studio"] as const).map(
+            (location) => (
+              <button
+                key={location}
+                type="button"
+                onClick={() => toggleArrayItem("locations", location)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  requirements.locations.includes(location)
+                    ? "bg-[var(--grey-800)] text-white"
+                    : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+                )}
+              >
+                {LOCATION_LABELS[location]}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Equipment */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-[var(--grey-600)]">
+          Minimum Equipment
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            ["smartphone", "webcam", "dedicated_camera", "full_production"] as const
+          ).map((equipment) => (
+            <button
+              key={equipment}
+              type="button"
+              onClick={() => toggleArrayItem("equipment", equipment)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                requirements.equipment.includes(equipment)
+                  ? "bg-[var(--grey-800)] text-white"
+                  : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+              )}
+            >
+              {EQUIPMENT_LABELS[equipment]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Movement */}
+      {requirements.presenterType === "on_camera" && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--grey-600)]">
+            Movement Style
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(
+              ["seated", "walk_and_talk", "action_shots", "on_the_go"] as const
+            ).map((movement) => (
+              <button
+                key={movement}
+                type="button"
+                onClick={() => toggleArrayItem("movement", movement)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  requirements.movement.includes(movement)
+                    ? "bg-[var(--grey-800)] text-white"
+                    : "bg-white border border-[var(--grey-200)] text-[var(--grey-600)] hover:border-[var(--grey-300)]"
+                )}
+              >
+                {MOVEMENT_LABELS[movement]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

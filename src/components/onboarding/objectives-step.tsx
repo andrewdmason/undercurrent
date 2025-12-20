@@ -12,13 +12,24 @@ export function ObjectivesStep() {
   const [objectives, setObjectives] = useState(project.business_objectives || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const hasGenerated = useRef(false);
+  const hasStartedGeneration = useRef(false);
 
-  // Auto-focus the textarea
+  // Auto-generate objectives on mount if none exists
   useEffect(() => {
-    textareaRef.current?.focus();
+    if (!project.business_objectives && !hasStartedGeneration.current) {
+      handleGenerateDraft();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-focus the textarea when not generating
+  useEffect(() => {
+    if (!isGenerating) {
+      textareaRef.current?.focus();
+    }
+  }, [isGenerating]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -31,7 +42,7 @@ export function ObjectivesStep() {
 
   const handleGenerateDraft = async () => {
     setIsGenerating(true);
-    hasGenerated.current = true;
+    hasStartedGeneration.current = true;
 
     try {
       const response = await fetch(`/api/onboarding/draft-objectives/${project.id}`, {
@@ -82,6 +93,7 @@ export function ObjectivesStep() {
       console.error("Failed to generate objectives:", error);
     } finally {
       setIsGenerating(false);
+      setHasGenerated(true);
     }
   };
 
@@ -109,22 +121,11 @@ export function ObjectivesStep() {
         </p>
       </div>
 
-      {/* AI Draft Button */}
-      {!objectives && !isGenerating && (
-        <Button
-          onClick={handleGenerateDraft}
-          className="bg-violet-600 hover:bg-violet-700 text-white h-11 px-5"
-        >
-          <Sparkles className="mr-2 h-4 w-4" />
-          Suggest objectives
-        </Button>
-      )}
-
-      {/* Loading state */}
+      {/* Loading state - shown while AI is generating before any text appears */}
       {isGenerating && !objectives && (
         <div className="flex items-center gap-3 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
-          <span>Thinking about your goals...</span>
+          <span>Creating a first draft for you...</span>
         </div>
       )}
 
@@ -158,14 +159,14 @@ export function ObjectivesStep() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        {objectives && !isGenerating && (
+        {hasGenerated && !isGenerating && (
           <Button
             variant="outline"
             onClick={handleGenerateDraft}
             className="h-11"
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            {hasGenerated.current ? "Regenerate" : "Suggest objectives"}
+            Regenerate
           </Button>
         )}
         <Button

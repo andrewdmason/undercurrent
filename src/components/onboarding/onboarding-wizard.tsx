@@ -7,6 +7,7 @@ import { ObjectivesStep } from "./objectives-step";
 import { TopicsStep } from "./topics-step";
 import { ChannelsStep } from "./channels-step";
 import { CharactersStep } from "./characters-step";
+import { CharacterInterviewStep } from "./character-interview-step";
 import { TemplatesStep } from "./templates-step";
 import { GeneratingStep } from "./generating-step";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,8 @@ export function OnboardingWizard() {
         return <ChannelsStep />;
       case "characters":
         return <CharactersStep />;
+      case "character-interview":
+        return <CharacterInterviewStep />;
       case "templates":
         return <TemplatesStep />;
       case "generating":
@@ -102,6 +105,7 @@ export function OnboardingWizard() {
     </div>
   );
 }
+
 
 
 

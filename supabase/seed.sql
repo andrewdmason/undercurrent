@@ -1501,3 +1501,277 @@ insert into public.project_images (
     now(),
     now()
   );
+
+-- ============================================
+-- SAMPLE VIDEOS FOR TEMPLATE DISCOVERY
+-- Curated library of REAL example videos with DIVERSE production values
+-- Mix of simple/accessible and more polished content
+-- ============================================
+
+INSERT INTO sample_videos (
+  youtube_url,
+  youtube_id,
+  name,
+  description,
+  thumbnail_url,
+  orientation,
+  presenter_type,
+  requires_human,
+  camera_comfort,
+  script_styles,
+  locations,
+  equipment,
+  movement,
+  suggested_platforms
+) VALUES
+  -- ============================================
+  -- SIMPLE/ACCESSIBLE - Screen Recording + Voiceover (No face needed)
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=di-iMVR96NA',
+    'di-iMVR96NA',
+    'Screen Recording Tutorial',
+    'Simple screen recording with voiceover narration. No camera needed - just record your screen and talk. Great for software demos, tutorials, and walkthroughs.',
+    'https://i.ytimg.com/vi/di-iMVR96NA/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['bullet_points', 'word_for_word'],
+    ARRAY['home'],
+    ARRAY['webcam'],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube', 'linkedin']
+  ),
+  (
+    'https://www.youtube.com/watch?v=l0_M5mluTDc',
+    'l0_M5mluTDc',
+    'Screen Recording with OBS',
+    'Full screen recording tutorial style. Record your screen while narrating - perfect for teaching software, showing processes, or creating how-to content.',
+    'https://i.ytimg.com/vi/l0_M5mluTDc/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['bullet_points'],
+    ARRAY['home'],
+    ARRAY['webcam'],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube']
+  ),
+  (
+    'https://www.youtube.com/watch?v=qtivV_-S3bM',
+    'qtivV_-S3bM',
+    'Voiceover Design Tutorial',
+    'Voiceover with on-screen graphics and demonstrations. No face on camera - just your voice guiding viewers through visual content.',
+    'https://i.ytimg.com/vi/qtivV_-S3bM/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['word_for_word', 'bullet_points'],
+    ARRAY['home'],
+    ARRAY['smartphone', 'webcam'],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube', 'tiktok', 'instagram_reels']
+  ),
+
+  -- ============================================
+  -- SIMPLE/ACCESSIBLE - Simple Talking Head (Webcam/Phone quality)
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=_2AIw8UcRO0',
+    '_2AIw8UcRO0',
+    'Simple Home Office Talking Head',
+    'Basic talking head setup from home. Just you, your webcam or phone, and good lighting. No fancy equipment needed - authenticity over production value.',
+    'https://i.ytimg.com/vi/_2AIw8UcRO0/hqdefault.jpg',
+    'horizontal',
+    'on_camera',
+    true,
+    'comfortable',
+    ARRAY['bullet_points', 'improviser'],
+    ARRAY['home'],
+    ARRAY['webcam', 'smartphone'],
+    ARRAY['seated'],
+    ARRAY['youtube', 'linkedin']
+  ),
+  (
+    'https://www.youtube.com/watch?v=oKe4jOlAAUs',
+    'oKe4jOlAAUs',
+    'Smartphone Selfie Video',
+    'Film yourself with just your smartphone. Hold it yourself or use a basic tripod - this is how most people start making videos.',
+    'https://i.ytimg.com/vi/oKe4jOlAAUs/hqdefault.jpg',
+    'horizontal',
+    'on_camera',
+    true,
+    'new',
+    ARRAY['bullet_points', 'improviser'],
+    ARRAY['home', 'workplace', 'on_location'],
+    ARRAY['smartphone'],
+    ARRAY['seated', 'walk_and_talk'],
+    ARRAY['youtube', 'tiktok', 'instagram_reels', 'youtube_shorts']
+  ),
+  (
+    'https://www.youtube.com/watch?v=qB9K1Bi8Gpk',
+    'qB9K1Bi8Gpk',
+    'Day in the Life Vlog',
+    'Document your daily routine as a business owner. Casual, authentic footage showing real work - not polished production.',
+    'https://i.ytimg.com/vi/qB9K1Bi8Gpk/hqdefault.jpg',
+    'vertical',
+    'on_camera',
+    true,
+    'comfortable',
+    ARRAY['improviser'],
+    ARRAY['home', 'workplace', 'on_location'],
+    ARRAY['smartphone'],
+    ARRAY['walk_and_talk', 'action_shots', 'on_the_go'],
+    ARRAY['tiktok', 'instagram_reels', 'youtube_shorts']
+  ),
+  (
+    'https://www.youtube.com/watch?v=qa0H2RYjOBI',
+    'qa0H2RYjOBI',
+    'Behind-the-Scenes Content',
+    'Show the real work behind your business. Raw, unpolished clips of your process - customers love seeing how things actually get done.',
+    'https://i.ytimg.com/vi/qa0H2RYjOBI/hqdefault.jpg',
+    'vertical',
+    'on_camera',
+    true,
+    'comfortable',
+    ARRAY['improviser'],
+    ARRAY['workplace', 'on_location'],
+    ARRAY['smartphone'],
+    ARRAY['walk_and_talk', 'action_shots'],
+    ARRAY['tiktok', 'instagram_reels', 'youtube_shorts']
+  ),
+
+  -- ============================================
+  -- SIMPLE/ACCESSIBLE - Phone Editing / Simple Production
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=u8BuF1qpmnI',
+    'u8BuF1qpmnI',
+    'Phone-Edited Quick Cuts',
+    'Simple video editing done entirely on your phone. Quick cuts, basic transitions - shows what you can achieve with just mobile editing apps.',
+    'https://i.ytimg.com/vi/u8BuF1qpmnI/hqdefault.jpg',
+    'vertical',
+    'on_camera',
+    true,
+    'comfortable',
+    ARRAY['bullet_points'],
+    ARRAY['home', 'workplace'],
+    ARRAY['smartphone'],
+    ARRAY['seated'],
+    ARRAY['tiktok', 'instagram_reels', 'youtube_shorts']
+  ),
+  
+  -- ============================================
+  -- AI AVATAR / NO FILMING NEEDED
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=d6mtKLt_ewc',
+    'd6mtKLt_ewc',
+    'AI Avatar Presenter',
+    'Use AI-generated avatars (HeyGen, Synthesia) to create videos without filming yourself. Just type your script and the AI creates the video.',
+    'https://i.ytimg.com/vi/d6mtKLt_ewc/hqdefault.jpg',
+    'horizontal',
+    'on_camera',
+    false,
+    null,
+    ARRAY['word_for_word'],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY['seated'],
+    ARRAY['youtube', 'linkedin']
+  ),
+  (
+    'https://www.youtube.com/watch?v=yZvJqP0PRZI',
+    'yZvJqP0PRZI',
+    'AI-Generated Video Content',
+    'Another example of AI avatar video. Great for people who aren''t comfortable on camera or need to scale content production.',
+    'https://i.ytimg.com/vi/yZvJqP0PRZI/hqdefault.jpg',
+    'vertical',
+    'on_camera',
+    false,
+    null,
+    ARRAY['word_for_word'],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY['seated'],
+    ARRAY['tiktok', 'instagram_reels', 'youtube_shorts', 'linkedin']
+  ),
+
+  -- ============================================
+  -- WHITEBOARD / ANIMATED EXPLAINER (No face needed)
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=wSkRYcRCNXA',
+    'wSkRYcRCNXA',
+    'Whiteboard Animation',
+    'Animated whiteboard-style explainer video. Hand-drawn look with voiceover - great for explaining concepts without being on camera.',
+    'https://i.ytimg.com/vi/wSkRYcRCNXA/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['word_for_word'],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube', 'linkedin', 'facebook']
+  ),
+
+  -- ============================================
+  -- MEDIUM PRODUCTION - Better equipment but still accessible
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=zQnBQ4tB3ZA',
+    'zQnBQ4tB3ZA',
+    'Fast-Paced Screen Tutorial',
+    'Quick, dense information delivery with screen recording. Rapid editing style - keeps viewers engaged with fast cuts and visual changes.',
+    'https://i.ytimg.com/vi/zQnBQ4tB3ZA/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['word_for_word'],
+    ARRAY['home'],
+    ARRAY['webcam'],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube']
+  ),
+  
+  -- ============================================
+  -- HIGHER PRODUCTION - For those who want to level up
+  -- ============================================
+  (
+    'https://www.youtube.com/watch?v=qp0HIF3SfI4',
+    'qp0HIF3SfI4',
+    'Presentation / Talk Style',
+    'Professional presentation format - speaker on stage or in front of audience. Higher production value, but achievable at local events.',
+    'https://i.ytimg.com/vi/qp0HIF3SfI4/hqdefault.jpg',
+    'horizontal',
+    'on_camera',
+    true,
+    'natural',
+    ARRAY['word_for_word', 'bullet_points'],
+    ARRAY['studio', 'on_location'],
+    ARRAY['dedicated_camera', 'full_production'],
+    ARRAY['walk_and_talk'],
+    ARRAY['youtube', 'linkedin']
+  ),
+  (
+    'https://www.youtube.com/watch?v=ok97XI0NIsQ',
+    'ok97XI0NIsQ',
+    'Animated Explainer (High Production)',
+    'Professional animated explainer with custom graphics. Requires animation skills or hiring an animator - but very engaging format.',
+    'https://i.ytimg.com/vi/ok97XI0NIsQ/hqdefault.jpg',
+    'horizontal',
+    'voiceover_only',
+    false,
+    null,
+    ARRAY['word_for_word'],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY[]::TEXT[],
+    ARRAY['youtube', 'linkedin']
+  );
