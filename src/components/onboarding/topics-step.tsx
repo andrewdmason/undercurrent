@@ -156,8 +156,9 @@ export function TopicsStep() {
         await deleteTopic(topic.id);
       }
 
-      // Add new topics
+      // Add new topics - track failures
       const newTopics = [];
+      let hadFailures = false;
 
       for (const topic of topicsToInclude) {
         if (topic.name.trim()) {
@@ -168,6 +169,9 @@ export function TopicsStep() {
           });
           if (result.success && result.topic) {
             newTopics.push(result.topic);
+          } else {
+            hadFailures = true;
+            console.error("Failed to add topic:", topic.name, result);
           }
         }
       }
@@ -181,17 +185,28 @@ export function TopicsStep() {
           });
           if (result.success && result.topic) {
             newTopics.push(result.topic);
+          } else {
+            hadFailures = true;
+            console.error("Failed to add excluded topic:", topic.name, result);
           }
         }
       }
 
-      // Update context
+      // Update context with whatever succeeded
       setTopics(newTopics);
+
+      // Only advance if we didn't have critical failures
+      // (we still advance even if some topics failed, as long as the save didn't throw)
+      if (hadFailures) {
+        console.warn("Some topics failed to save, but continuing anyway");
+      }
+      
+      goNext();
     } catch (error) {
       console.error("Failed to save content strategy:", error);
+      // Don't advance - user needs to retry
     } finally {
       setIsSaving(false);
-      goNext();
     }
   };
 

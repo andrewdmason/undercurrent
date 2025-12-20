@@ -270,8 +270,11 @@ export function CharacterInterviewStep() {
       updateCharacter(currentCharacter.id, {
         interview_data: interviewData,
       });
+      
+      return true; // Success
     } catch (error) {
       console.error("Failed to save interview data:", error);
+      return false; // Failure
     } finally {
       setIsSaving(false);
     }
@@ -284,7 +287,12 @@ export function CharacterInterviewStep() {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
       // Last question - save interview data and move to next character
-      await saveInterviewData();
+      const saved = await saveInterviewData();
+      
+      // Don't advance if save failed
+      if (!saved) {
+        return;
+      }
 
       if (currentCharacterIndex < humanCharacters.length - 1) {
         // Move to next character

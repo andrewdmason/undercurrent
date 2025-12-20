@@ -129,6 +129,8 @@ export function ChannelsStep() {
             });
             if (result.success && result.channel) {
               newChannels.push(result.channel);
+            } else {
+              console.error("Failed to add channel:", platform, result);
             }
           } else {
             // Keep existing channel (could update URL here if needed)
@@ -142,11 +144,14 @@ export function ChannelsStep() {
 
       // Update channels state
       setChannels(newChannels);
+      
+      // Only advance on success
+      goNext();
     } catch (error) {
       console.error("Failed to save channels:", error);
+      // Don't advance - user needs to retry
     } finally {
       setIsSaving(false);
-      goNext();
     }
   };
 

@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ProjectCharacter } from "@/lib/types";
+import {
+  ProjectCharacter,
+  CameraComfort,
+  ScriptStyle,
+  FilmingLocation,
+  Equipment,
+  MovementCapability,
+  RecordingSetup,
+  CharacterInterviewData,
+} from "@/lib/types";
 import {
   createCharacter,
   updateCharacter,
@@ -17,9 +26,49 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Upload, User, X, Sparkles, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Upload, User, X, Sparkles, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateAICharacterModal } from "./create-ai-character-modal";
+
+// Option definitions for production capabilities
+const CAMERA_COMFORT_OPTIONS: { value: CameraComfort; label: string }[] = [
+  { value: "new", label: "🌱 New to this" },
+  { value: "comfortable", label: "📹 Comfortable" },
+  { value: "natural", label: "⭐ Natural" },
+];
+
+const SCRIPT_STYLE_OPTIONS: { value: ScriptStyle; label: string }[] = [
+  { value: "word_for_word", label: "📝 Word-for-word" },
+  { value: "bullet_points", label: "📋 Bullet points" },
+  { value: "improviser", label: "🎤 Improviser" },
+];
+
+const LOCATION_OPTIONS: { value: FilmingLocation; label: string }[] = [
+  { value: "home", label: "🏠 Home" },
+  { value: "workplace", label: "🏢 Workplace" },
+  { value: "on_location", label: "🌳 On location" },
+  { value: "studio", label: "🎬 Studio" },
+];
+
+const EQUIPMENT_OPTIONS: { value: Equipment; label: string }[] = [
+  { value: "smartphone", label: "📱 Phone" },
+  { value: "webcam", label: "💻 Webcam" },
+  { value: "dedicated_camera", label: "📷 Camera" },
+  { value: "full_production", label: "🎙️ Full production" },
+];
+
+const MOVEMENT_OPTIONS: { value: MovementCapability; label: string }[] = [
+  { value: "seated", label: "🪑 Seated" },
+  { value: "walk_and_talk", label: "🚶 Walk & talk" },
+  { value: "action_shots", label: "🎬 Action" },
+  { value: "on_the_go", label: "🚗 On-the-go" },
+];
+
+const RECORDING_SETUP_OPTIONS: { value: RecordingSetup; label: string }[] = [
+  { value: "phone_mic", label: "📱 Phone/computer mic" },
+  { value: "usb_mic", label: "🎧 USB mic" },
+  { value: "professional", label: "🎙️ Professional" },
+];
 
 // Simple markdown renderer for bullet points
 function renderSimpleMarkdown(text: string) {
@@ -106,16 +155,36 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
     setAiCharacterData(null);
   };
 
-  const handleSave = async (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string; memberId?: string | null }) => {
+  const handleSave = async (data: { 
+    name: string; 
+    description: string; 
+    pendingImage?: File; 
+    isAiGenerated?: boolean; 
+    aiStyle?: string; 
+    imageUrl?: string; 
+    memberId?: string | null;
+    isVoiceoverOnly?: boolean;
+    interviewData?: CharacterInterviewData | null;
+  }) => {
     if (editingCharacter) {
       // Update existing character
       await updateCharacter(editingCharacter.id, projectId, {
         name: data.name,
         description: data.description,
         member_id: data.memberId,
+        is_voiceover_only: data.isVoiceoverOnly,
+        interview_data: data.interviewData as Record<string, unknown> | null | undefined,
       });
       
       // Upload image if there's a pending one
+      const updatedFields = {
+        name: data.name,
+        description: data.description,
+        member_id: data.memberId || null,
+        is_voiceover_only: data.isVoiceoverOnly || false,
+        interview_data: data.interviewData || null,
+      };
+      
       if (data.pendingImage) {
         const formData = new FormData();
         formData.append("file", data.pendingImage);
@@ -123,20 +192,20 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
         if (result.success && result.imageUrl) {
           setCharacterList(
             characterList.map((c) =>
-              c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null, image_url: result.imageUrl! } : c
+              c.id === editingCharacter.id ? { ...c, ...updatedFields, image_url: result.imageUrl! } : c
             )
           );
         } else {
           setCharacterList(
             characterList.map((c) =>
-              c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null } : c
+              c.id === editingCharacter.id ? { ...c, ...updatedFields } : c
             )
           );
         }
       } else {
         setCharacterList(
           characterList.map((c) =>
-            c.id === editingCharacter.id ? { ...c, ...data, member_id: data.memberId || null } : c
+            c.id === editingCharacter.id ? { ...c, ...updatedFields } : c
           )
         );
       }
@@ -147,6 +216,7 @@ export function CharactersSection({ projectId, characters }: CharactersSectionPr
         description: data.description,
         image_url: data.imageUrl || null,
         is_ai_generated: data.isAiGenerated || false,
+        is_voiceover_only: data.isVoiceoverOnly || false,
         ai_style: data.aiStyle || null,
         member_id: data.memberId || null,
       });
@@ -301,7 +371,17 @@ interface CharacterDialogProps {
   projectId: string;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; description: string; pendingImage?: File; isAiGenerated?: boolean; aiStyle?: string; imageUrl?: string; memberId?: string | null }) => Promise<void>;
+  onSave: (data: { 
+    name: string; 
+    description: string; 
+    pendingImage?: File; 
+    isAiGenerated?: boolean; 
+    aiStyle?: string; 
+    imageUrl?: string; 
+    memberId?: string | null;
+    isVoiceoverOnly?: boolean;
+    interviewData?: CharacterInterviewData | null;
+  }) => Promise<void>;
   character: ProjectCharacter | null;
   existingImageUrl?: string | null;
   initialData?: AICharacterData | null;
@@ -318,6 +398,16 @@ function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existi
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Production capabilities state
+  const [showCapabilities, setShowCapabilities] = useState(false);
+  const [isVoiceoverOnly, setIsVoiceoverOnly] = useState(false);
+  const [cameraComfort, setCameraComfort] = useState<CameraComfort | null>(null);
+  const [scriptStyles, setScriptStyles] = useState<ScriptStyle[]>([]);
+  const [locations, setLocations] = useState<FilmingLocation[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [movement, setMovement] = useState<MovementCapability[]>([]);
+  const [recordingSetup, setRecordingSetup] = useState<RecordingSetup | null>(null);
 
   // Fetch team members when dialog opens
   useEffect(() => {
@@ -338,10 +428,50 @@ function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existi
         setName(initialData.name || "");
         setDescription(initialData.description || "");
         setSelectedMemberId(null);
+        // Reset production capabilities for AI characters
+        setIsVoiceoverOnly(false);
+        setCameraComfort(null);
+        setScriptStyles([]);
+        setLocations([]);
+        setEquipment([]);
+        setMovement([]);
+        setRecordingSetup(null);
+        setShowCapabilities(false);
       } else {
         setName(character?.name || "");
         setDescription(character?.description || "");
         setSelectedMemberId(character?.member_id || null);
+        // Load production capabilities from character
+        setIsVoiceoverOnly(character?.is_voiceover_only || false);
+        const interviewData = character?.interview_data;
+        if (interviewData) {
+          setScriptStyles(interviewData.scriptStyles || []);
+          if ("cameraComfort" in interviewData) {
+            // On-camera interview data
+            setCameraComfort(interviewData.cameraComfort || null);
+            setLocations(interviewData.locations || []);
+            setEquipment(interviewData.equipment || []);
+            setMovement(interviewData.movement || []);
+            setRecordingSetup(null);
+          } else if ("recordingSetup" in interviewData) {
+            // Voiceover interview data
+            setRecordingSetup(interviewData.recordingSetup || null);
+            setCameraComfort(null);
+            setLocations([]);
+            setEquipment([]);
+            setMovement([]);
+          }
+          // Auto-expand if there's existing interview data
+          setShowCapabilities(true);
+        } else {
+          setCameraComfort(null);
+          setScriptStyles([]);
+          setLocations([]);
+          setEquipment([]);
+          setMovement([]);
+          setRecordingSetup(null);
+          setShowCapabilities(false);
+        }
       }
       setPendingImage(null);
       setImagePreview(null);
@@ -387,6 +517,25 @@ function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existi
   const handleSubmit = async () => {
     if (!name.trim()) return;
 
+    // Build interview data based on character type
+    let interviewData: CharacterInterviewData | null = null;
+    if (showCapabilities) {
+      if (isVoiceoverOnly) {
+        interviewData = {
+          scriptStyles,
+          recordingSetup: recordingSetup || "phone_mic",
+        };
+      } else if (cameraComfort) {
+        interviewData = {
+          cameraComfort,
+          scriptStyles,
+          locations,
+          equipment,
+          movement,
+        };
+      }
+    }
+
     setIsSaving(true);
     await onSave({
       name: name.trim(),
@@ -396,11 +545,22 @@ function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existi
       aiStyle: initialData?.aiStyle,
       imageUrl: initialData?.imageUrl,
       memberId: selectedMemberId,
+      isVoiceoverOnly,
+      interviewData,
     });
     setIsSaving(false);
   };
 
   const selectedMember = teamMembers.find((m) => m.id === selectedMemberId);
+
+  // Toggle helper for multi-select options
+  const toggleOption = <T extends string>(value: T, current: T[], setter: (v: T[]) => void) => {
+    if (current.includes(value)) {
+      setter(current.filter((v) => v !== value));
+    } else {
+      setter([...current, value]);
+    }
+  };
 
   const displayImage = imagePreview || existingImageUrl;
   const isEditing = !!character;
@@ -557,6 +717,225 @@ function CharacterDialog({ projectId, isOpen, onClose, onSave, character, existi
               </p>
             </div>
           )}
+
+          {/* Production Capabilities (collapsible) */}
+          <div className="border-t border-[var(--border)] pt-4">
+            <button
+              type="button"
+              onClick={() => setShowCapabilities(!showCapabilities)}
+              className="flex items-center gap-2 text-xs font-medium text-[var(--grey-600)] hover:text-[var(--grey-800)] transition-colors"
+            >
+              {showCapabilities ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
+              Production Capabilities
+              {(cameraComfort || scriptStyles.length > 0 || recordingSetup) && (
+                <span className="text-[10px] text-[var(--grey-400)] font-normal">(configured)</span>
+              )}
+            </button>
+
+            {showCapabilities && (
+              <div className="mt-4 space-y-4">
+                {/* Character Type Toggle */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Character Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsVoiceoverOnly(false)}
+                      className={cn(
+                        "flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors",
+                        !isVoiceoverOnly
+                          ? "bg-[var(--grey-800)] text-white"
+                          : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                      )}
+                    >
+                      📹 On Camera
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsVoiceoverOnly(true)}
+                      className={cn(
+                        "flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-colors",
+                        isVoiceoverOnly
+                          ? "bg-[var(--grey-800)] text-white"
+                          : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                      )}
+                    >
+                      🎙️ Voiceover Only
+                    </button>
+                  </div>
+                </div>
+
+                {isVoiceoverOnly ? (
+                  <>
+                    {/* Script Style */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Script Style</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SCRIPT_STYLE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleOption(opt.value, scriptStyles, setScriptStyles)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors flex items-center gap-1",
+                              scriptStyles.includes(opt.value)
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                            {scriptStyles.includes(opt.value) && <Check size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recording Setup */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Recording Setup</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {RECORDING_SETUP_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setRecordingSetup(opt.value)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors",
+                              recordingSetup === opt.value
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Camera Comfort */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Camera Comfort</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CAMERA_COMFORT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setCameraComfort(opt.value)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors",
+                              cameraComfort === opt.value
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Script Style */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Script Style</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SCRIPT_STYLE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleOption(opt.value, scriptStyles, setScriptStyles)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors flex items-center gap-1",
+                              scriptStyles.includes(opt.value)
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                            {scriptStyles.includes(opt.value) && <Check size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Locations */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Filming Locations</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {LOCATION_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleOption(opt.value, locations, setLocations)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors flex items-center gap-1",
+                              locations.includes(opt.value)
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                            {locations.includes(opt.value) && <Check size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Equipment */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Equipment</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {EQUIPMENT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleOption(opt.value, equipment, setEquipment)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors flex items-center gap-1",
+                              equipment.includes(opt.value)
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                            {equipment.includes(opt.value) && <Check size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Movement */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-medium text-[var(--grey-500)] uppercase tracking-wide">Movement</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MOVEMENT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => toggleOption(opt.value, movement, setMovement)}
+                            className={cn(
+                              "px-2.5 py-1.5 rounded-md text-[11px] transition-colors flex items-center gap-1",
+                              movement.includes(opt.value)
+                                ? "bg-[var(--grey-800)] text-white"
+                                : "bg-black/[0.03] text-[var(--grey-600)] hover:bg-black/[0.06]"
+                            )}
+                          >
+                            {opt.label}
+                            {movement.includes(opt.value) && <Check size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">

@@ -32,15 +32,21 @@ export function GeneratingStep() {
           templateId: undefined,
           topicId: undefined,
         });
-        console.log("[GeneratingStep] generateIdeas result:", result);
+        console.log("[GeneratingStep] generateIdeas result:", JSON.stringify(result, null, 2));
+        console.log("[GeneratingStep] isCancelled:", isCancelled);
 
-        if (isCancelled) return;
+        if (isCancelled) {
+          console.log("[GeneratingStep] Cancelled, returning early");
+          return;
+        }
 
         if (result.error) {
+          console.log("[GeneratingStep] Error in result:", result.error);
           setError(result.error);
           return;
         }
 
+        console.log("[GeneratingStep] Success! Count:", result.count);
         setIdeaCount(result.count || 0);
         setStatus("complete");
       } catch (err) {
