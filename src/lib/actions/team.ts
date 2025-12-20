@@ -153,6 +153,7 @@ export async function getProjectByInviteToken(token: string): Promise<{
 
 /**
  * Accept an invite (adds user to project)
+ * Uses RPC function to bypass RLS since user isn't a member yet
  */
 export async function acceptInvite(token: string): Promise<{
   success?: boolean;
@@ -161,51 +162,24 @@ export async function acceptInvite(token: string): Promise<{
 }> {
   const supabase = await createClient();
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .rpc("accept_project_invite", { invite_token_param: token });
 
-  if (!user) {
-    return { error: "You must be logged in to accept an invite" };
+  if (error) {
+    console.error("Error accepting invite:", error);
+    return { error: "Failed to accept invite" };
   }
 
-  // Get project by invite token
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, slug")
-    .eq("invite_token", token)
-    .single();
-
-  if (projectError || !project) {
-    return { error: "Invalid invite link" };
+  const result = data?.[0];
+  if (!result) {
+    return { error: "Failed to accept invite" };
   }
 
-  // Check if already a member
-  const { data: existingMember } = await supabase
-    .from("project_members")
-    .select("id")
-    .eq("project_id", project.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (existingMember) {
-    // Already a member, just redirect
-    return { success: true, project_slug: project.slug };
+  if (!result.success) {
+    return { error: result.error_message || "Invalid invite link" };
   }
 
-  // Add user to project
-  const { error: addError } = await supabase.from("project_members").insert({
-    project_id: project.id,
-    user_id: user.id,
-  });
-
-  if (addError) {
-    console.error("Error adding user to project:", addError);
-    return { error: addError.message };
-  }
-
-  return { success: true, project_slug: project.slug };
+  return { success: true, project_slug: result.project_slug };
 }
 
 /**
