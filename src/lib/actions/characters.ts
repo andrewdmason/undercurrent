@@ -10,6 +10,7 @@ export async function createCharacter(
     description?: string | null;
     image_url?: string | null;
     is_ai_generated?: boolean;
+    is_voiceover_only?: boolean;
     ai_style?: string | null;
     member_id?: string | null;
   }
@@ -31,6 +32,7 @@ export async function createCharacter(
       description: data.description || null,
       image_url: data.image_url || null,
       is_ai_generated: data.is_ai_generated || false,
+      is_voiceover_only: data.is_voiceover_only || false,
       ai_style: data.ai_style || null,
       member_id: data.member_id || null,
     })
@@ -56,6 +58,7 @@ export async function updateCharacter(
     description?: string | null;
     image_url?: string | null;
     is_ai_generated?: boolean;
+    is_voiceover_only?: boolean;
     ai_style?: string | null;
     member_id?: string | null;
   }

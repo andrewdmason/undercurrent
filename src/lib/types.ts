@@ -57,6 +57,7 @@ export interface ProjectCharacter {
   description: string | null;
   image_url: string | null;
   is_ai_generated: boolean;
+  is_voiceover_only: boolean;
   ai_style: string | null;
   member_id: string | null;
   created_at: string;
