@@ -7,3 +7,4 @@ ADD COLUMN url text;
 ALTER TABLE public.project_channels
 DROP COLUMN notes;
 
+

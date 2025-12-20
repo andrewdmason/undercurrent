@@ -59,3 +59,4 @@ AND EXISTS (
 CREATE INDEX IF NOT EXISTS project_templates_orientation_idx ON public.project_templates(orientation);
 
 
+

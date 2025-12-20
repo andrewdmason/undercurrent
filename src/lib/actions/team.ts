@@ -69,7 +69,8 @@ export async function getInviteLink(projectId: string): Promise<{
     return { error: error?.message || "Project not found" };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+    (process.env.NODE_ENV === "production" ? "https://undercurrent-weld.vercel.app" : "http://localhost:3000");
   const inviteUrl = `${baseUrl}/invite/${project.invite_token}`;
 
   return { inviteUrl };
@@ -109,7 +110,8 @@ export async function regenerateInviteLink(projectId: string): Promise<{
     return { error: error?.message || "Failed to regenerate link" };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+    (process.env.NODE_ENV === "production" ? "https://undercurrent-weld.vercel.app" : "http://localhost:3000");
   const inviteUrl = `${baseUrl}/invite/${updated.invite_token}`;
 
   if (project?.slug) {
