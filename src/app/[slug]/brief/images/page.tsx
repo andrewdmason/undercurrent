@@ -9,3 +9,4 @@ export default function BriefImagesPage() {
   return <ImagesSection projectId={project.id} images={images} />;
 }
 
+

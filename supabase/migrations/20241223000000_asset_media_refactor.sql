@@ -191,3 +191,4 @@ CREATE POLICY "Users can delete asset images"
     bucket_id = 'asset-images'
     AND auth.uid() IS NOT NULL
   );
+

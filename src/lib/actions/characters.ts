@@ -61,6 +61,7 @@ export async function updateCharacter(
     is_voiceover_only?: boolean;
     ai_style?: string | null;
     member_id?: string | null;
+    interview_data?: Record<string, unknown> | null;
   }
 ) {
   const supabase = await createClient();

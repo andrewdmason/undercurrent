@@ -87,3 +87,4 @@ alter table public.chat_logs
 create index if not exists generation_logs_idea_id_idx on public.generation_logs(idea_id);
 
 
+

@@ -15,6 +15,7 @@ export type OnboardingStep =
   | "channels"
   | "topics"
   | "characters"
+  | "character-interview"
   | "templates"
   | "generating";
 
@@ -24,6 +25,7 @@ const STEP_ORDER: OnboardingStep[] = [
   "channels",
   "topics",
   "characters",
+  "character-interview",
   "templates",
   "generating",
 ];
@@ -47,6 +49,7 @@ interface OnboardingContextValue {
   addTopic: (topic: ProjectTopic) => void;
   addChannel: (channel: DistributionChannel) => void;
   addCharacter: (character: ProjectCharacter) => void;
+  updateCharacter: (characterId: string, data: Partial<ProjectCharacter>) => void;
   addTemplate: (template: ProjectTemplateWithChannels) => void;
   setTopics: (topics: ProjectTopic[]) => void;
   setChannels: (channels: DistributionChannel[]) => void;
@@ -117,6 +120,12 @@ export function OnboardingProvider({
     setCharacters((prev) => [...prev, character]);
   }, []);
 
+  const updateCharacter = useCallback((characterId: string, data: Partial<ProjectCharacter>) => {
+    setCharacters((prev) =>
+      prev.map((c) => (c.id === characterId ? { ...c, ...data } : c))
+    );
+  }, []);
+
   const addTemplate = useCallback((template: ProjectTemplateWithChannels) => {
     setTemplates((prev) => [template, ...prev]);
   }, []);
@@ -147,6 +156,7 @@ export function OnboardingProvider({
         addTopic,
         addChannel,
         addCharacter,
+        updateCharacter,
         addTemplate,
         setTopics,
         setChannels,

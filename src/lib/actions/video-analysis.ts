@@ -1,6 +1,7 @@
 "use server";
 
 import { genai, TEXT_MODEL } from "@/lib/gemini";
+import { TemplateProductionRequirements } from "@/lib/types";
 import fs from "fs";
 import path from "path";
 
@@ -12,6 +13,7 @@ export interface VideoStyleAnalysis {
   name: string;
   description: string;
   suggestedPlatforms: string[];
+  productionRequirements: TemplateProductionRequirements | null;
   thumbnailUrl: string | null;
 }
 
@@ -130,7 +132,12 @@ export async function analyzeVideoStyle(
     }
 
     // Parse the JSON response
-    let parsed: { name: string; description: string; suggestedPlatforms: string[] };
+    let parsed: {
+      name: string;
+      description: string;
+      suggestedPlatforms: string[];
+      productionRequirements?: TemplateProductionRequirements;
+    };
     try {
       parsed = JSON.parse(responseText);
     } catch {
@@ -143,6 +150,23 @@ export async function analyzeVideoStyle(
       return { success: false, error: "Invalid AI response format" };
     }
 
+    // Validate and normalize production requirements if present
+    let productionRequirements: TemplateProductionRequirements | null = null;
+    if (parsed.productionRequirements) {
+      const req = parsed.productionRequirements;
+      // Ensure all required fields are present with valid values
+      if (req.presenterType && ["on_camera", "voiceover_only", "none"].includes(req.presenterType)) {
+        productionRequirements = {
+          presenterType: req.presenterType,
+          cameraComfort: req.cameraComfort || null,
+          scriptStyles: Array.isArray(req.scriptStyles) ? req.scriptStyles : [],
+          locations: Array.isArray(req.locations) ? req.locations : [],
+          equipment: Array.isArray(req.equipment) ? req.equipment : [],
+          movement: Array.isArray(req.movement) ? req.movement : [],
+        };
+      }
+    }
+
     // Get the thumbnail
     const thumbnailUrl = await thumbnailPromise;
 
@@ -152,6 +176,7 @@ export async function analyzeVideoStyle(
         name: parsed.name,
         description: parsed.description,
         suggestedPlatforms: parsed.suggestedPlatforms,
+        productionRequirements,
         thumbnailUrl,
       },
     };

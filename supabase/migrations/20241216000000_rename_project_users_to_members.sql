@@ -106,3 +106,4 @@ ADD COLUMN IF NOT EXISTS member_id uuid REFERENCES public.project_members(id) ON
 -- Create index for lookups
 CREATE INDEX IF NOT EXISTS project_characters_member_id_idx ON public.project_characters(member_id);
 
+

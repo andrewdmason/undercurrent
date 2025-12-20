@@ -40,9 +40,6 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
   
   // Hide header on onboarding pages
   const isOnboarding = pathname?.includes("/onboarding");
-  if (isOnboarding) {
-    return null;
-  }
 
   useEffect(() => {
     setMounted(true);
@@ -133,6 +130,11 @@ export function AppHeader({ ideasCount = 0 }: AppHeaderProps) {
   ] : [];
 
   const isBriefActive = pathname?.startsWith(`/${navSlug}/brief`);
+
+  // Hide header on onboarding pages (must be after all hooks)
+  if (isOnboarding) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--grey-0)]">

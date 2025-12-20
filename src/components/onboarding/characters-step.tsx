@@ -415,23 +415,6 @@ function AddCharacterDialog({
               Back
             </button>
 
-            {/* "This is me" checkbox for humans */}
-            {isHuman && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is-me"
-                  checked={isMe}
-                  onCheckedChange={(checked: boolean | "indeterminate") => setIsMe(checked === true)}
-                />
-                <label
-                  htmlFor="is-me"
-                  className="text-sm font-medium text-slate-700 cursor-pointer"
-                >
-                  This is me
-                </label>
-              </div>
-            )}
-
             {/* Image upload (not for voiceover-only AI) */}
             {selectedType !== "ai-voiceover" && (
               <>
@@ -497,26 +480,42 @@ function AddCharacterDialog({
               />
             </div>
 
-            {/* Description input */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-600">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={
-                  selectedType === "ai-voiceover"
-                    ? "Describe this AI voice's tone, style, and personality..."
-                    : "Describe this character's role, personality, and on-camera strengths..."
-                }
-                rows={4}
-                className={cn(
-                  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
-                  "text-sm text-slate-800 placeholder:text-slate-400",
-                  "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
-                  "resize-none"
-                )}
-              />
-            </div>
+            {/* "This is me" checkbox for humans */}
+            {isHuman && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is-me"
+                  checked={isMe}
+                  onCheckedChange={(checked: boolean | "indeterminate") => setIsMe(checked === true)}
+                  className="border-slate-300 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                />
+                <label
+                  htmlFor="is-me"
+                  className="text-sm text-slate-600 cursor-pointer"
+                >
+                  This is me
+                </label>
+              </div>
+            )}
+
+            {/* Description input - only for AI voiceover characters (human characters get description from interview) */}
+            {selectedType === "ai-voiceover" && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-600">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe this AI voice's tone, style, and personality..."
+                  rows={4}
+                  className={cn(
+                    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2",
+                    "text-sm text-slate-800 placeholder:text-slate-400",
+                    "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent",
+                    "resize-none"
+                  )}
+                />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
