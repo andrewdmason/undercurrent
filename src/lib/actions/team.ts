@@ -161,51 +161,26 @@ export async function acceptInvite(token: string): Promise<{
 }> {
   const supabase = await createClient();
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .rpc("accept_project_invite", { invite_token_param: token });
 
-  if (!user) {
-    return { error: "You must be logged in to accept an invite" };
+  if (error) {
+    console.error("Error accepting invite:", error);
+    if (error.code === "P0002") {
+      return { error: "Invalid invite link" };
+    }
+    if (error.code === "42501") {
+      return { error: "You must be logged in to accept an invite" };
+    }
+    return { error: error.message };
   }
 
-  // Get project by invite token
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, slug")
-    .eq("invite_token", token)
-    .single();
-
-  if (projectError || !project) {
+  const row = data?.[0];
+  if (!row) {
     return { error: "Invalid invite link" };
   }
 
-  // Check if already a member
-  const { data: existingMember } = await supabase
-    .from("project_members")
-    .select("id")
-    .eq("project_id", project.id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (existingMember) {
-    // Already a member, just redirect
-    return { success: true, project_slug: project.slug };
-  }
-
-  // Add user to project
-  const { error: addError } = await supabase.from("project_members").insert({
-    project_id: project.id,
-    user_id: user.id,
-  });
-
-  if (addError) {
-    console.error("Error adding user to project:", addError);
-    return { error: addError.message };
-  }
-
-  return { success: true, project_slug: project.slug };
+  return { success: true, project_slug: row.project_slug };
 }
 
 /**
